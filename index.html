@@ -31,7 +31,7 @@
       <div class="welcome-copy">
         <p class="eyebrow">Interaktív mesekészítő</p>
         <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
-        <p class="lede">Mondd el, milyen mesét szeretnél — vagy kérj meglepetést. Hosszabb, Disney-s kalandok, férfi mesélőhanggal.</p>
+        <p class="lede">Mondd el, milyen mesét szeretnél — vagy kérj meglepetést. A mese korlátlanul folytatható: minden választás új fejezetet sző.</p>
       </div>
 
       <form id="wish-form" class="wish-panel" autocomplete="off">
@@ -137,9 +137,15 @@
 
       <div class="choices" id="choices" role="group" aria-label="Választások"></div>
 
+      <div class="story-actions" id="story-actions" hidden>
+        <button type="button" class="ghost-btn" id="btn-download">Mese mentése</button>
+        <button type="button" class="ghost-btn" id="btn-finish">Mesét lezárom mára</button>
+      </div>
+
       <div class="ending-actions" id="ending-actions" hidden>
         <button type="button" class="primary-btn" id="btn-restart">Új mese</button>
-        <button type="button" class="ghost-btn" id="btn-download">Mese mentése</button>
+        <button type="button" class="ghost-btn" id="btn-download-end">Mese mentése</button>
+        <button type="button" class="ghost-btn" id="btn-continue-forever">Mégis folytatom</button>
       </div>
     </section>
   </main>

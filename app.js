@@ -15,11 +15,15 @@
   const storyText = $("story-text");
   const choicesEl = $("choices");
   const endingActions = $("ending-actions");
+  const storyActions = $("story-actions");
   const btnSpeak = $("btn-speak");
   const btnStopSpeak = $("btn-stop-speak");
   const speakLabel = $("speak-label");
   const btnRestart = $("btn-restart");
   const btnDownload = $("btn-download");
+  const btnDownloadEnd = $("btn-download-end");
+  const btnFinish = $("btn-finish");
+  const btnContinueForever = $("btn-continue-forever");
   const brandHome = $("brand-home");
 
   let story = null;
@@ -46,6 +50,7 @@
     screenStory.classList.remove("is-active");
     btnNewStory.hidden = true;
     endingActions.hidden = true;
+    if (storyActions) storyActions.hidden = true;
     choicesEl.innerHTML = "";
   }
 
@@ -61,16 +66,18 @@
     if (!story) return;
     const scene = MeseEngine.getScene(story);
     chapterLabel.textContent = scene.chapter;
-    storyTitle.textContent = story.title;
+    storyTitle.textContent = story.title + (story.chapterNum > 1 ? ` · ${story.chapterNum}. fejezet` : "");
     storyText.textContent = scene.text;
     storyText.classList.remove("is-refreshing");
     void storyText.offsetWidth;
     storyText.classList.add("is-refreshing");
 
     choicesEl.innerHTML = "";
-    endingActions.hidden = !scene.ending;
+    const isEnding = !!scene.ending || !!story.finished;
+    endingActions.hidden = !isEnding;
+    if (storyActions) storyActions.hidden = isEnding;
 
-    if (!scene.ending) {
+    if (!isEnding) {
       scene.choices.forEach((choice) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -128,9 +135,8 @@
   btnRestart.addEventListener("click", goHome);
   brandHome.addEventListener("click", goHome);
 
-  btnDownload.addEventListener("click", () => {
+  function downloadStory() {
     if (!story) return;
-    // Reconstruct clean transcript from visited path
     const text = buildDownloadText();
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -139,10 +145,36 @@
     a.download = `${story.title.replace(/\s+/g, "_")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  });
+  }
+
+  btnDownload.addEventListener("click", downloadStory);
+  if (btnDownloadEnd) btnDownloadEnd.addEventListener("click", downloadStory);
+
+  if (btnFinish) {
+    btnFinish.addEventListener("click", () => {
+      if (!story || story.finished) return;
+      stopSpeak();
+      MeseEngine.finishStory(story);
+      renderScene();
+    });
+  }
+
+  if (btnContinueForever) {
+    btnContinueForever.addEventListener("click", () => {
+      if (!story) return;
+      stopSpeak();
+      // Re-open the endless path from a fresh continuation beat
+      story.finished = false;
+      MeseEngine.choose(story, pick(["kind", "curious", "brave", "clever", "rest"]));
+      renderScene();
+    });
+  }
+
+  function pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
 
   function buildDownloadText() {
-    // Prefer engine transcript, but dedupe consecutive identical blocks
     const raw = MeseEngine.fullTranscript(story);
     const blocks = raw.split(/\n\n+/);
     const out = [];

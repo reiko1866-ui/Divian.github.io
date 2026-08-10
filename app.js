@@ -270,7 +270,41 @@
     }
   });
 
-  /* ----- Felolvasás: SpeechSynthesisUtterance (hu-HU, mesélős tempó) ----- */
+  /* ----- Felolvasás: ElevenLabs + böngészős tartalék ----- */
+  const elevenKeyInput = $("eleven-api-key");
+  const elevenVoiceInput = $("eleven-voice-id");
+  const DEFAULT_ELEVEN_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam — férfi
+  const STORAGE_ELEVEN_KEY = "mesehang-eleven-key";
+  const STORAGE_ELEVEN_VOICE = "mesehang-eleven-voice";
+
+  let activeAudioUrl = null;
+
+  try {
+    if (elevenKeyInput) elevenKeyInput.value = localStorage.getItem(STORAGE_ELEVEN_KEY) || "";
+    if (elevenVoiceInput) {
+      elevenVoiceInput.value = localStorage.getItem(STORAGE_ELEVEN_VOICE) || DEFAULT_ELEVEN_VOICE;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+
+  function saveElevenSettings() {
+    try {
+      if (elevenKeyInput) localStorage.setItem(STORAGE_ELEVEN_KEY, elevenKeyInput.value.trim());
+      if (elevenVoiceInput) {
+        localStorage.setItem(
+          STORAGE_ELEVEN_VOICE,
+          elevenVoiceInput.value.trim() || DEFAULT_ELEVEN_VOICE
+        );
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  if (elevenKeyInput) elevenKeyInput.addEventListener("change", saveElevenSettings);
+  if (elevenVoiceInput) elevenVoiceInput.addEventListener("change", saveElevenSettings);
+
   function setSpeakingUi(active) {
     speaking = active;
     btnSpeak.classList.toggle("is-active", active);
@@ -290,6 +324,22 @@
     speakGeneration += 1;
     speakQueue = [];
     clearSpeakKeepAlive();
+
+    if (window.currentStoryAudio) {
+      try {
+        window.currentStoryAudio.pause();
+        window.currentStoryAudio.removeAttribute("src");
+        window.currentStoryAudio.load();
+      } catch (_) {
+        /* ignore */
+      }
+      window.currentStoryAudio = null;
+    }
+    if (activeAudioUrl) {
+      URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
+    }
+
     if (window.speechSynthesis) {
       speechSynthesis.cancel();
       try {
@@ -301,23 +351,22 @@
     setSpeakingUi(false);
   }
 
-  function speakText(text) {
+  function playStoryNative(text) {
     if (!window.speechSynthesis) {
       micStatus.textContent = "A felolvasás nem támogatott ebben a böngészőben.";
+      setSpeakingUi(false);
       return;
     }
 
-    stopSpeak();
     const generation = speakGeneration;
     const utterance = new SpeechSynthesisUtterance(String(text || "").trim());
     utterance.lang = "hu-HU";
-    utterance.rate = 0.9; // Kicsit lassabb, mesélős tempó
-    utterance.pitch = 1.1; // Kicsit barátságosabb tónus
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
 
     utterance.onstart = () => {
       if (generation !== speakGeneration) return;
       setSpeakingUi(true);
-      // Chrome néha megáll hosszabb szövegnél — időszakos resume segít
       clearSpeakKeepAlive();
       speakKeepAlive = setInterval(() => {
         if (generation !== speakGeneration) {
@@ -343,6 +392,83 @@
     };
 
     window.speechSynthesis.speak(utterance);
+  }
+
+  // ElevenLabs AI felolvasó függvény
+  async function playStoryElevenLabs(text, apiKey, voiceId) {
+    // Állítsuk le a korábbi lejátszást, ha van épp futó Audio objektum
+    if (window.currentStoryAudio) {
+      window.currentStoryAudio.pause();
+    }
+
+    const generation = speakGeneration;
+    setSpeakingUi(true);
+
+    try {
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: "POST",
+        headers: {
+          Accept: "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_multilingual_v2", // Ez beszéli a legszebb magyart
+          voice_settings: {
+            stability: 0.35, // Alacsonyabb = dinamikusabb, mesélősebb intonáció
+            similarity_boost: 0.8, // Tiszta kiejtés
+            style: 0.15, // Kifejezőerő
+          },
+        }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP hiba: ${response.status}`);
+      if (generation !== speakGeneration) return;
+
+      const audioBlob = await response.blob();
+      if (generation !== speakGeneration) return;
+
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      activeAudioUrl = audioUrl;
+
+      window.currentStoryAudio = new Audio(audioUrl);
+      window.currentStoryAudio.onended = () => {
+        if (generation !== speakGeneration) return;
+        setSpeakingUi(false);
+      };
+      window.currentStoryAudio.onerror = () => {
+        if (generation !== speakGeneration) return;
+        setSpeakingUi(false);
+        playStoryNative(text);
+      };
+      await window.currentStoryAudio.play();
+    } catch (error) {
+      console.error("AI hanghiba, visszatérés a beépített hangra:", error);
+      if (generation !== speakGeneration) return;
+      // Hiba esetén automatikusan átvált az ingyenes böngészős hangra
+      playStoryNative(text);
+    }
+  }
+
+  function speakText(text) {
+    saveElevenSettings();
+    stopSpeak();
+
+    const clean = String(text || "").trim();
+    if (!clean) return;
+
+    const apiKey = elevenKeyInput ? elevenKeyInput.value.trim() : "";
+    const voiceId =
+      (elevenVoiceInput && elevenVoiceInput.value.trim()) || DEFAULT_ELEVEN_VOICE;
+
+    if (apiKey) {
+      playStoryElevenLabs(clean, apiKey, voiceId);
+      return;
+    }
+
+    playStoryNative(clean);
   }
 
   function maybeAutoSpeak() {

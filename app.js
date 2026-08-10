@@ -8,6 +8,7 @@
   const setupPanel = $("setup-panel");
   const storyPanel = $("story-panel");
   const wishInput = $("wish-input");
+  const disneySelect = $("disney-select");
   const moodSelect = $("mood-select");
   const heroNameInput = $("hero-name");
   const chapterLabel = $("chapter-label");
@@ -143,13 +144,30 @@
     speakCurrentStory();
   }
 
-  function startStory(wish) {
-    const cleaned = (wish || "").trim() || MeseEngine.randomWish();
+  function populateDisneySelect() {
+    if (!disneySelect || !MeseEngine.listDisneyFilms) return;
+    const films = MeseEngine.listDisneyFilms();
+    films.forEach((film) => {
+      const opt = document.createElement("option");
+      opt.value = film.id;
+      opt.textContent = film.label;
+      disneySelect.appendChild(opt);
+    });
+  }
+
+  function startStory(wish, disneyId) {
+    const selectedId = disneyId || (disneySelect && disneySelect.value) || "";
+    let cleaned = (wish || "").trim();
+    if (!cleaned && selectedId && MeseEngine.WORLDS[selectedId]) {
+      cleaned = MeseEngine.WORLDS[selectedId].disneyTitle + " stílusú kaland";
+    }
+    cleaned = cleaned || MeseEngine.randomWish();
     wishInput.value = cleaned;
     story = MeseEngine.buildStory({
       wish: cleaned,
       mood: moodSelect.value,
       heroName: heroNameInput.value,
+      disneyId: selectedId || undefined,
     });
     showStory();
     renderScene();
@@ -263,7 +281,19 @@
   voiceIdInput.addEventListener("change", saveSettings);
 
   btnStart.addEventListener("click", () => startStory(wishInput.value));
-  btnSurprise.addEventListener("click", () => startStory(MeseEngine.randomWish()));
+  btnSurprise.addEventListener("click", () => {
+    const films = MeseEngine.listDisneyFilms();
+    const film = films[Math.floor(Math.random() * films.length)];
+    if (disneySelect) disneySelect.value = film.id;
+    startStory(film.title + " stílusú kaland", film.id);
+  });
+  if (disneySelect) {
+    disneySelect.addEventListener("change", () => {
+      if (!disneySelect.value) return;
+      const world = MeseEngine.WORLDS[disneySelect.value];
+      if (world) wishInput.value = world.disneyTitle + " stílusú kaland";
+    });
+  }
   btnSpeak.addEventListener("click", speakCurrentStory);
   btnStop.addEventListener("click", stopAudio);
   btnNew.addEventListener("click", showSetup);
@@ -283,5 +313,6 @@
     cachedMaleVoice = pickMaleHuVoice();
   }
   loadSettings();
+  populateDisneySelect();
   showSetup();
 })();

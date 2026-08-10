@@ -32,8 +32,13 @@
     </div>
 
     <section id="setup-panel" class="setup-panel">
-      <label for="wish-input">Milyen Disney-stílusú mesét szeretnél?</label>
-      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. Hamupipőke bálja, jégpalota, lámpás három kívánsága, hableány a tengerben…"></textarea>
+      <label for="disney-select">Disney mese kiválasztása:</label>
+      <select id="disney-select">
+        <option value="">— Válassz Disney mesét (összes) —</option>
+      </select>
+
+      <label for="wish-input">Vagy írd le, mit szeretnél (opcionális):</label>
+      <textarea id="wish-input" rows="2" maxlength="400" placeholder="Pl. a báljelenet, a jégpalota, a kívánságok…"></textarea>
 
       <div class="setup-row">
         <label class="inline">
@@ -52,7 +57,7 @@
 
       <div class="audio-controls">
         <button type="button" id="btn-start">Induljon a mese</button>
-        <button type="button" id="btn-surprise" class="secondary-btn">Meglepetés mese</button>
+        <button type="button" id="btn-surprise" class="secondary-btn">Véletlen Disney mese</button>
       </div>
     </section>
 

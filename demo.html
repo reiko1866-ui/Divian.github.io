@@ -215,8 +215,13 @@ button:active {
     </div>
 
     <section id="setup-panel" class="setup-panel">
-      <label for="wish-input">Milyen Disney-stílusú mesét szeretnél?</label>
-      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. Hamupipőke bálja, jégpalota, lámpás három kívánsága, hableány a tengerben…"></textarea>
+      <label for="disney-select">Disney mese kiválasztása:</label>
+      <select id="disney-select">
+        <option value="">— Válassz Disney mesét (összes) —</option>
+      </select>
+
+      <label for="wish-input">Vagy írd le, mit szeretnél (opcionális):</label>
+      <textarea id="wish-input" rows="2" maxlength="400" placeholder="Pl. a báljelenet, a jégpalota, a kívánságok…"></textarea>
 
       <div class="setup-row">
         <label class="inline">
@@ -235,7 +240,7 @@ button:active {
 
       <div class="audio-controls">
         <button type="button" id="btn-start">Induljon a mese</button>
-        <button type="button" id="btn-surprise" class="secondary-btn">Meglepetés mese</button>
+        <button type="button" id="btn-surprise" class="secondary-btn">Véletlen Disney mese</button>
       </div>
     </section>
 
@@ -261,220 +266,132 @@ button:active {
 
   <script>
 /**
- * Interaktív Mesemondó — klasszikus / Disney-stílusú mesevilágok
- * Nyilvános népmesék és tündérmesék hangulatából épít eredeti, végtelen kalandokat.
+ * Interaktív Mesemondó — a Disney animációs / klasszikus mesék világaira épít
+ * Eredeti, interaktív kalandok a filmek hangulatából (nem szó szerinti forgatókönyv-másolat).
  */
 (function (global) {
   const HEROES = [
     "Ella", "Ádám", "Nóra", "Bence", "Léna", "Dániel", "Sára", "Máté",
-    "Zsófia", "Kristóf", "Anna", "Gábor",
+    "Zsófia", "Kristóf", "Anna", "Gábor", "Olivér", "Hanna",
   ];
 
-  /**
-   * Disney-stílusú világok = klasszikus tündérmese-motívumok
-   * (nem másolunk védett neveket / párbeszédet, hanem a mesevilág hangulatát)
-   */
-  const WORLDS = {
-    hamupipoke: {
-      id: "hamupipoke",
-      titleBits: ["A kristálycipellő bálja", "Az éjféli fogadalom", "A tükörtermi ígéret"],
-      places: [
-        "a királyi bálterem aranyló lépcsőjén",
-        "a padlás poros csendjében",
-        "a kastélykert holdfényes sétányán",
-        "a konyha meleg kályhája mellett",
-      ],
-      companions: ["egy ezüstszárnyú tündérkeresztanya", "egy ügyes egérke", "egy hűséges lovászfiú", "egy beszélő kutyus"],
-      wonders: ["egy pár csillogó cipellő", "egy tökből lett hintó", "egy varázspálca-szikra", "egy éjféli óraütés"],
-      threats: ["egy irigy mostoha", "egy gőgös udvaronc", "egy kapzsi intéző", "egy álnok báltermi pletyka"],
-      keywords: ["hamupipőke", "hamupipoke", "cipellő", "cipello", "bál", "bal", "tündér", "tunder", "mostoha", "kastély", "kastely", "herceg"],
-      openingHook: "ahol egyetlen bál megváltoztathatja a sorsot",
-    },
-    hofeherke: {
-      id: "hofeherke",
-      titleBits: ["A tükör titka", "A hét barlang dala", "Az erdei menedék"],
-      places: [
-        "a sötét tükrös toronyban",
-        "a hét törpe meleg kunyhójában",
-        "az almafákkal szegélyezett erdei úton",
-        "egy kristálytiszta forrás partján",
-      ],
-      companions: ["egy kedves törpe", "egy erdei őzike", "egy bölcs madárkirály", "egy hűséges bányász"],
-      wonders: ["egy beszélő tükör", "egy piros alma fénye", "egy üvegkoporsó-csillogás", "egy erdei kórus"],
-      threats: ["egy hiú királynő", "egy mérgezett ajándék", "egy vadász, aki habozik", "egy sötét erdei átok"],
-      keywords: ["hófehérke", "hofeherke", "tükör", "tukor", "alma", "törpe", "torpe", "királynő", "kiralyno", "erdő", "erdo"],
-      openingHook: "ahol a tükör mindig az igazságot súgja",
-    },
-    hableany: {
-      id: "hableany",
-      titleBits: ["A koralltrón dala", "A hang nélküli ígéret", "A hullámok kapuja"],
-      places: [
-        "a korallpalota fényében",
-        "egy hajóroncs ezüstös mélyén",
-        "a habos tengerpart holdfényénél",
-        "egy világító medúzaösvényen",
-      ],
-      companions: ["egy hűséges tropikushal", "egy kedves teknősbébi", "egy éneklő delfin", "egy hajósfiú a parton"],
-      wonders: ["egy elveszett hang", "egy tengeri gyöngy", "egy vihar utáni szivárvány", "egy varázskagyló"],
-      threats: ["egy sötét tengeri boszorkány", "egy kapzsi hajóskapitány", "egy örvénylő mélység", "egy tiltott felszíni törvény"],
-      keywords: ["hableány", "hableany", "sellő", "sello", "tenger", "hang", "kagyló", "kagylo", "korall", "herceg", "óceán", "ocean"],
-      openingHook: "ahol a tenger és a szárazföld egymásba szerelmes",
-    },
-    lampas: {
-      id: "lampas",
-      titleBits: ["A lámpás három kívánsága", "A bazár titka", "A repülő szőnyeg"],
-      places: [
-        "a zsúfolt bazár színes utcáin",
-        "egy elásott barlang aranyhomokjában",
-        "a palota márványtornyában",
-        "egy repülő szőnyeg hátán az éjszakai ég alatt",
-      ],
-      companions: ["egy tréfás džinn a lámpásból", "egy okos utcai majom", "egy bátor hercegnő álruhában", "egy hűséges szőnyeg"],
-      wonders: ["egy régi olajlámpás", "egy aranyló kívánság", "egy csillagösvény az égen", "egy varázsszőnyeg"],
-      threats: ["egy hataloméhes varázsló", "egy irigy vezír", "egy bezárt barlangcsapda", "egy hamis kívánság"],
-      keywords: ["aladdin", "aláddin", "lámpás", "lampas", "džinn", "dzsinn", "kívánság", "kivansag", "bazár", "bazar", "szőnyeg", "szonyeg", "barlang"],
-      openingHook: "ahol egyetlen kívánság felforgathat egy egész királyságot",
-    },
-    szornyeteg: {
-      id: "szornyeteg",
-      titleBits: ["A rózsa átka", "A varázskastély", "A tükörterem szíve"],
-      places: [
-        "egy elátkozott kastély havas kertjében",
-        "a könyvtár végtelen polcai közt",
-        "egy nyugati szárny lezárt ajtaja előtt",
-        "egy táncteremben, ahol a bútorok élnek",
-      ],
-      companions: ["egy beszélő gyertyatartó", "egy kedves teáskanna", "egy bátor lány a faluból", "egy hűséges karóra"],
-      wonders: ["egy varázsrózsa", "egy élő kastély", "egy tükör, ami messzire lát", "egy bálzene a semmiből"],
-      threats: ["egy régi átok", "egy dühös szörnyű úr", "egy irigy falusi vadász", "egy hervadó rózsaszirmok ideje"],
-      keywords: ["szörny", "szorny", "rózsa", "rozsa", "átok", "atok", "szépség", "szepseg", "kastély", "kastely", "bál", "bal", "könyvtár", "konyvtar"],
-      openingHook: "ahol a szeretet oldhatja fel a legsötétebb átkot is",
-    },
-    rapunzel: {
-      id: "rapunzel",
-      titleBits: ["A torony lámpásai", "A fonott aranyhaj", "Az égi út"],
-      places: [
-        "egy magányos torony csúcsán",
-        "a lámpásokkal teli völgy felett",
-        "egy titkos erdei ösvényen",
-        "egy királyság ünnepi utcáin",
-      ],
-      companions: ["egy furfangos vándor", "egy hűséges kaméleon", "egy ló, aki mindig visszatér", "egy öreg asszony, aki nem az, aminek látszik"],
-      wonders: ["egy fonott aranyhaj", "ezer lebegő lámpás", "egy elveszett koronajel", "egy dal a torony ablakából"],
-      threats: ["egy birtokló őrző", "egy sötét árulás", "egy szakadék a szabadság előtt", "egy hamis ígéret"],
-      keywords: ["rapunzel", "rapunzel", "torony", "haj", "lámpás", "lampas", "fonott", "vándor", "vandor"],
-      openingHook: "ahol a szabadság fényei az égen úsznak",
-    },
-    jegkiraly: {
-      id: "jegkiraly",
-      titleBits: ["A jégpalota", "A szív olvadása", "Az északi fény kapuja"],
-      places: [
-        "egy kristályos jégpalotában",
-        "egy havas fjord partján",
-        "egy meleg falusi piactéren a hidegben",
-        "egy északi fényes hegygerincen",
-      ],
-      companions: ["egy hűséges testvér", "egy vidám hóember", "egy szánon járó kereskedő", "egy rénszarvas"],
-      wonders: ["egy jégből nőtt palota", "egy olvadó szívfény", "egy északi fény-híd", "egy varázskezű hóvihar"],
-      threats: ["egy elszabadult jégvarázs", "egy sötét herceg álcája", "egy örök tél", "egy félelem, ami fagyaszt"],
-      keywords: ["jég", "jeg", "hó", "ho", "tél", "tel", "jégkirálynő", "jegkiralyno", "frozen", "palota", "fjord", "hóember", "hoember"],
-      openingHook: "ahol a szeretet melege erősebb minden fagynál",
-    },
-    oroszlan: {
-      id: "oroszlan",
-      titleBits: ["A szavanna koronája", "A körforgás dala", "A sziklák visszhangja"],
-      places: [
-        "a napfelkeltés szikláján",
-        "a szavanna aranyló füvében",
-        "egy sötét szurdok árnyékában",
-        "egy oázis pálmái alatt",
-      ],
-      companions: ["egy bölcs mandrill", "egy tréfás meerkat", "egy kövér, kedves varacskosdisznó", "egy hűséges oroszlánbarát"],
-      wonders: ["egy ősök csillagképe", "egy koronázó napfelkelte", "egy életkör dal", "egy eső utáni zöldülés"],
-      threats: ["egy irigy nagybácsi", "egy hiéna csapat", "egy aszály", "egy elveszett büszkeség"],
-      keywords: ["oroszlán", "oroszlan", "szavanna", "korona", "büszkeség", "buszkeseg", "afrika", "hiéna", "hiena", "szikla"],
-      openingHook: "ahol az élet nagy körforgása soha nem ér véget",
-    },
-    sohaorszag: {
-      id: "sohaorszag",
-      titleBits: ["A sohaország csillaga", "A kalózhajó", "A tündérpor ösvény"],
-      places: [
-        "egy lebegő sziget felett",
-        "egy kalózhajó árbockosarában",
-        "egy indián tábor tábortüzénél",
-        "egy sellőöböl holdfényénél",
-      ],
-      companions: ["egy apró tündér", "egy elveszett fiúcsapat", "egy kedves sellőlány", "egy okos papagáj"],
-      wonders: ["egy marék tündérpor", "egy második csillag jobbra", "egy örök gyerekkor-sziget", "egy árnyék, ami él"],
-      threats: ["egy kapzsi kalózkapitány", "egy krokodil a mélyből", "egy felnőtté válás félelme", "egy vihar a csillagok közt"],
-      keywords: ["peter", "pan", "sohaország", "sohaorszag", "tündérpor", "tunderpor", "kalóz", "kaloz", "sziget", "árnyék", "arnyek"],
-      openingHook: "ahol soha nem kell felnőni — hacsak a szív mást nem kíván",
-    },
-  };
+  /** Teljes(ebb) Disney-alap katalógus — cím, világ, motívumok */
+  const DISNEY_FILMS = [
+    { id: "snow_white", title: "Hófehérke és a hét törpe", year: 1937, hook: "ahol a tükör mindig az igazságot súgja", places: ["a tükrös toronyban", "a hét törpe kunyhójában", "az almafás erdei úton", "egy kristályforrás partján"], companions: ["egy kedves törpe", "egy erdei őzike", "egy bölcs madár"], wonders: ["egy beszélő tükör", "egy piros alma", "egy üvegkoporsó fénye"], threats: ["egy hiú királynő", "egy mérgezett ajándék", "egy sötét átok"], keys: ["hófehérke", "hofeherke", "tükör", "törpe", "alma", "snow white"] },
+    { id: "pinocchio", title: "Pinokkió", year: 1940, hook: "ahol egy fabábú valódi fiúvá válhat", places: ["Gepetto műhelyében", "egy vidámpark csaló fényeinél", "egy cethal hasában", "egy holdfényes olasz utcácskán"], companions: ["egy lelkiismeretes tücsök", "egy aranyhal", "egy kedves fafaragó"], wonders: ["egy kék tündér áldása", "egy növekvő orr", "egy valódi szív"], threats: ["egy csaló róka", "egy sötét kocsis", "egy haragos cethal"], keys: ["pinokkió", "pinocchio", "bábú", "tücsök", "gepetto"] },
+    { id: "dumbo", title: "Dumbo", year: 1941, hook: "ahol a legnagyobb fül a legnagyobb ajándék", places: ["egy vándorcirkusz sátorában", "egy porondon a rivaldafényben", "egy vonatkocsiban éjjel", "az ég magasában"], companions: ["egy hűséges egérke", "egy gondoskodó mama", "egy vidám bohóc"], wonders: ["egy varázstoll", "egy első igaz repülés", "egy cirkuszi tapsvihar"], threats: ["egy gúnyolódó tömeg", "egy kapzsi bérleményes", "egy vihar a sátor felett"], keys: ["dumbo", "elefánt", "cirkusz", "fül", "toll"] },
+    { id: "bambi", title: "Bambi", year: 1942, hook: "ahol az erdő minden évszaka tanít", places: ["egy napfényes tisztáson", "egy havas erdei ösvényen", "egy sűrű bozótban", "egy tavaszi rét közepén"], companions: ["egy tréfás nyúl", "egy félénk skunk", "egy bölcs hercegapa"], wonders: ["egy első lépés a réten", "egy téli csillagfény", "egy tavaszi újjászületés"], threats: ["egy veszélyes vadász", "egy erdőtűz", "egy kemény tél"], keys: ["bambi", "őz", "erdő", "nyúl", "vadász"] },
+    { id: "cinderella", title: "Hamupipőke", year: 1950, hook: "ahol egyetlen bál megváltoztathatja a sorsot", places: ["a királyi bálteremben", "a padlás poros csendjében", "a kastélykert sétányán", "a konyha melegében"], companions: ["egy tündérkeresztanya", "egy ügyes egérke", "egy hűséges lovász"], wonders: ["egy kristálycipellő", "egy tökhintó", "egy éjféli óraütés"], threats: ["egy irigy mostoha", "egy gőgös nővér", "egy elvesző idő"], keys: ["hamupipőke", "hamupipoke", "cinderella", "cipellő", "bál", "mostoha"] },
+    { id: "alice", title: "Alice Csodaországban", year: 1951, hook: "ahol minden ajtó egy újabb képtelenségre nyílik", places: ["egy nyúllyuk mélyén", "egy őrült teadélután asztalánál", "egy kártyakastély udvarán", "egy beszélő virágoskertben"], companions: ["egy siető fehér nyúl", "egy mosolygó macska", "egy kalapos vendéglátó"], wonders: ["egy iható üvegcske", "egy zsugorodó ajtó", "egy mosoly a fán"], threats: ["egy kártyakirálynő", "egy lefejező kiáltás", "egy elveszett út haza"], keys: ["alice", "csodaország", "csodaorszag", "nyúl", "kalapos", "királynő"] },
+    { id: "peter_pan", title: "Pán Péter", year: 1953, hook: "ahol a második csillag jobbra vezet", places: ["egy londoni gyerekszoba ablakában", "Sohaország szigetén", "egy kalózhajó fedélzetén", "egy sellőöböl holdfényénél"], companions: ["egy apró tündér", "egy elveszett fiúcsapat", "egy kedves sellő"], wonders: ["egy marék tündérpor", "egy második csillag", "egy örök kaland"], threats: ["egy kalózkapitány", "egy tik-takoló krokodil", "egy felnőtté válás félelme"], keys: ["pán péter", "pan peter", "peter pan", "sohaország", "tündérpor", "kalóz"] },
+    { id: "lady_tramp", title: "Susi és Tekergő", year: 1955, hook: "ahol két különböző világ egy tányér spagettin találkozik", places: ["egy elegáns kerti kapunál", "egy holdfényes sikátorban", "egy olasz vendéglő asztalánál", "egy kutyaparkban"], companions: ["egy elegáns kisasszonykutya", "egy utcai tekergő", "egy bölcs öreg trusty"], wonders: ["egy közös vacsora", "egy holdtölte séta", "egy váratlan mentés"], threats: ["egy kutyafogó háló", "egy féltékeny rivális", "egy elválasztó kerítés"], keys: ["susi", "tekergő", "tekergo", "lady", "tramp", "spagetti", "kutya"] },
+    { id: "sleeping_beauty", title: "Csipkerózsika", year: 1959, hook: "ahol egy orsószúrás száz év álmot hozhat", places: ["egy erdei kunyhóban", "egy sötét vár tornyában", "egy bálteremben a virágok közt", "egy tüskebokros ösvényen"], companions: ["három jó tündér", "egy bátor herceg", "egy erdei madár"], wonders: ["egy áldott bölcső", "egy igaz szerelmes csók", "egy virágba borult vár"], threats: ["egy sötét tündér", "egy átok az orsóval", "egy tüskebokor-erdő"], keys: ["csipkerózsika", "csipkeruzsika", "sleeping beauty", "orsó", "tündér", "átok"] },
+    { id: "dalmatians", title: "101 kiskutya", year: 1961, hook: "ahol minden pötty számít", places: ["egy londoni családi otthonban", "egy sötét vidéki kastélyban", "egy havas országúton", "egy mentőakció közepén"], companions: ["egy bátor apa-kutya", "egy okos anya-kutya", "egy segítőkész macska"], wonders: ["egy kiskutya-csapat", "egy rádiós üzenet a kutyák közt", "egy boldog hazatérés"], threats: ["egy szőrmeéhes úrnő", "két ügyetlen bűnöző", "egy havas üldözés"], keys: ["dalmata", "dalmatians", "101", "kiskutya", "pötty", "cruella"] },
+    { id: "sword_stone", title: "A kard a kőben", year: 1963, hook: "ahol a legméltóbb kihúzza a kardot", places: ["egy erdei tisztáson", "Merlin kunyhójában", "egy lovagi tornán", "egy kőbe zárt kard előtt"], companions: ["egy bölcs varázsló", "egy tudós bagoly", "egy ügyetlen, de tiszta szívű fiú"], wonders: ["egy kőbe döfött kard", "egy varázslecké", "egy váratlan koronázás"], threats: ["egy hataloméhes boszorkány", "egy gőgös lovag", "egy kétség a saját értékben"], keys: ["kard", "kő", "merlin", "artúr", "arthur", "sword"] },
+    { id: "jungle_book", title: "A dzsungel könyve", year: 1967, hook: "ahol a dzsungel törvénye és a szív találkozik", places: ["egy indiai dzsungel mélyén", "egy folyóparton", "egy ősi romtemplomnál", "egy emberfalu szélén"], companions: ["egy bölcs párduc", "egy vidám medve", "egy farkasfalka"], wonders: ["egy dzsungeldal", "egy ősi kincsbarlang", "egy igazi otthon megtalálása"], threats: ["egy éhes tigris", "egy kígyó suttogása", "egy elveszett út"], keys: ["dzsungel", "jungle", "mowgli", "medve", "tigris", "párduc"] },
+    { id: "aristocats", title: "Macskarisztokraták", year: 1970, hook: "ahol a párizsi háztetőkön születik a kaland", places: ["egy elegáns párizsi salonban", "egy háztetők labirintusában", "egy utcazenész bárban", "egy vidéki vidéki úton"], companions: ["egy utcai macskaritter", "két kíváncsi cicus", "egy egér barát"], wonders: ["egy örökség megmentése", "egy éjszakai párizsi dal", "egy váratlan család"], threats: ["egy kapzsi inas", "két ügyetlen bérenc", "egy elrabolt út"], keys: ["macskarisztokraták", "aristocats", "párizs", "macska", "örökség"] },
+    { id: "robin_hood", title: "Robin Hood", year: 1973, hook: "ahol a szegényekért ellopott arany igazságot hoz", places: ["Sherwood erdejében", "egy falusi vásáron", "egy királyi tornán", "egy várbörtön ablakánál"], companions: ["egy hűséges barát-medve", "egy ügyes szerzetes", "egy bátor Lady"], wonders: ["egy igazságos nyílvessző", "egy álruhás torna", "egy felszabadított falu"], threats: ["egy kapzsi kormányzó", "egy gyáva oroszlánkirály", "egy adósor"], keys: ["robin", "hood", "sherwood", "nyíl", "nottingham"] },
+    { id: "rescuers", title: "A mentőcsapat", year: 1977, hook: "ahol a legkisebb hősök is megmenthetnek valakit", places: ["egy egérközpont irodájában", "egy elhagyott ház padlásán", "egy mocsár szélén", "egy éjszakai mentőúton"], companions: ["egy elegáns egérhölgy", "egy ügyetlen, de bátor egérúr", "egy szitakötő taxi"], wonders: ["egy segélykérő üzenet", "egy bátor mentés", "egy új barátság"], threats: ["egy kapzsi kincsvadász nő", "egy ijesztő kroki", "egy viharos mocsár"], keys: ["mentőcsapat", "rescuers", "egér", "mentés", "bernard", "bianca"] },
+    { id: "fox_hound", title: "A róka és a kutya", year: 1981, hook: "ahol a barátság erősebb a szabályoknál", places: ["egy erdei tisztáson", "egy farm udvarán", "egy őszi vadászösvényen", "egy rejtett barlangban"], companions: ["egy kis róka", "egy vadászkutya kölyök", "egy bölcs bagoly"], wonders: ["egy gyerekkori fogadalom", "egy tiltott barátság", "egy megmentett élet"], threats: ["egy kérlelhetetlen vadász", "egy gyűlölet a különbség miatt", "egy elválasztó kerítés"], keys: ["róka", "kutya", "fox", "hound", "barátság", "vadász"] },
+    { id: "black_cauldron", title: "A fekete üst", year: 1985, hook: "ahol egy üst sötét sereget támaszthat", places: ["egy misztikus erdőben", "egy királyi várban", "egy sötét erőd mélyén", "egy mocsári átjárónál"], companions: ["egy fiatal disznópásztor", "egy hercegnő", "egy furcsa kis teremtmény"], wonders: ["egy orákulum-malac", "egy varázskard", "egy önfeláldozó választás"], threats: ["egy szarvasúr", "egy élőholt sereg", "egy fekete üst"], keys: ["fekete üst", "black cauldron", "szarvasúr", "orákulum", "varázskard"] },
+    { id: "basil", title: "Macskafogó / egérdetektív", year: 1986, hook: "ahol London ködében az egérdetektív nyomoz", places: ["egy Baker Street-i padláson", "egy ködös Temze-parton", "egy óramű belsejében", "egy operaház függönye mögött"], companions: ["egy zseniális egérdetektív", "egy orvos barát", "egy elrabolt játékbolt-lánya"], wonders: ["egy zseniális nyom", "egy megmentett gyerek", "egy leleplezett terv"], threats: ["egy álnok egérbűnöző", "egy óriás harang", "egy ködbe vesző üldözés"], keys: ["basil", "egérdetektív", "great mouse", "london", "detektív"] },
+    { id: "oliver", title: "Oliver és társai", year: 1988, hook: "ahol egy utcai banda családdá válik", places: ["New York utcáin", "egy luxus penthouse-ban", "egy kikötői rakparton", "egy esős sikátorban"], companions: ["egy árva kiscica", "egy utcai kutya-banda", "egy kedves kislány"], wonders: ["egy új otthon", "egy hűséges csapat", "egy megmentett barát"], threats: ["egy gonosz utcai főnök", "egy veszélyes üzlet", "egy elválasztás"], keys: ["oliver", "new york", "banda", "kiscica", "utca"] },
+    { id: "little_mermaid", title: "A kis hableány", year: 1989, hook: "ahol a tenger és a szárazföld egymásba szerelmes", places: ["a korallpalotában", "egy hajóroncs mélyén", "a tengerpart holdfényénél", "egy királyi várban a szárazon"], companions: ["egy hűséges tropikushal", "egy kedves rák karmester", "egy hajósherceg"], wonders: ["egy elveszett hang", "egy villámgyors láb", "egy igaz szerelmi csók"], threats: ["egy tengeri boszorkány", "egy tiltott szerződés", "egy viharos mélység"], keys: ["hableány", "hableany", "mermaid", "ariel", "tenger", "hang", "ursula"] },
+    { id: "beauty_beast", title: "A szépség és a szörnyeteg", year: 1991, hook: "ahol a szeretet oldhatja fel a legsötétebb átkot", places: ["egy elátkozott kastélyban", "egy falusi könyvtárban", "egy havas kertben", "egy bálteremben élő bútorokkal"], companions: ["egy beszélő gyertyatartó", "egy teáskanna", "egy bátor falusi lány"], wonders: ["egy varázsrózsa", "egy élő kastély", "egy átalakuló szív"], threats: ["egy régi átok", "egy irigy vadász", "egy hervadó szirom"], keys: ["szépség", "szörnyeteg", "szornyeteg", "beast", "rózsa", "belle", "átok"] },
+    { id: "aladdin", title: "Aladdin", year: 1992, hook: "ahol egy kívánság felforgathat egy királyságot", places: ["a bazár színes utcáin", "egy elásott barlangban", "a palota tornyában", "egy repülő szőnyegen az ég alatt"], companions: ["egy tréfás džinn", "egy okos majom", "egy bátor hercegnő"], wonders: ["egy varázslámpás", "három kívánság", "egy repülő szőnyeg"], threats: ["egy hataloméhes varázsló", "egy bezárt barlang", "egy hamis hercegi álca"], keys: ["aladdin", "aláddin", "lámpás", "lampas", "džinn", "dzsinn", "jafar", "agrabah"] },
+    { id: "lion_king", title: "Az oroszlánkirály", year: 1994, hook: "ahol az élet nagy körforgása soha nem ér véget", places: ["a napfelkeltés szikláján", "a szavanna füvében", "egy elefánttemetőben", "egy oázis mellett"], companions: ["egy bölcs mandrill", "egy meerkat", "egy varacskosdisznó"], wonders: ["egy ősök csillagképe", "egy koronázó napfelkelte", "egy hazatérés"], threats: ["egy irigy nagybácsi", "egy hiéna csapat", "egy aszály"], keys: ["oroszlánkirály", "oroszlan", "lion king", "szavanna", "simba", "mufasa", "scar"] },
+    { id: "pocahontas", title: "Pocahontas", year: 1995, hook: "ahol két világ tanulja meg hallani egymást", places: ["egy folyóparton", "egy ősi erdőben", "egy hajó kikötőjénél", "egy sziklacsúcson"], companions: ["egy bölcs nagyanya-fa", "egy kíváncsi kolibri", "egy idegen hajós"], wonders: ["egy színekben játszó szél", "egy békeösvény", "egy közös nyelv a szívben"], threats: ["egy aranyéhes kapitány", "egy háborús félreértés", "egy törés a bizalomban"], keys: ["pocahontas", "virginia", "folyő", "bennszülött", "hajós"] },
+    { id: "hunchback", title: "A Notre Dame-i toronyőr", year: 1996, hook: "ahol a küllem mögött a lélek a szép", places: ["a Notre Dame tornyában", "Párizs fesztiválterén", "egy katedrális harangjai közt", "egy sötét bírói palotában"], companions: ["három tréfás gargoyle", "egy bátor cigánylány", "egy igazságos kapitány"], wonders: ["egy harangzúgás", "egy menedék a templomban", "egy elfogadott szív"], threats: ["egy képmutató bíró", "egy dühödt tömeg", "egy igazságtalan törvény"], keys: ["notre dame", "toronyőr", "hunchback", "párizs", "harang", "kvázimodo"] },
+    { id: "hercules", title: "Herkules", year: 1997, hook: "ahol a valódi hős a szívével győz", places: ["az Olümposz fényében", "egy görög város porondján", "egy alvilági kapunál", "egy edzőterem romjai közt"], companions: ["egy szarkasztikus szatír edző", "egy szárnyas pegazus", "egy bátor lány"], wonders: ["egy isteni erő", "egy hőssé válás", "egy megmentett világ"], threats: ["egy álnok alvilági úr", "egy titánok serege", "egy hamis dicsőség"], keys: ["herkules", "hercules", "görög", "olümposz", "hádész", "hős"] },
+    { id: "mulan", title: "Mulan", year: 1998, hook: "ahol a bátorság fontosabb a szabályoknál", places: ["egy kínai falusi otthonban", "egy katonai táborban", "a Nagy Fal tövében", "egy császári palotában"], companions: ["egy apró sárkány", "egy szerencse-tücsök", "egy katonatárs"], wonders: ["egy ősi kard", "egy álruha bátorsága", "egy megvédett birodalom"], threats: ["egy hun sereg", "egy lelepleződés", "egy lavina"], keys: ["mulan", "kína", "kina", "sárkány", "katona", "fal"] },
+    { id: "tarzan", title: "Tarzan", year: 1999, hook: "ahol két család között feszül a szív", places: ["egy afrikai dzsungel lombkoronáján", "egy vízesésnél", "egy fahatáron", "egy expedíciós tábornál"], companions: ["egy gorillaanya", "egy tréfás elefánt", "egy kíváncsi kutató lány"], wonders: ["egy lombközi száguldás", "egy megtalált múlt", "egy választott otthon"], threats: ["egy kapzsi vadász", "egy veszélyes leopárd", "egy elszakadás"], keys: ["tarzan", "dzsungel", "gorilla", "liána", "afrika"] },
+    { id: "fantasia_2000", title: "Fantázia 2000", year: 1999, hook: "ahol a zene önmaga a mese", places: ["egy absztrakt színpadon", "egy bálna-égbolton", "egy mágikus műhelyben", "egy város feletti esőben"], companions: ["egy varázslótanonc", "egy repülő bálna", "egy flamingó"], wonders: ["egy élő szimfónia", "egy színes vihar", "egy zenei csoda"], threats: ["egy elszabadult varázs", "egy káosz a hangokban", "egy elveszett dallam"], keys: ["fantázia", "fantasia", "zene", "szimfónia", "tanonc"] },
+    { id: "dinosaur", title: "Dínó", year: 2000, hook: "ahol a túléléshez összefogás kell", places: ["egy őskori völgyben", "egy vulkán árnyékában", "egy kiszáradó folyónál", "egy biztonságos fészeknél"], companions: ["egy lemúr család", "egy fiatal dínó", "egy bölcs lider"], wonders: ["egy új otthon", "egy váratlan család", "egy túlélő csapat"], threats: ["egy meteorveszély", "egy ragadozó", "egy szárazság"], keys: ["dínó", "dino", "dinosaur", "lemúr", "őskor"] },
+    { id: "emperors_groove", title: "A gonosz mostoha? / Kuzco császár", year: 2000, hook: "ahol egy önző császárból ember lesz — láma formában is", places: ["egy inkai palotában", "egy dzsungelösvényen", "egy hegyi faluban", "egy titkos laborban"], companions: ["egy kedves parasztfiú", "egy beszélő láma-császár", "egy mókás mókus?"], wonders: ["egy visszaváltozás", "egy tanult alázat", "egy megmentett birodalom"], threats: ["egy hataloméhes tanácsadó", "egy átváltoztató bájital", "egy zuhanó szakadék"], keys: ["kuzco", "láma", "lama", "császár", "groove", "yzma"] },
+    { id: "atlantis", title: "Atlantis — Az elveszett birodalom", year: 2001, hook: "ahol egy elveszett város a tudás kulcsa", places: ["egy tengeralattjárón", "Atlantis fényeinél", "egy kristálykamrában", "egy omladozó hídon"], companions: ["egy lelkes nyelvész", "egy kemény expedíciós csapat", "egy atlanti hercegnő"], wonders: ["egy ősnyelv", "egy éltető kristály", "egy felemelkedő város"], threats: ["egy kapzsi parancsnok", "egy süllyedő veszély", "egy elárult expedíció"], keys: ["atlantis", "kristály", "tengeralattjáró", "birodalom", "milo"] },
+    { id: "lilo_stitch", title: "Lilo és Stitch", year: 2002, hook: "ahol az ohana azt jelenti: senkit sem hagynak hátra", places: ["egy hawaii parton", "egy kis házikóban", "egy űrhajó roncsánál", "egy szörfös öbölben"], companions: ["egy magányos kislány", "egy káosz-kísérlet lény", "egy gondos nővér"], wonders: ["egy ohana-fogadalom", "egy váratlan család", "egy hawaii dal"], threats: ["egy űrbéli vadász", "egy félreértett monstrum", "egy széteső otthon"], keys: ["lilo", "stitch", "ohana", "hawaii", "család"] },
+    { id: "treasure_planet", title: "A kincses bolygó", year: 2002, hook: "ahol a kalózok a csillagok közt hajóznak", places: ["egy űrkikötőben", "egy napvitorlás hajón", "egy kincses bolygón", "egy csillagtérkép fényénél"], companions: ["egy álmodozó fiú", "egy cyborg-szakács", "egy furcsa morph"], wonders: ["egy hologramos térkép", "egy elásott kincs", "egy apafigura",], threats: ["egy lázadó kalózlegénység", "egy fekete lyuk", "egy árulás"], keys: ["kincses bolygó", "treasure planet", "kalóz", "űrhajó", "térkép"] },
+    { id: "finding_nemo", title: "Némó nyomában", year: 2003, hook: "ahol az óceán átúszható a szeretetért", places: ["egy korallzátonyon", "egy akvárium üvegében", "egy keleti ausztrál áramlatban", "egy dokk mélyén"], companions: ["egy aggodalmas apa-hal", "egy feledékeny, kedves hal", "egy teknős a hullámon"], wonders: ["egy megtalált fiú", "egy óceáni út", "egy új bátorság"], threats: ["egy búvárháló", "egy cápa", "egy szűrőcső"], keys: ["némó", "nemo", "hal", "óceán", "dory", "korall"] },
+    { id: "brother_bear", title: "Medvetárskereső", year: 2003, hook: "ahol más bőrében látod az igazságot", places: ["egy északi erdőben", "egy gleccserösvényen", "egy totem-sziklánál", "egy lazacos folyónál"], companions: ["egy átváltozott vadász", "két medvebocs", "egy szellem-totem"], wonders: ["egy átváltozás", "egy testvéri kötelék", "egy északi fény"], threats: ["egy bosszú", "egy veszélyes vadászat", "egy szakadék a szívek közt"], keys: ["medve", "brother bear", "totem", "átváltozás", "kenai"] },
+    { id: "home_range", title: "A farm, ahol élünk / Vacak", year: 2004, hook: "ahol a háziállatok megvédik az otthont", places: ["egy farm udvarán", "egy ragadozók uralta erdőben", "egy tyúkólban", "egy éjszakai őrjáraton"], companions: ["egy félénk malac", "egy gyakorlott tehén", "egy ügyes ló"], wonders: ["egy váratlan bátorság", "egy megvédett farm", "egy összetartó csapat"], threats: ["egy sötét vadállat", "egy éjszakai támadás", "egy elveszett biztonság"], keys: ["farm", "home on the range", "tehén", "malac", "vadnyugat"] },
+    { id: "incredibles", title: "A Hihetetlen család", year: 2004, hook: "ahol a család a legnagyobb szupererő", places: ["egy külvárosi házban", "egy titkos szigeten", "egy felhőkarcoló tetején", "egy üldözés közben a városban"], companions: ["egy szuperapa", "egy szuperanya", "egy láthatatlan tinilány", "egy villámgyors fiú"], wonders: ["egy újraegyesült család", "egy szuperöltözet", "egy közös győzelem"], threats: ["egy bosszúálló feltaláló", "egy óriás robot", "egy titok kiszivárgása"], keys: ["hihetetlen", "incredibles", "szuperhős", "robot", "bob"] },
+    { id: "chicken_little", title: "Csibe", year: 2005, hook: "ahol az ég nem mindig csak ég", places: ["egy kisvárosi iskolában", "egy baseballpályán", "egy űrhajó belsejében", "egy főtéren pánik közepette"], companions: ["egy félénk csibe", "egy barát-banda", "egy büszke apa"], wonders: ["egy félreértett jel", "egy megmentett város", "egy apa-fiú kibékülés"], threats: ["egy téves riasztás", "egy idegen félreértés", "egy romló hírnév"], keys: ["csibe", "chicken little", "ég", "pánik", "baseball"] },
+    { id: "cars", title: "Verdák", year: 2006, hook: "ahol a győzelemnél fontosabb a barátság", places: ["egy sivatagi kisvárosban", "egy versenypályán", "egy Route 66-os úton", "egy szervizudvarban"], companions: ["egy gyors versenyautó", "egy rozsdás, bölcs vontató", "egy elegáns Porsche"], wonders: ["egy váratlan megálló", "egy megtanult alázat", "egy igazi csapat"], threats: ["egy gőgös rivális", "egy elveszett idő", "egy elfeledett város"], keys: ["verdák", "cars", "autó", "verseny", "mcqueen", "mater"] },
+    { id: "ratatouille", title: "L’ecsó", year: 2007, hook: "ahol bárki főzhet — még egy patkány is", places: ["egy párizsi konyhában", "egy csatornaösvényen", "egy étterem asztalánál", "egy kritikusi vacsorán"], companions: ["egy tehetséges patkány", "egy ügyetlen konyhalegény", "egy szigorú séf szelleme"], wonders: ["egy tökéletes fogás", "egy kritikus mosolya", "egy új étterem"], threats: ["egy egészségügyi ellenőr", "egy irigy séf", "egy lelepleződés"], keys: ["l'ecsó", "lecso", "ratatouille", "patkány", "párizs", "séf", "rémy"] },
+    { id: "meet_robinsons", title: "A Robinson család titka", year: 2007, hook: "ahol a jövő a hibákból tanul", places: ["egy árvaházban", "egy időgépben", "egy futurisztikus városban", "egy feltaláló műhelyben"], companions: ["egy álmodozó fiú", "egy különc jövőbeli család", "egy dinó-szolga"], wonders: ["egy időutazás", "egy örökbe fogadás", "egy zseniális találmány"], threats: ["egy kalapos bosszúálló", "egy elrontott jövő", "egy lopott időgép"], keys: ["robinson", "időgép", "jövő", "feltaláló", "lewis"] },
+    { id: "wall_e", title: "WALL·E", year: 2008, hook: "ahol egy kis robot visszahozza a Földet a szívünkbe", places: ["egy elhagyott Földön", "egy űrhajó folyosóin", "egy növénycserep mellett", "egy csillagporos űrben"], companions: ["egy magányos takarítórobot", "egy elegáns kutatórobot", "egy kis csótány"], wonders: ["egy zöld hajtás", "egy kéz a kézben", "egy hazatérés a Földre"], threats: ["egy autópílóta", "egy elfeledett bolygó", "egy túl kényelmes jövő"], keys: ["wall-e", "walle", "robot", "föld", "növény", "eve"] },
+    { id: "bolt", title: "Nyikk", year: 2008, hook: "ahol a tévés hős valódi hőssé válik", places: ["egy hollywoodi forgatáson", "egy országúton", "egy nagyvárosi utcán", "egy mentőakció közepén"], companions: ["egy tévéhős kutya", "egy utcai macska", "egy hörcsög hörcsögkerékben"], wonders: ["egy igazi bátorság", "egy megtalált gazdi", "egy valódi csapat"], threats: ["egy félreértett veszély", "egy elszakadás", "egy álságos forgatás"], keys: ["nyikk", "bolt", "kutya", "hollywood", "hős"] },
+    { id: "up", title: "Fel", year: 2009, hook: "ahol a ház is elszáll a kalandért", places: ["egy léggömbös házban", "egy dél-amerikai fennsíkon", "egy vízesésnél", "egy űrkutyás léghajón"], companions: ["egy öreg özvegyúr", "egy lelkes cserkészfiú", "egy beszélő kutya"], wonders: ["egy ezer léggömb", "egy megtalált kaland", "egy új barátság"], threats: ["egy megszállott felfedező", "egy vihar", "egy elszabadult állat"], keys: ["fel", "up", "léggömb", "ház", "carl", "russell"] },
+    { id: "princess_frog", title: "A hercegnő és a béka", year: 2009, hook: "ahol New Orleans mágiája átváltoztat", places: ["egy new orleans-i étteremben", "egy mocsári ösvényen", "egy báli éjszakán", "egy vudu-templom közelében"], companions: ["egy szorgos lány", "egy elkényeztetett herceg-béka", "egy tűzhelyi tűzlégy", "egy aligátor"], wonders: ["egy átváltozás", "egy jazz-dal", "egy megnyílt étterem"], threats: ["egy árnyék-varázsló", "egy elrontott kívánság", "egy mocsári átok"], keys: ["hercegnő", "béka", "frog", "new orleans", "vudu", "tiana"] },
+    { id: "tangled", title: "Raubinek", year: 2010, hook: "ahol ezer lámpás mutatja a szabadságot", places: ["egy magányos toronyban", "egy lámpásos völgy felett", "egy kocsma asztalánál", "egy királyság ünnepén"], companions: ["egy toronyba zárt lány", "egy furfangos tolvaj", "egy kaméleon"], wonders: ["egy varázshaj", "ezer lebegő lámpás", "egy elveszett hercegnő"], threats: ["egy birtokló őrző", "egy királyi üldözés", "egy árulás"], keys: ["raubinek", "tangled", "rapunzel", "torony", "lámpás", "haj"] },
+    { id: "toy_story_3", title: "Toy Story 3 / játékháború", year: 2010, hook: "ahol a játékok hűsége soha nem múlik el", places: ["egy gyerekszobában", "egy napköziben", "egy szemétégető szélén", "egy dobozban az út előtt"], companions: ["egy cowboy baba", "egy űrranger", "egy burgonya-pár", "egy barbie és ken"], wonders: ["egy összetartó banda", "egy megmenekülés", "egy új gyerek szeretete"], threats: ["egy zsarnok maci", "egy szemétgépezet", "egy elválás"], keys: ["toy story", "játék", "woody", "buzz", "maci"] },
+    { id: "cars_2", title: "Verdák 2", year: 2011, hook: "ahol a kémkedés és a verseny összekeveredik", places: ["egy világversenyen", "Tokió neonfényeinél", "egy titkos műhelyben", "egy olasz kisvárosban"], companions: ["egy versenyautó", "egy vontató-kém", "egy brit ügynökautó"], wonders: ["egy leleplezett összeesküvés", "egy váratlan hőstett", "egy barátság próbája"], threats: ["egy bűnszervezet", "egy hamis üzemanyag", "egy üldözés"], keys: ["verdák 2", "cars 2", "kém", "tokió", "mater"] },
+    { id: "brave", title: "Merida, a bátor", year: 2012, hook: "ahol a sors fonala megváltoztatható", places: ["egy skót kastélyban", "egy varázserdőben", "egy klánok versenyén", "egy ősi kőkörnél"], companions: ["egy bátor vörös hajú hercegnő", "három mókás fivér", "egy anyakirályné"], wonders: ["egy varázssütény", "egy anya-lánya kibékülés", "egy saját sors"], threats: ["egy elrontott kívánság", "egy medvévé válás", "egy klánháború"], keys: ["merida", "brave", "skócia", "medve", "sors", "íj"] },
+    { id: "wreck_it", title: "Ralph lezúzza a netet / Romboló Ralph", year: 2012, hook: "ahol a gonosz karakter is lehet hős", places: ["egy játékterem belsejében", "egy versenyjáték pályáján", "egy cukorkás királyságban", "egy konsole-állomáson"], companions: ["egy nagy öklű romboló", "egy glitch-lány", "egy fix-it barát"], wonders: ["egy aranyérem", "egy elfogadott különbség", "egy megmentett játék"], threats: ["egy vírusos bogár", "egy hamis hős-álom", "egy lekapcsolás"], keys: ["ralph", "romboló", "wreck-it", "játékterem", "vanellope"] },
+    { id: "frozen", title: "Jégvarázs", year: 2013, hook: "ahol a szeretet melege erősebb minden fagynál", places: ["egy jégpalotában", "egy fjord partján", "egy koronázó teremben", "egy északi erdőben"], companions: ["egy jégerejű nővér", "egy bátor húg", "egy hóember", "egy rénszarvas"], wonders: ["egy jégpalota", "egy olvadó szív", "egy testvéri szeretet"], threats: ["egy elszabadult varázs", "egy álnok herceg", "egy örök tél"], keys: ["jégvarázs", "frozen", "elsa", "anna", "jég", "hóember", "olaf"] },
+    { id: "big_hero", title: "Hős6-os", year: 2014, hook: "ahol a gyász után a csapat gyógyít", places: ["egy futurista városban", "egy egyetem laborjában", "egy sziget-portálnál", "egy robotcsata közepén"], companions: ["egy fiatal feltaláló", "egy felfújható egészségügyi robot", "egy hős csapat"], wonders: ["egy portál-technológia", "egy meggyógyuló szív", "egy város megmentése"], threats: ["egy álarcos bosszúálló", "egy elszabadult mikrobot", "egy veszteség fájdalma"], keys: ["hős6", "big hero", "baymax", "robot", "hiro", "san fransokyo"] },
+    { id: "inside_out", title: "Agymanók", year: 2015, hook: "ahol az érzelmek együtt működnek a fejben", places: ["egy irányítópultnál az elmében", "egy emlékfolyosón", "egy képzeletbeli vidámparkban", "egy absztrakt gondolatban"], companions: ["egy öröm-érzelem", "egy bú-érzelem", "egy harag", "egy félelem", "egy undor"], wonders: ["egy mag-emlék", "egy új sziget az elmében", "egy elfogadott szomorúság"], threats: ["egy összeomló személyiség-sziget", "egy elveszett öröm", "egy káosz az irányítópulton"], keys: ["agymanók", "inside out", "öröm", "bú", "érzelem", "riley"] },
+    { id: "zootopia", title: "Zootropolis", year: 2016, hook: "ahol bárki lehet bármi — ha nem adja fel", places: ["egy állatváros kerületeiben", "egy rendőrkapitányságon", "egy éjszakai klubban", "egy vadászati barlangban"], companions: ["egy bátor nyúlrendőr", "egy ravasz róka", "egy bölcs főnökbivaly"], wonders: ["egy megoldott ügy", "egy városi béke", "egy megtört előítélet"], threats: ["egy titkos összeesküvés", "egy mérgező virág", "egy elfogultság"], keys: ["zootropolis", "zootopia", "nyúl", "róka", "judy", "nick"] },
+    { id: "moana", title: "Vaiana", year: 2016, hook: "ahol az óceán kiválasztja a navigátort", places: ["egy polinéz szigeten", "egy óceáni vitorláson", "egy szörny-szigeten", "egy lávademon előtt"], companions: ["egy bátor törzsfőnök-lány", "egy félig-isten demigod", "egy hülye kakas"], wonders: ["egy visszatett szívdarab", "egy útjelző óceán", "egy meggyógyult sziget"], threats: ["egy tezső-kokó", "egy lava-démon", "egy elveszett út"], keys: ["vaiana", "moana", "óceán", "maui", "polinéz", "csónak"] },
+    { id: "coco", title: "Coco", year: 2017, hook: "ahol az emlék tart életben a túlvilágon", places: ["egy mexikói faluban", "a Halottak napja terén", "egy színes túlvilági városban", "egy hangverseny színpadán"], companions: ["egy zenélni vágyó fiú", "egy csavargó kutya", "egy elfeledett zenész"], wonders: ["egy családi áldás", "egy visszahozott emlék", "egy igaz dal"], threats: ["egy hamis sztár", "egy elfeledés", "egy napszállta a túlvilágon"], keys: ["coco", "mexikó", "halottak napja", "zene", "miguel", "emlék"] },
+    { id: "ralph_breaks", title: "Ralph lezúzza a netet", year: 2018, hook: "ahol a barátság túlél egy algoritmust is", places: ["az internet városában", "egy videómegosztó oldalon", "egy autóverseny-játékban", "egy szerverteremben"], companions: ["egy romboló barát", "egy glitch-versenyző", "egy algoritmus-lány"], wonders: ["egy megmentett barátság", "egy új pálya", "egy önálló választás"], threats: ["egy vírus", "egy népszerűség-csapda", "egy elszakadás"], keys: ["ralph", "internet", "net", "algoritmus", "vanellope"] },
+    { id: "frozen_2", title: "Jégvarázs 2.", year: 2019, hook: "ahol a múlt titkai az erdőben várnak", places: ["egy elvarázsolt erdőben", "egy sötét tengeren", "egy gleccser-emlékben", "egy folyó forrásánál"], companions: ["egy jégerejű nővér", "egy bátor húg", "egy hóember", "egy rénszarvas", "egy Northuldra vezető"], wonders: ["egy igazság a múltból", "egy új híd a népek közt", "egy megtalált hang"], threats: ["egy elszabadult elem", "egy eltitkolt árulás", "egy sötét tenger"], keys: ["jégvarázs 2", "frozen 2", "erdő", "ahtohallan", "elsa", "anna"] },
+    { id: "raya", title: "Raya és az utolsó sárkány", year: 2021, hook: "ahol a bizalom hozza vissza a sárkányt", places: ["egy darabokra szakadt birodalomban", "egy sivatagi hajón", "egy sárkányfolyó partján", "egy templom romjainál"], companions: ["egy harcos lány", "egy utolsó sárkány", "egy kisvállalkozó gyerek"], wonders: ["egy újraegyesült föld", "egy visszatért sárkány", "egy kimondott bizalom"], threats: ["egy köd-szörny", "egy törött drágakő", "egy árulás a népek közt"], keys: ["raya", "sárkány", "sarkany", "kumandra", "drágakő", "bizalom"] },
+    { id: "encanto", title: "Encanto", year: 2021, hook: "ahol minden családtagnak van ajándéka — vagy nincs", places: ["egy mágikus házban", "egy kolumbiai faluban", "egy gyertyafényes szobában", "egy hegyi szakadéknál"], companions: ["egy ajándék nélküli lány", "egy erős unokatestvér", "egy beszélő ház"], wonders: ["egy családi gyertya", "egy meggyógyult otthon", "egy elfogadott önmaga"], threats: ["egy törő ház", "egy túl nagy elvárás", "egy elvesző csoda"], keys: ["encanto", "mirabel", "család", "ajándék", "gyertya", "casita"] },
+    { id: "luca", title: "Luca", year: 2021, hook: "ahol a tengeri lények a napfényben barátokra találnak", places: ["egy olasz tengerparti faluban", "egy víz alatti otthonban", "egy verseny bicikliútján", "egy gelato-standnál"], companions: ["egy kíváncsi tengeri fiú", "egy vakmerő barát", "egy emberi lány"], wonders: ["egy napfényes nyár", "egy győztes verseny", "egy elfogadott titok"], threats: ["egy szörnyvadász apa", "egy lelepleződés", "egy félelem a másságtól"], keys: ["luca", "tenger", "olasz", "portorosso", "alberto"] },
+    { id: "turning_red", title: "Panda kenyér / Vörös", year: 2022, hook: "ahol a tinédzserkáosz vörös pandává változik", places: ["egy torontói templomban", "egy iskolai folyosón", "egy koncerten", "egy rituális körben"], companions: ["egy vörös pandává váló lány", "egy barátnő-csapat", "egy szigorú anya"], wonders: ["egy kontrollált átváltozás", "egy anya-lánya kibékülés", "egy fiúbanda koncert"], threats: ["egy elszabadult panda-forma", "egy túlzott kontroll", "egy nyilvános botrány"], keys: ["turning red", "panda", "mei", "toronto", "tinédzser"] },
+    { id: "strange_world", title: "Furcsa világ", year: 2022, hook: "ahol három generáció ereszked a bolygó szívébe", places: ["egy felfedező léghajón", "egy föld alatti élővilágban", "egy növényi energia-erdőben", "egy család táborában"], companions: ["egy legendás felfedező", "egy földműves apa", "egy tinédzser fiú", "egy kocsonya-kutya"], wonders: ["egy bolygót tápláló lény", "egy kibékült család", "egy új felfedezés"], threats: ["egy félreértett energiaforrás", "egy összeomló ökoszisztéma", "egy generációs konfliktus"], keys: ["furcsa világ", "strange world", "felfedező", "növény", "searcher"] },
+    { id: "wish", title: "Wish: Kívánság", year: 2023, hook: "ahol a kívánságok nem egy király magántulajdona", places: ["egy mediterrán királyságban", "egy kívánság-toronyban", "egy csillagos ég alatt", "egy népünnepélyen"], companions: ["egy bátor lány", "egy kecske-barát", "egy csillag-lény"], wonders: ["egy lehulló csillag", "egy felszabadított kívánság", "egy közös álom"], threats: ["egy hataloméhes király", "egy elnyelt kívánság", "egy elnyomó varázs"], keys: ["wish", "kívánság", "kivansag", "csillag", "asha", "magnifico"] },
+    { id: "elemental", title: "Elementál", year: 2023, hook: "ahol a tűz és a víz mégis összetartozhat", places: ["egy elemi nagyvárosban", "egy tűz-negyed boltjában", "egy vízistádiumban", "egy felhőparkban"], companions: ["egy tűzlány", "egy vízfiú", "egy szeles ügyintéző"], wonders: ["egy lehetetlen szerelem", "egy családi bolt megmentése", "egy közös tánc"], threats: ["egy előítélet", "egy vízszivárgás", "egy elbukó üzlet"], keys: ["elementál", "elemental", "tűz", "víz", "ember", "wade"] },
+    { id: "inside_out_2", title: "Agymanók 2.", year: 2024, hook: "ahol új érzelmek érkeznek a tinédzserkorba", places: ["egy megújult irányítópultnál", "egy hiedelem-szakadéknál", "egy szorongás-vihar közepén", "egy hockey-táborban"], companions: ["régi érzelmek", "egy új szorongás", "egy irigység", "egy unalom"], wonders: ["egy új énkép", "egy elfogadott komplexitás", "egy visszaszerzett öröm"], threats: ["egy eluralkodó szorongás", "egy törött én-érzet", "egy káosz az elmében"], keys: ["agymanók 2", "inside out 2", "szorongás", "tinédzser", "riley"] },
+    { id: "moana_2", title: "Vaiana 2.", year: 2024, hook: "ahol új szigetek és új utak várnak", places: ["egy óceáni úton", "egy elveszett szigeten", "egy viharos zátonynál", "egy törzsi tanácsnál"], companions: ["egy navigátor-lány", "egy demigod", "egy új legénység"], wonders: ["egy új útvonal", "egy összekötött nép", "egy óceáni csoda"], threats: ["egy tengeri átok", "egy elszakadt út", "egy veszélyes zátony"], keys: ["vaiana 2", "moana 2", "óceán", "sziget", "maui"] },
+    { id: "mufasa", title: "Mufasa: Az oroszlánkirály", year: 2024, hook: "ahol egy árva oroszlánból király lesz", places: ["a szavanna vándorútján", "egy sziklák labirintusában", "egy büszkeség földjén", "egy viharos éjszakán"], companions: ["egy fiatal oroszlán", "egy testvér-figura", "egy bölcs madár"], wonders: ["egy megtalált család", "egy királyi hivatás", "egy legendás múlt"], threats: ["egy ellenséges falka", "egy árulás", "egy túlélési harc"], keys: ["mufasa", "oroszlán", "szavanna", "király", "árva"] },
+    { id: "snow_white_2025", title: "Hófehérke (élőszereplős)", year: 2025, hook: "ahol a bátorság és a jóság újraírja a mesét", places: ["egy királyság erdejében", "egy bányászfaluban", "egy tükrös palotában", "egy nép ünnepén"], companions: ["egy kedves hercegnő", "egy erdei közösség", "egy szövetséges bandita"], wonders: ["egy új királyság-eszme", "egy legyőzött hiúság", "egy közös jövő"], threats: ["egy hataloméhes királynő", "egy mérgezett csapda", "egy elnyomó udvar"], keys: ["hófehérke élő", "snow white 2025", "tükör", "királynő"] },
+    { id: "lilo_stitch_live", title: "Lilo & Stitch (élőszereplős)", year: 2025, hook: "ahol az ohana újra családot farag a káoszból", places: ["egy hawaii parton", "egy kis házban", "egy űrhajó nyomában", "egy szörfös öbölben"], companions: ["egy kislány", "egy káoszlény", "egy nővér"], wonders: ["egy ohana", "egy megtalált otthon", "egy hawaii naplemente"], threats: ["egy űrvadász", "egy félreértés", "egy széteső gondozás"], keys: ["lilo stitch élő", "ohana", "hawaii", "stitch"] },
+  ];
+
+  // Gyors index
+  const WORLDS = {};
+  DISNEY_FILMS.forEach((film) => {
+    WORLDS[film.id] = {
+      id: film.id,
+      disneyTitle: film.title,
+      year: film.year,
+      titleBits: [film.title, film.title + " — új fejezet", "Kaland: " + film.title],
+      places: film.places,
+      companions: film.companions,
+      wonders: film.wonders,
+      threats: film.threats,
+      keywords: film.keys.concat([film.title.toLowerCase()]),
+      openingHook: film.hook,
+    };
+  });
 
   const BEATS = [
-    "ball", "quest", "betrayal", "magic", "mentor", "escape", "song",
-    "trial", "reveal", "storm", "ally", "climax_build",
-  ];
-
-  const TOPIC_SEEDS = [
-    "Hamupipőke stílusú bál a királyi kastélyban",
-    "Hófehérke és a beszélő tükör titka",
-    "Egy hableány, aki a felszínre vágyik",
-    "Egy lámpás három kívánsága a bazárban",
-    "Egy elátkozott kastély és egy varázsrózsa",
-    "Egy toronyba zárt lány és az ezer lámpás",
-    "Egy jégpalota, ahol a szív megfagyott",
-    "Egy oroszlánkölyök útja a napfelkeltés sziklájához",
-    "Sohaország és a második csillag jobbra",
-    "Egy hercegnő álruhában a bál előtt",
-    "Egy džinn, aki csak igaz kívánságot teljesít",
-    "Egy törpebánya és egy mérgezett alma",
-    "Egy tengeri boszorkány fogadása",
-    "Egy repülő szőnyeg az éjszakai város felett",
-    "Egy hóember, aki megmutatja az utat a jégpalotához",
+    "iconic", "quest", "song", "villain", "ally", "trial",
+    "escape", "reveal", "storm", "heart", "finale_build", "wonder",
   ];
 
   const ACTIONS = {
     kind: {
-      labels: [
-        "Kedvességgel és bátorsággal lép tovább",
-        "Megbocsát, és új esélyt ad",
-        "A szívét követi, nem a félelmet",
-      ],
-      nextBias: ["ally", "song", "mentor", "reveal"],
+      labels: ["A szívét követi", "Megbocsát és új esélyt ad", "Családként / barátként cselekszik"],
+      nextBias: ["heart", "ally", "song", "wonder"],
     },
     brave: {
-      labels: [
-        "Szembenéz a sötét erővel",
-        "Bátran a veszélyes útra lép",
-        "Megvédi, akit szeret",
-      ],
-      nextBias: ["trial", "escape", "storm", "climax_build"],
+      labels: ["Szembenéz a gonosszal", "Bátran védelmez", "Belevág a veszélyes küldetésbe"],
+      nextBias: ["villain", "trial", "escape", "finale_build"],
     },
     curious: {
-      labels: [
-        "Követi a varázslat hívását",
-        "Felfedezi a tiltott szárnyat",
-        "Megkérdezi a tükörtől / lámpástól az igazságot",
-      ],
-      nextBias: ["magic", "quest", "reveal", "ball"],
+      labels: ["Követi a mese hívójelét", "Felfedezi a tiltott helyet", "Megkérdezi a varázslatot"],
+      nextBias: ["quest", "wonder", "reveal", "iconic"],
     },
     clever: {
-      labels: [
-        "Ravasz tervet sző a királyság megmentésére",
-        "Trükkel fordítja meg a játszmát",
-        "Új szövetséget köt az ellenség ellen",
-      ],
-      nextBias: ["betrayal", "escape", "trial", "quest"],
+      labels: ["Okos tervet sző", "Trükkel fordít", "Új szövetséget köt"],
+      nextBias: ["escape", "trial", "reveal", "ally"],
     },
     rest: {
-      labels: [
-        "Megpihen, és erőt merít a dalból",
-        "A mentor tanácsát kéri",
-        "Egy bálon / ünnepen újra reményt talál",
-      ],
-      nextBias: ["song", "mentor", "ball", "ally"],
+      labels: ["Dalban merít erőt", "A mentor / barát tanácsát kéri", "Egy ünnepen újra reményt talál"],
+      nextBias: ["song", "heart", "ally", "iconic"],
     },
   };
 
@@ -491,53 +408,42 @@ button:active {
     return a;
   }
 
-  function randomWish() {
-    return pick(TOPIC_SEEDS);
+  function listDisneyFilms() {
+    return DISNEY_FILMS.map((f) => ({
+      id: f.id,
+      title: f.title,
+      year: f.year,
+      label: f.year ? `${f.title} (${f.year})` : f.title,
+    }));
   }
 
-  function detectWorld(wish) {
+  function randomWish() {
+    const f = pick(DISNEY_FILMS);
+    return f.title + " stílusú kaland";
+  }
+
+  function detectWorld(wish, forcedId) {
+    if (forcedId && WORLDS[forcedId]) return WORLDS[forcedId];
     const text = (wish || "").toLowerCase();
     let best = null;
     let score = 0;
     for (const world of Object.values(WORLDS)) {
       let s = 0;
       for (const kw of world.keywords) {
-        if (kw && text.includes(kw)) s += 1;
+        if (kw && text.includes(String(kw).toLowerCase())) s += 1;
       }
+      if (text.includes(world.disneyTitle.toLowerCase())) s += 5;
       if (s > score) {
         score = s;
         best = world;
       }
     }
-    // Disney-stílusú meglepetés: ha nincs egyértelmű találat, véletlen klasszikus világ
     return !best || score === 0 ? pick(Object.values(WORLDS)) : best;
   }
 
-  function extractCompanion(wish, world) {
-    const text = (wish || "").toLowerCase();
-    const map = [
-      [/tündér|tunder|keresztanya/, "egy ezüstszárnyú tündérkeresztanya"],
-      [/törpe|torpe/, "egy kedves törpe"],
-      [/džinn|dzsinn|szellem/, "egy tréfás džinn a lámpásból"],
-      [/gyertyatartó|gyertyatarto/, "egy beszélő gyertyatartó"],
-      [/hóember|hoember/, "egy vidám hóember"],
-      [/delfin|hal/, "egy éneklő delfin"],
-      [/tündérpor|tunder/, "egy apró tündér"],
-      [/oroszlán|oroszlan/, "egy hűséges oroszlánbarát"],
-    ];
-    for (const [re, name] of map) {
-      if (re.test(text)) return name;
-    }
-    return pick(world.companions);
-  }
-
   function moodFlavor(mood) {
-    if (mood === "vidam") {
-      return { light: "nevetéssel és csillogással", verb: "vidáman", tone: "játékos" };
-    }
-    if (mood === "kalandos") {
-      return { light: "dobogó szívvel és bátorsággal", verb: "merészen", tone: "epikus" };
-    }
+    if (mood === "vidam") return { light: "nevetéssel és csillogással", verb: "vidáman", tone: "játékos" };
+    if (mood === "kalandos") return { light: "dobogó szívvel és bátorsággal", verb: "merészen", tone: "epikus" };
     return { light: "lágy fénnyel és csodával", verb: "áhítattal", tone: "mesés" };
   }
 
@@ -546,7 +452,7 @@ button:active {
   }
 
   function maybeShiftSetting(story) {
-    if (story.chapterNum > 1 && story.chapterNum % 4 === 0) {
+    if (story.chapterNum > 1 && story.chapterNum % 3 === 0) {
       const world = worldOf(story);
       story.place = pick(world.places);
       story.wonder = pick(world.wonders);
@@ -564,136 +470,115 @@ button:active {
     return pick(BEATS);
   }
 
-  function makeChoices(world) {
-    const keys = shuffle(Object.keys(ACTIONS)).slice(0, 3);
-    return keys.map((action) => ({
-      label: pick(ACTIONS[action].labels),
-      next: action,
-    }));
+  function makeChoices() {
+    return shuffle(Object.keys(ACTIONS))
+      .slice(0, 3)
+      .map((action) => ({ label: pick(ACTIONS[action].labels), next: action }));
   }
 
   function chapterText(story, beat) {
     const hero = story.hero;
     const comp = story.companion.replace(/^egy /, "");
-    const { place, wonder, threat, mood, chapterNum: n } = story;
-    const world = worldOf(story);
-
-    const continueLine = pick([
-      `De a mese még nem ért véget — ${world.openingHook}.`,
-      `A függöny egy pillanatra összeért, aztán újra szétnyílt: a történet folytatódott.`,
-      `Ahogy a nagy Disney-mesékben is, egy csoda után mindig jön a következő próba.`,
-      `A királyság lélegzetet vett. ${hero} tudta: ez csak egy fejezet volt a nagy meséből.`,
+    const { place, wonder, threat, mood, chapterNum: n, disneyTitle } = story;
+    const cont = pick([
+      `A(z) ${disneyTitle} világa még nem engedte el ${hero}t — újabb felvonás készült.`,
+      `Ahogy a nagy Disney-mesékben, egy csoda után mindig jön a következő próba.`,
+      `A függöny rebbent, aztán újra felgördült: a történet folytatódott.`,
+      `${hero} tudta: ez a mese hosszabb, mint egyetlen boldog vég.`,
     ]);
 
-    const templates = {
-      ball: `A ${n}. fejezet egy ünneppel kezdődött ${place}. Zene szállt, selymek suhogtak, és ${wonder} úgy ragyogott, mintha az egész királyság szívdobbanása lett volna.
+    const map = {
+      iconic: `A ${n}. fejezet a(z) ${disneyTitle} legismertebb hangulatában indult ${place}. ${wonder} úgy ragyogott, mintha a film egy ikonikus jelenete kelt volna életre — de most ${hero} állt a középpontban.
 
-${hero} ${mood.verb} lépett a fénybe, ${comp} pedig az oldalán maradt. Nem csupán mulatság volt ez: a bálokon dőlnek el a sorsok. Tekintetek találkoztak, titkok cseréltek gazdát, és ${threat} árnyéka is megjelent a terem szélén — mosolyogva, túlságosan udvariasan.
+${comp} az oldalán volt. A levegő tele volt ${mood.light}. Messzebb ${threat} árnyéka mozdult, pontosan úgy, ahogy a nagy mesékben a sötét mindig közel vár.
 
-${hero} érezte a ${mood.light} teli levegőt, és megértette: ma este választania kell a biztonság és a szíve között. ${continueLine}`,
+${hero} ${mood.verb} lépett előre. ${cont}`,
 
-      quest: `${hero} útnak indult, mert ${wonder} hívása erősebb volt minden félelemnél. ${place} ösvényei ismeretlenek voltak, mégis mintha a táj maga emlékezett volna a régi mesékre.
+      quest: `${hero} küldetésre indult a(z) ${disneyTitle} világában. ${place} ösvényei ismerősek voltak a meséből, mégis minden lépés új volt. ${wonder} hívta, ${comp} pedig bátorította.
 
-${comp} végig ott volt. „A nagy kalandok nem a térképen kezdődnek”, súgta, „hanem abban a pillanatban, amikor valaki elindul.” Útközben jeleket láttak: elveszett koronát, régi lábnyomot, egy félbehagyott dalt.
+„A nagy kalandok nem másolatok”, súgta ${comp}. „Te írod tovább.” Közben ${threat} is mozgott a háttérben, és a tét egyre nőtt.
 
-De ${threat} is mozgott a háttérben. A küldetés igazsága lassan kirajzolódott: nem kincs kellett, hanem bátorság. ${continueLine}`,
+${hero} célja tisztult: megvédeni, amit szeret, és visszaadni a világnak a fényét. ${cont}`,
 
-      betrayal: `Valaki, akiben ${hero} bízott, váratlanul elfordult. ${place} hirtelen hidegebb lett, ${wonder} fénye megremeglett, és ${threat} hangja túl közelről szólt.
+      song: `Dal támadt ${place} — olyan, amilyen a Disney-mesék közepén szokott: a kívánságról, a bátorságról, a hazáról. ${hero} és ${comp} hangja összekapcsolódott, ${wonder} pedig a dallamra lobbant fel.
 
-${comp} megszorította ${hero} kezét. „Az árulás fáj”, mondta halkan, „de megmutatja, ki áll melletted igazán.” A Disney-mesék legszebb hősei ilyenkor nem törnek össze: felemelkednek.
+Még ${threat} is megállt egy pillanatra. A zene után ${hero} emeltebb fejjel állt. ${cont}`,
 
-${hero} letörölte a könnyét, és új fogadalmat tett. A történet sötétebb lett — ezért ragyoghat majd fényesebben. ${continueLine}`,
+      villain: `${threat} végre színre lépett ${place}. Nem távoli pletyka volt többé, hanem élő akadály ${wonder} és ${hero} között. ${comp} készen állt, ${hero} pedig ${mood.verb} szembenézett vele.
 
-      magic: `A varázslat kitört ${place}. ${wonder} életre kelt: fény, dallam, lebegő por és lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, és a világ egy pillanatra meghajlott.
+A(z) ${disneyTitle} világában a gonosz mindig próbára teszi a hőst — most eljött ez a pillanat. ${cont}`,
 
-${comp} felkiáltott a csodától. Még ${threat} is megállt, mert a valódi mágia előtt még a sötétség is elbizonytalanodik. Ám minden varázslatnak ára van, és a mese most ezt súgta a fülébe.
+      ally: `Új szövetséges érkezett a(z) ${disneyTitle} világából ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte a sors kezeit.
 
-${hero} választott: nem a könnyű hatalmat kérte, hanem azt az erőt, ami megvédheti, akiket szeret. ${continueLine}`,
+${wonder} mintha áldását adta volna. ${threat} máris új tervet szőtt. A csapat erősödött. ${cont}`,
 
-      mentor: `Megjelent egy mentor ${place} — nem feltétlenül öreg és bölcsnek látszó, de a szavaiban ott volt az egész királyság emlékezete. ${comp} bólintott: ideje volt hallgatni.
+      trial: `Próba jött ${place}. ${hero} egyedül döntött, miközben ${comp} csak távolabbról súghatott. ${wonder} az egyik oldalon ragyogott, ${threat} a másikon árnyékot vetett.
 
-„${wonder} nem elég önmagában”, mondta a mentor. „A hős azzá válik, amit megment, nem azzá, amit megszerez.” ${threat} neve is elhangzott, és ${hero} végre megértette a tétet.
+A választás ${mood.tone} hősiességről mesélt. Sebhely és bölcsesség maradt utána. ${cont}`,
 
-A tanács után a táj tisztábbnak tűnt. ${hero} már nem csak menekült: célja volt. ${continueLine}`,
+      escape: `Menekülniük kellett. ${threat} üldözte őket ${place}, ${wonder} csak villanásokban mutatott utat. ${hero} és ${comp} egymást húzták — ahogy a nagy üldözéses jelenetekben szokás.
 
-      escape: `Futniuk kellett. ${threat} árnyéka rájuk zúdult ${place}, ajtók csapódtak, hidak ingadoztak, és ${wonder} csak villanásokban mutatta az utat.
+Végül kiszabadultak, lihegve, élve, készen a folytatásra. ${cont}`,
 
-${hero} és ${comp} egymást húzták előre. Egy Disney-kalandban a menekülés nem gyávaság: időt nyer a szívnek, hogy felkészüljön a döntő pillanatra. Egy titkos folyosó, egy váratlan szövetséges, egy utolsó ugrás —
+      reveal: `Titok lepleződött le ${place} a(z) ${disneyTitle} történetének szellemében. ${wonder} fényében kiderült valami ${threat}ről — és ${hero} saját sorsáról is.
 
-és kiszabadultak, lihegve, élve, készen a folytatásra. ${continueLine}`,
+${comp} a vállára tette a kezét. A leleplezés után minden mélyebb lett. ${cont}`,
 
-      song: `Aztán dal támadt ${place}. Nem kötelező kórus volt ez, hanem olyan zene, ami a szereplők legmélyebb kívánságát mondta ki. ${hero} hangja összekeveredett ${comp} bátorításával.
+      storm: `Vihar tört ki ${place}: külső és belső. ${threat} ereje felszabadult, ${wonder} hunyorgott, ${hero} majdnem elvesztette a reményt — de ${comp} kiáltotta a nevét.
 
-${wonder} a dallamra ragyogott fel. Még a távoli ${threat} is hallotta — és egy pillanatra megremegett. A nagy mesékben a dal gyakran erősebb fegyver, mint a kard.
+A vihar után a táj sebes volt, de járható. ${cont}`,
 
-Amikor a zene elült, ${hero} már másképp állt a világban: emeltebb fejjel, tisztább szándékkal. ${continueLine}`,
+      heart: `A szív jelenete eljött ${place}. Nem kard, nem trükk: őszinte szó, ölelés, fogadalom. ${hero} és ${comp} közt ${wonder} szelíden ragyogott, miközben ${threat} távolabbról figyelt.
 
-      trial: `Eljött a próba. ${place} közepén ${hero} egyedül maradt egy döntéssel, miközben ${comp} csak távolabbról súghatott. ${wonder} az egyik oldalon ragyogott, ${threat} a másikon árnyékot vetett.
+A(z) ${disneyTitle} világa ilyenkor a legszebb: amikor a szeretet dönt. ${cont}`,
 
-„Ha hibázol, nem a mese ér véget”, rebesgette a szél, „hanem valaki szíve.” ${hero} ${mood.verb} lépett, és a választása ${mood.tone} hősiességről mesélt.
+      finale_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} arasznyira állt. ${hero} szíve úgy dobogott, mint egy egész királyság dobja. ${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.”
 
-A próba után sebhely és bölcsesség maradt. Pontosan annyi, amennyi a következő fejezethez kell. ${continueLine}`,
+A(z) ${disneyTitle} fináléja közelgett — de a mese még mindig folytatható volt. ${cont}`,
 
-      reveal: `Egy titok lelepleződött ${place}. ${wonder} fényében kiderült, ki ${threat} valójában — és miért fájt neki annyira a világ. ${hero} döbbenten hallgatott, ${comp} pedig a vállára tette a kezét.
+      wonder: `Tiszta csoda történt ${place}. ${wonder} életre kelt a(z) ${disneyTitle} varázsával: fény, dallam, lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, ${comp} pedig felnevetett.
 
-A legszebb mesékben a gonosz nem mindig született sötétnek. Néha csak elveszett. Ez nem mentség, de esély. ${hero} eldönthette: bosszút áll, vagy nagyobb lesz a gyűlöletnél.
-
-A leleplezés után minden másképp hangzott. A történet mélyebb lett. ${continueLine}`,
-
-      storm: `Vihar szakadt ${place} fölé — külső is, belső is. ${threat} ereje felszabadult, ${wonder} hunyorgott, és ${hero} majdnem elvesztette a reményt.
-
-${comp} kiabálta a nevét a szélben. A nagy mesék viharjelenetei azért kellenek, hogy a fény utána igazibb legyen. ${hero} a földbe kapaszkodott, aztán felállt.
-
-Amikor a vihar elvonult, a táj sebes volt, de járható. És ${hero} már tudta a következő lépést. ${continueLine}`,
-
-      ally: `Új szövetséges érkezett ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte: ez a találkozás nem véletlen.
-
-Együtt erősebbek lettek, mint külön-külön. ${wonder} mintha áldását adta volna a szövetségre, miközben ${threat} máris új tervet szőtt a háttérben.
-
-A csapat összeállt. A mese pedig felgyorsult, mint ahogy a nagy finálék előtt szokott. ${continueLine}`,
-
-      climax_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} már nem volt távoli jelkép: arasznyira álltak egymástól. ${hero} szíve úgy dobogott, mint egy egész királyság dobja.
-
-${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.” ${hero} ${mood.verb} lépett a fénybe, készen arra, hogy a következő döntés új irányt adjon az egész mesének.
-
-A levegő megtelt ${mood.light}. A csúcspont közelgett — de a történetnek még mindig volt hova nőnie. ${continueLine}`,
+Még ${threat} is megremegett. A varázslat után új ösvény nyílt. ${cont}`,
     };
 
-    return templates[beat] || templates.quest;
+    return map[beat] || map.quest;
   }
 
   function openingText(story) {
     const world = worldOf(story);
     const comp = story.companion.replace(/^egy /, "");
-    return `Réges-régen, egy olyan királyságban, ${world.openingHook}, kezdődött ${story.hero} története.
+    return `Ma este a(z) ${world.disneyTitle} világa nyílt meg előttünk.
 
-${story.place} már akkor is tele volt ${story.mood.light}, amikor ${story.hero} először meghallotta a kívánságát — pont olyat, mint a tiéd: ${story.wish}. Mellé szegődött ${story.companion}, és együtt meglátták ${story.wonder} ragyogását. De messzebb, az árnyékban, ${story.threat} is mozdult.
+Réges-régen — ${world.openingHook} — kezdődött ${story.hero} saját kalandja. ${story.place} már akkor is tele volt ${story.mood.light}, amikor kimondta a kívánságát: ${story.wish}.
 
-${comp} megszorította ${story.hero} kezét. „Ez lesz a mi mesénk”, súgta. „Olyan, mint a nagyok: tele próbával, dallal, árulással és csodával.”
+Mellé szegődött ${story.companion}. Együtt meglátták ${story.wonder} ragyogását… és messzebb ${story.threat} árnyékát is. ${comp} megszorította ${story.hero} kezét:
 
-Az első fejezet kapuja kitárult. A történetnek pedig — mint a legszebb Disney-stílusú meséknek — nem szabtak rövid határt.`;
+„Ez a te ${world.disneyTitle}-meséd. Ismerős világ, új hős, végtelen fejezet.”
+
+Az első felvonás kapuja kitárult.`;
   }
 
   function createScene(story, beat, isOpening) {
-    const id = "ch-" + story.chapterNum + "-" + beat + "-" + Math.floor(Math.random() * 100000);
+    const id = "ch-" + story.chapterNum + "-" + beat + "-" + Math.floor(Math.random() * 1e6);
     return {
       id,
       chapter: story.chapterNum + ". fejezet",
       beat,
       text: isOpening ? openingText(story) : chapterText(story, beat),
-      choices: makeChoices(worldOf(story)),
+      choices: makeChoices(),
       ending: false,
     };
   }
 
   function buildStory(opts) {
     const wish = (opts.wish || "").trim() || randomWish();
-    const world = detectWorld(wish);
+    const world = detectWorld(wish, opts.disneyId);
     const moodKey = opts.mood || pick(["vidam", "kalandos", "mesés"]);
     const story = {
       title: pick(world.titleBits),
+      disneyTitle: world.disneyTitle,
       hero: (opts.heroName || "").trim() || pick(HEROES),
-      companion: extractCompanion(wish, world),
+      companion: pick(world.companions),
       worldId: world.id,
       wish,
       moodKey,
@@ -702,14 +587,13 @@ Az első fejezet kapuja kitárult. A történetnek pedig — mint a legszebb Dis
       wonder: pick(world.wonders),
       threat: pick(world.threats),
       chapterNum: 1,
-      recentBeats: ["quest"],
+      recentBeats: ["iconic"],
       scenes: {},
       currentId: null,
       log: [],
       finished: false,
     };
-
-    const scene = createScene(story, "quest", true);
+    const scene = createScene(story, "iconic", true);
     story.scenes[scene.id] = scene;
     story.currentId = scene.id;
     return story;
@@ -723,7 +607,6 @@ Az első fejezet kapuja kitárult. A történetnek pedig — mint a legszebb Dis
     if (story.finished) return getScene(story);
     const current = getScene(story);
     story.log.push({ chapter: current.chapter, text: current.text, choiceTo: action });
-
     if (action === "__end__") return finishStory(story);
 
     story.chapterNum += 1;
@@ -741,17 +624,16 @@ Az első fejezet kapuja kitárult. A történetnek pedig — mint a legszebb Dis
     if (!story.log.length || story.log[story.log.length - 1].text !== current.text) {
       story.log.push({ chapter: current.chapter, text: current.text, choiceTo: "__end__" });
     }
-    story.chapterNum += 1;
     const id = "ending-" + Date.now();
     const comp = story.companion.replace(/^egy /, "");
     const scene = {
       id,
-      chapter: "Pihenő a függöny előtt",
-      text: `${story.hero} és ${comp} megálltak ${story.place}. ${story.wonder} még ragyogott, ${story.threat} árnyéka pedig nem tűnt el örökre — csak várta a következő felvonást.
+      chapter: "Pihenő a stáblista előtt",
+      text: `${story.hero} és ${comp} megálltak a(z) ${story.disneyTitle} világában, ${story.place}. ${story.wonder} még ragyogott, ${story.threat} pedig nem tűnt el örökre — csak várta a következő felvonást.
 
-Mert a legszebb mesékben a „vége” gyakran csak annyi: ma este idáig tartott a kaland. Ha újra kívánod, a királyság kapuja ismét kinyílik.
+A stáblista helyett most csendet kérünk. Ha újra kívánod, bármelyik Disney-mese kapuja kinyílik.
 
-Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
+Itt a (mai) vége, fuss el véle.`,
       choices: [],
       ending: true,
     };
@@ -762,16 +644,18 @@ Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
   }
 
   function fullTranscript(story) {
-    const parts = story.log.map((entry) => `${entry.chapter}\n${entry.text}`);
+    const parts = story.log.map((e) => `${e.chapter}\n${e.text}`);
     const last = getScene(story);
-    const lastBlock = `${last.chapter}\n${last.text}`;
-    if (!parts.length || parts[parts.length - 1] !== lastBlock) parts.push(lastBlock);
-    return `${story.title}\n\n${parts.join("\n\n")}\n`;
+    const block = `${last.chapter}\n${last.text}`;
+    if (!parts.length || parts[parts.length - 1] !== block) parts.push(block);
+    return `${story.title}\n(${story.disneyTitle})\n\n${parts.join("\n\n")}\n`;
   }
 
   global.MeseEngine = {
     WORLDS,
-    SURPRISES: TOPIC_SEEDS,
+    DISNEY_FILMS,
+    SURPRISES: DISNEY_FILMS.map((f) => f.title + " stílusú kaland"),
+    listDisneyFilms,
     randomWish,
     buildStory,
     getScene,
@@ -794,6 +678,7 @@ Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
   const setupPanel = $("setup-panel");
   const storyPanel = $("story-panel");
   const wishInput = $("wish-input");
+  const disneySelect = $("disney-select");
   const moodSelect = $("mood-select");
   const heroNameInput = $("hero-name");
   const chapterLabel = $("chapter-label");
@@ -929,13 +814,30 @@ Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
     speakCurrentStory();
   }
 
-  function startStory(wish) {
-    const cleaned = (wish || "").trim() || MeseEngine.randomWish();
+  function populateDisneySelect() {
+    if (!disneySelect || !MeseEngine.listDisneyFilms) return;
+    const films = MeseEngine.listDisneyFilms();
+    films.forEach((film) => {
+      const opt = document.createElement("option");
+      opt.value = film.id;
+      opt.textContent = film.label;
+      disneySelect.appendChild(opt);
+    });
+  }
+
+  function startStory(wish, disneyId) {
+    const selectedId = disneyId || (disneySelect && disneySelect.value) || "";
+    let cleaned = (wish || "").trim();
+    if (!cleaned && selectedId && MeseEngine.WORLDS[selectedId]) {
+      cleaned = MeseEngine.WORLDS[selectedId].disneyTitle + " stílusú kaland";
+    }
+    cleaned = cleaned || MeseEngine.randomWish();
     wishInput.value = cleaned;
     story = MeseEngine.buildStory({
       wish: cleaned,
       mood: moodSelect.value,
       heroName: heroNameInput.value,
+      disneyId: selectedId || undefined,
     });
     showStory();
     renderScene();
@@ -1049,7 +951,19 @@ Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
   voiceIdInput.addEventListener("change", saveSettings);
 
   btnStart.addEventListener("click", () => startStory(wishInput.value));
-  btnSurprise.addEventListener("click", () => startStory(MeseEngine.randomWish()));
+  btnSurprise.addEventListener("click", () => {
+    const films = MeseEngine.listDisneyFilms();
+    const film = films[Math.floor(Math.random() * films.length)];
+    if (disneySelect) disneySelect.value = film.id;
+    startStory(film.title + " stílusú kaland", film.id);
+  });
+  if (disneySelect) {
+    disneySelect.addEventListener("change", () => {
+      if (!disneySelect.value) return;
+      const world = MeseEngine.WORLDS[disneySelect.value];
+      if (world) wishInput.value = world.disneyTitle + " stílusú kaland";
+    });
+  }
   btnSpeak.addEventListener("click", speakCurrentStory);
   btnStop.addEventListener("click", stopAudio);
   btnNew.addEventListener("click", showSetup);
@@ -1069,6 +983,7 @@ Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
     cachedMaleVoice = pickMaleHuVoice();
   }
   loadSettings();
+  populateDisneySelect();
   showSetup();
 })();
 

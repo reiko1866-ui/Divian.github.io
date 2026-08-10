@@ -90,7 +90,7 @@
       id: film.id,
       disneyTitle: film.title,
       year: film.year,
-      titleBits: [film.title, film.title + " — új fejezet", "Kaland: " + film.title],
+      titleBits: [film.title + " — a te kalandod", film.title + " világa", "Új mese: " + film.title],
       places: film.places,
       companions: film.companions,
       wonders: film.wonders,
@@ -106,26 +106,11 @@
   ];
 
   const ACTIONS = {
-    kind: {
-      labels: ["A szívét követi", "Megbocsát és új esélyt ad", "Családként / barátként cselekszik"],
-      nextBias: ["heart", "ally", "song", "wonder"],
-    },
-    brave: {
-      labels: ["Szembenéz a gonosszal", "Bátran védelmez", "Belevág a veszélyes küldetésbe"],
-      nextBias: ["villain", "trial", "escape", "finale_build"],
-    },
-    curious: {
-      labels: ["Követi a mese hívójelét", "Felfedezi a tiltott helyet", "Megkérdezi a varázslatot"],
-      nextBias: ["quest", "wonder", "reveal", "iconic"],
-    },
-    clever: {
-      labels: ["Okos tervet sző", "Trükkel fordít", "Új szövetséget köt"],
-      nextBias: ["escape", "trial", "reveal", "ally"],
-    },
-    rest: {
-      labels: ["Dalban merít erőt", "A mentor / barát tanácsát kéri", "Egy ünnepen újra reményt talál"],
-      nextBias: ["song", "heart", "ally", "iconic"],
-    },
+    kind: { nextBias: ["heart", "ally", "song", "wonder"] },
+    brave: { nextBias: ["villain", "trial", "escape", "finale_build"] },
+    curious: { nextBias: ["quest", "wonder", "reveal", "iconic"] },
+    clever: { nextBias: ["escape", "trial", "reveal", "ally"] },
+    rest: { nextBias: ["song", "heart", "ally", "iconic"] },
   };
 
   function pick(arr) {
@@ -203,73 +188,125 @@
     return pick(BEATS);
   }
 
-  function makeChoices() {
+  function companionName(story) {
+    return String(story.companion || "").replace(/^egy\s+/i, "");
+  }
+
+  function avoidRepeat(story, key, options) {
+    const used = story.usedPhrases || (story.usedPhrases = {});
+    const prev = used[key] || "";
+    const pool = options.filter((o) => o && o !== prev);
+    const chosen = pick(pool.length ? pool : options);
+    used[key] = chosen;
+    return chosen;
+  }
+
+  function makeChoices(story) {
+    const hero = story.hero;
+    const comp = companionName(story);
+    const place = story.place;
+    const wonder = story.wonder;
+    const threat = story.threat;
+    const pools = {
+      kind: [
+        `${hero} a szívére hallgat, és ${comp} mellé áll`,
+        `Megbocsát, majd új esélyt ad ${place}`,
+        `Családként / barátként óvja: ${wonder}`,
+      ],
+      brave: [
+        `Szembenéz vele: ${threat}`,
+        `Bátran védelmezi a csodát: ${wonder}`,
+        `Belevág a veszélybe ${place}`,
+      ],
+      curious: [
+        `Követi a hívást ${place}`,
+        `Közelebbről megvizsgálja: ${wonder}`,
+        `Felfedezi, mit rejt ${threat}`,
+      ],
+      clever: [
+        `Okos tervet sző ${comp} segítségével`,
+        `Trükkel fordít a helyzeten ${place}`,
+        `Új szövetséget köt a csoda körül: ${wonder}`,
+      ],
+      rest: [
+        `Dalban merít erőt ${place}`,
+        `${comp} tanácsát kéri, mielőtt dönt`,
+        `Egy csendes pillanatban újra reményt talál`,
+      ],
+    };
     return shuffle(Object.keys(ACTIONS))
       .slice(0, 3)
-      .map((action) => ({ label: pick(ACTIONS[action].labels), next: action }));
+      .map((action) => ({
+        label: avoidRepeat(story, "choice-" + action, pools[action]),
+        next: action,
+      }));
   }
 
   function chapterText(story, beat) {
     const hero = story.hero;
-    const comp = story.companion.replace(/^egy /, "");
-    const { place, wonder, threat, mood, chapterNum: n, disneyTitle } = story;
-    const cont = pick([
-      `A(z) ${disneyTitle} világa még nem engedte el ${hero}t — újabb felvonás készült.`,
-      `Ahogy a nagy Disney-mesékben, egy csoda után mindig jön a következő próba.`,
-      `A függöny rebbent, aztán újra felgördült: a történet folytatódott.`,
-      `${hero} tudta: ez a mese hosszabb, mint egyetlen boldog vég.`,
+    const comp = companionName(story);
+    const { place, wonder, threat, mood, chapterNum: n, disneyTitle, wish } = story;
+    const wishHint = n % 4 === 0
+      ? ` ${hero} újra eszébe jutott a kívánság: ${wish}.`
+      : "";
+    const cont = avoidRepeat(story, "cont", [
+      `${hero} tudta: a kaland még nem ért véget.`,
+      `Egy új ösvény nyílt ${place} túloldalán.`,
+      `${comp} csak ennyit súgott: „Folytassuk.”`,
+      `A következő próba már a levegőben lógott.`,
+      `${wonder} még mindig hívta őket tovább.`,
     ]);
 
     const map = {
-      iconic: `A ${n}. fejezet a(z) ${disneyTitle} legismertebb hangulatában indult ${place}. ${wonder} úgy ragyogott, mintha a film egy ikonikus jelenete kelt volna életre — de most ${hero} állt a középpontban.
+      iconic: `${n}. fejezet. ${place} a(z) ${disneyTitle} világának legismertebb hangulatát hozta vissza — most ${hero} állt a középpontban.
 
-${comp} az oldalán volt. A levegő tele volt ${mood.light}. Messzebb ${threat} árnyéka mozdult, pontosan úgy, ahogy a nagy mesékben a sötét mindig közel vár.
+${wonder} úgy ragyogott, mintha egy ikonikus jelenet kelt volna életre. ${comp} az oldalán volt, a levegő tele ${mood.light}. Messzebb ${threat} árnyéka mozdult.
 
-${hero} ${mood.verb} lépett előre. ${cont}`,
+${hero} ${mood.verb} lépett előre.${wishHint} ${cont}`,
 
-      quest: `${hero} küldetésre indult a(z) ${disneyTitle} világában. ${place} ösvényei ismerősek voltak a meséből, mégis minden lépés új volt. ${wonder} hívta, ${comp} pedig bátorította.
+      quest: `${hero} küldetésre indult. ${place} ösvényei ismerősek voltak, mégis minden lépés új volt. ${wonder} hívta, ${comp} pedig bátorította.
 
-„A nagy kalandok nem másolatok”, súgta ${comp}. „Te írod tovább.” Közben ${threat} is mozgott a háttérben, és a tét egyre nőtt.
+„A nagy kalandokat nem másoljuk — továbbírjuk”, súgta ${comp}. Közben ${threat} is mozgott a háttérben, és a tét nőtt.
 
-${hero} célja tisztult: megvédeni, amit szeret, és visszaadni a világnak a fényét. ${cont}`,
+${hero} célja tisztult: megvédeni, amit szeret.${wishHint} ${cont}`,
 
-      song: `Dal támadt ${place} — olyan, amilyen a Disney-mesék közepén szokott: a kívánságról, a bátorságról, a hazáról. ${hero} és ${comp} hangja összekapcsolódott, ${wonder} pedig a dallamra lobbant fel.
+      song: `Dal támadt ${place}: a kívánságról, a bátorságról, az otthonról. ${hero} és ${comp} hangja összekapcsolódott, ${wonder} pedig a dallamra lobbant fel.
 
 Még ${threat} is megállt egy pillanatra. A zene után ${hero} emeltebb fejjel állt. ${cont}`,
 
-      villain: `${threat} végre színre lépett ${place}. Nem távoli pletyka volt többé, hanem élő akadály ${wonder} és ${hero} között. ${comp} készen állt, ${hero} pedig ${mood.verb} szembenézett vele.
+      villain: `${threat} végre színre lépett ${place}. Nem távoli pletyka volt többé, hanem élő akadály ${wonder} és ${hero} között.
 
-A(z) ${disneyTitle} világában a gonosz mindig próbára teszi a hőst — most eljött ez a pillanat. ${cont}`,
+${comp} készen állt. ${hero} ${mood.verb} szembenézett a veszéllyel — ahogy a(z) ${disneyTitle} világában a hősök szoktak.${wishHint} ${cont}`,
 
-      ally: `Új szövetséges érkezett a(z) ${disneyTitle} világából ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte a sors kezeit.
+      ally: `Új szövetséges érkezett ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte: most erősödhet a csapat.
 
-${wonder} mintha áldását adta volna. ${threat} máris új tervet szőtt. A csapat erősödött. ${cont}`,
+${wonder} mintha áldását adta volna. ${threat} máris új tervet szőtt. ${cont}`,
 
       trial: `Próba jött ${place}. ${hero} egyedül döntött, miközben ${comp} csak távolabbról súghatott. ${wonder} az egyik oldalon ragyogott, ${threat} a másikon árnyékot vetett.
 
 A választás ${mood.tone} hősiességről mesélt. Sebhely és bölcsesség maradt utána. ${cont}`,
 
-      escape: `Menekülniük kellett. ${threat} üldözte őket ${place}, ${wonder} csak villanásokban mutatott utat. ${hero} és ${comp} egymást húzták — ahogy a nagy üldözéses jelenetekben szokás.
+      escape: `Menekülniük kellett. ${threat} üldözte őket ${place}, ${wonder} csak villanásokban mutatott utat. ${hero} és ${comp} egymást húzták.
 
-Végül kiszabadultak, lihegve, élve, készen a folytatásra. ${cont}`,
+Végül kiszabadultak — lihegve, élve, készen a folytatásra. ${cont}`,
 
-      reveal: `Titok lepleződött le ${place} a(z) ${disneyTitle} történetének szellemében. ${wonder} fényében kiderült valami ${threat}ről — és ${hero} saját sorsáról is.
+      reveal: `Titok lepleződött le ${place}. ${wonder} fényében kiderült valami ${threat} tervéről — és ${hero} saját sorsáról is.
 
-${comp} a vállára tette a kezét. A leleplezés után minden mélyebb lett. ${cont}`,
+${comp} a vállára tette a kezét. A leleplezés után minden mélyebb lett.${wishHint} ${cont}`,
 
-      storm: `Vihar tört ki ${place}: külső és belső. ${threat} ereje felszabadult, ${wonder} hunyorgott, ${hero} majdnem elvesztette a reményt — de ${comp} kiáltotta a nevét.
+      storm: `Vihar tört ki ${place}: külső és belső. ${threat} ereje felszabadult, ${wonder} hunyorgott. ${hero} majdnem elvesztette a reményt — de ${comp} kiáltotta a nevét.
 
 A vihar után a táj sebes volt, de járható. ${cont}`,
 
       heart: `A szív jelenete eljött ${place}. Nem kard, nem trükk: őszinte szó, ölelés, fogadalom. ${hero} és ${comp} közt ${wonder} szelíden ragyogott, miközben ${threat} távolabbról figyelt.
 
-A(z) ${disneyTitle} világa ilyenkor a legszebb: amikor a szeretet dönt. ${cont}`,
+Ilyenkor a(z) ${disneyTitle} világa a legszebb: amikor a szeretet dönt. ${cont}`,
 
-      finale_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} arasznyira állt. ${hero} szíve úgy dobogott, mint egy egész királyság dobja. ${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.”
+      finale_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} arasznyira állt. ${hero} szíve úgy dobogott, mint egy egész királyság dobja.
 
-A(z) ${disneyTitle} fináléja közelgett — de a mese még mindig folytatható volt. ${cont}`,
+${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.” A finálé közelgett — de a mese még mindig folytatható volt.${wishHint} ${cont}`,
 
-      wonder: `Tiszta csoda történt ${place}. ${wonder} életre kelt a(z) ${disneyTitle} varázsával: fény, dallam, lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, ${comp} pedig felnevetett.
+      wonder: `Tiszta csoda történt ${place}. ${wonder} életre kelt: fény, dallam, lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, ${comp} pedig felnevetett.
 
 Még ${threat} is megremegett. A varázslat után új ösvény nyílt. ${cont}`,
     };
@@ -279,14 +316,19 @@ Még ${threat} is megremegett. A varázslat után új ösvény nyílt. ${cont}`,
 
   function openingText(story) {
     const world = worldOf(story);
-    const comp = story.companion.replace(/^egy /, "");
-    return `Ma este a(z) ${world.disneyTitle} világa nyílt meg előttünk.
+    const comp = companionName(story);
+    const openings = [
+      `Ma este a(z) ${world.disneyTitle} világa nyílt meg előttünk.`,
+      `Hallgass ide: a(z) ${world.disneyTitle} kapuja most ${story.hero} előtt tárult ki.`,
+      `Réges-régen — ${world.openingHook} — és ma ${story.hero} lépett be ebbe a világba.`,
+    ];
+    return `${avoidRepeat(story, "opening", openings)}
 
-Réges-régen — ${world.openingHook} — kezdődött ${story.hero} saját kalandja. ${story.place} már akkor is tele volt ${story.mood.light}, amikor kimondta a kívánságát: ${story.wish}.
+${story.place} tele volt ${story.mood.light}, amikor ${story.hero} kimondta a kívánságát: ${story.wish}.
 
 Mellé szegődött ${story.companion}. Együtt meglátták ${story.wonder} ragyogását… és messzebb ${story.threat} árnyékát is. ${comp} megszorította ${story.hero} kezét:
 
-„Ez a te ${world.disneyTitle}-meséd. Ismerős világ, új hős, végtelen fejezet.”
+„Ismerős világ, új hős — a te meséd kezdődik.”
 
 Az első felvonás kapuja kitárult.`;
   }
@@ -298,7 +340,7 @@ Az első felvonás kapuja kitárult.`;
       chapter: story.chapterNum + ". fejezet",
       beat,
       text: isOpening ? openingText(story) : chapterText(story, beat),
-      choices: makeChoices(),
+      choices: makeChoices(story),
       ending: false,
     };
   }
@@ -321,6 +363,7 @@ Az első felvonás kapuja kitárult.`;
       threat: pick(world.threats),
       chapterNum: 1,
       recentBeats: ["iconic"],
+      usedPhrases: {},
       scenes: {},
       currentId: null,
       log: [],
@@ -358,7 +401,7 @@ Az első felvonás kapuja kitárult.`;
       story.log.push({ chapter: current.chapter, text: current.text, choiceTo: "__end__" });
     }
     const id = "ending-" + Date.now();
-    const comp = story.companion.replace(/^egy /, "");
+    const comp = companionName(story);
     const scene = {
       id,
       chapter: "Pihenő a stáblista előtt",

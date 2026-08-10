@@ -1,1 +1,114 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Mesehang — interaktív mesekészítő. Mondd el, milyen mesét szeretnél, és együtt szőjük meg." />
+  <title>Mesehang — Interaktív mesekészítő</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="mist mist-a"></div>
+    <div class="mist mist-b"></div>
+  </div>
 
+  <header class="topbar">
+    <a class="brand" href="#" id="brand-home" aria-label="Mesehang kezdőlap">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Mesehang</span>
+    </a>
+    <button type="button" class="ghost-btn" id="btn-new-story" hidden>Új mese</button>
+  </header>
+
+  <main>
+    <!-- Kezdő képernyő -->
+    <section id="screen-welcome" class="screen screen-welcome is-active" aria-labelledby="welcome-title">
+      <div class="welcome-copy">
+        <p class="eyebrow">Interaktív mesekészítő</p>
+        <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
+        <p class="lede">Mondd el hangosan vagy írd be, milyen mesét szeretnél — aztán együtt döntünk a folytatásról.</p>
+      </div>
+
+      <form id="wish-form" class="wish-panel" autocomplete="off">
+        <label for="wish-input" class="wish-label">Milyen mesét szeretnél?</label>
+        <div class="wish-row">
+          <textarea
+            id="wish-input"
+            name="wish"
+            rows="3"
+            maxlength="400"
+            placeholder="Pl. egy bátor kislány és egy beszélő róka kalandja az erdőben…"
+            required
+          ></textarea>
+          <button type="button" class="mic-btn" id="btn-mic" aria-pressed="false" title="Hangbemondás">
+            <span class="mic-icon" aria-hidden="true"></span>
+            <span class="sr-only">Hangbemondás indítása</span>
+          </button>
+        </div>
+        <p class="mic-status" id="mic-status" role="status" aria-live="polite"></p>
+
+        <div class="tune-row">
+          <fieldset class="tune">
+            <legend>Hangulat</legend>
+            <label><input type="radio" name="mood" value="vidam" checked /> Vidám</label>
+            <label><input type="radio" name="mood" value="kalandos" /> Kalandos</label>
+            <label><input type="radio" name="mood" value="mesés" /> Mesés</label>
+          </fieldset>
+          <label class="hero-name">
+            <span>Hős neve (opcionális)</span>
+            <input type="text" id="hero-name" maxlength="40" placeholder="pl. Lili" />
+          </label>
+        </div>
+
+        <div class="cta-row">
+          <button type="submit" class="primary-btn" id="btn-start">
+            Induljon a mese
+          </button>
+          <button type="button" class="ghost-btn" id="btn-surprise">Meglepetés mese</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Mese képernyő -->
+    <section id="screen-story" class="screen screen-story" aria-labelledby="story-title" hidden>
+      <div class="story-meta">
+        <p class="chapter-label" id="chapter-label">1. fejezet</p>
+        <h2 id="story-title" class="story-title">A te meséd</h2>
+      </div>
+
+      <article class="story-page" id="story-page">
+        <p id="story-text" class="story-text"></p>
+      </article>
+
+      <div class="narrator-bar">
+        <button type="button" class="icon-btn" id="btn-speak" aria-pressed="false" title="Felolvasás">
+          <span class="speak-icon" aria-hidden="true"></span>
+          <span id="speak-label">Felolvasás</span>
+        </button>
+        <button type="button" class="icon-btn" id="btn-stop-speak" hidden title="Megállítás">
+          Megállítás
+        </button>
+      </div>
+
+      <div class="choices" id="choices" role="group" aria-label="Választások"></div>
+
+      <div class="ending-actions" id="ending-actions" hidden>
+        <button type="button" class="primary-btn" id="btn-restart">Új mese</button>
+        <button type="button" class="ghost-btn" id="btn-download">Mese mentése</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Mesehang — hanggal induló, választásokkal szőtt mesék</p>
+  </footer>
+
+  <script src="story-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

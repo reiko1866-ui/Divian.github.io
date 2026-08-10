@@ -2,137 +2,72 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Mesehang — interaktív mesekészítő. Mondd el, milyen mesét szeretnél, és együtt szőjük meg." />
-  <title>Mesehang — Interaktív mesekészítő</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interaktív Mesemondó — választásos mese ElevenLabs vagy böngésző hanggal." />
+  <title>Interaktív Mesemondó</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="sky" aria-hidden="true">
-    <div class="stars"></div>
-    <div class="mist mist-a"></div>
-    <div class="mist mist-b"></div>
+  <div class="container">
+    <h1>✨ Interaktív Mesemondó ✨</h1>
+
+    <div class="settings-panel">
+      <label for="engine-select">Felolvasó motor kiválasztása:</label>
+      <select id="engine-select">
+        <option value="native">Böngésző beépített hangja (Ingyenes)</option>
+        <option value="elevenlabs">ElevenLabs AI Hang (Prémium API)</option>
+      </select>
+
+      <div id="elevenlabs-inputs" class="hidden">
+        <input type="password" id="api-key" placeholder="ElevenLabs API Kulcs" autocomplete="off" />
+        <input type="text" id="voice-id" placeholder="Voice ID (pl. pNInz6obpgDQGcFmaJgB)" autocomplete="off" />
+      </div>
+    </div>
+
+    <section id="setup-panel" class="setup-panel">
+      <label for="wish-input">Milyen mesét szeretnél?</label>
+      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. egy kis róka a Varázserdőben…"></textarea>
+
+      <div class="setup-row">
+        <label class="inline">
+          Hangulat
+          <select id="mood-select">
+            <option value="vidam">Vidám</option>
+            <option value="kalandos">Kalandos</option>
+            <option value="mesés" selected>Mesés</option>
+          </select>
+        </label>
+        <label class="inline">
+          Hős neve
+          <input type="text" id="hero-name" maxlength="40" placeholder="opcionális" />
+        </label>
+      </div>
+
+      <div class="audio-controls">
+        <button type="button" id="btn-start">Induljon a mese</button>
+        <button type="button" id="btn-surprise" class="secondary-btn">Meglepetés mese</button>
+      </div>
+    </section>
+
+    <section id="story-panel" class="hidden">
+      <p class="chapter-label" id="chapter-label">1. fejezet</p>
+      <h2 class="story-title" id="story-title">A te meséd</h2>
+      <div id="story-text" class="story-box">Töltés...</div>
+
+      <div class="audio-controls">
+        <button type="button" id="btn-speak">🔊 Újraolvasás</button>
+        <button type="button" id="btn-stop">⏹️ Leállítás</button>
+        <button type="button" id="btn-new" class="secondary-btn">Új mese</button>
+      </div>
+
+      <div id="choices-container" class="choices"></div>
+
+      <div class="footer-actions">
+        <button type="button" id="btn-download" class="secondary-btn">Mese mentése</button>
+        <button type="button" id="btn-finish" class="secondary-btn">Mesét lezárom mára</button>
+      </div>
+    </section>
   </div>
-
-  <header class="topbar">
-    <a class="brand" href="#" id="brand-home" aria-label="Mesehang kezdőlap">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">Mesehang</span>
-    </a>
-    <button type="button" class="ghost-btn" id="btn-new-story" hidden>Új mese</button>
-  </header>
-
-  <main>
-    <!-- Kezdő képernyő -->
-    <section id="screen-welcome" class="screen screen-welcome is-active" aria-labelledby="welcome-title">
-      <div class="welcome-copy">
-        <p class="eyebrow">Interaktív mesekészítő</p>
-        <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
-        <p class="lede">Mondd el, milyen mesét szeretnél — vagy kérj meglepetést. A mese korlátlanul folytatható: minden választás új fejezetet sző.</p>
-      </div>
-
-      <form id="wish-form" class="wish-panel" autocomplete="off">
-        <label for="wish-input" class="wish-label">Milyen mesét szeretnél?</label>
-        <div class="wish-row">
-          <textarea
-            id="wish-input"
-            name="wish"
-            rows="3"
-            maxlength="400"
-            placeholder="Pl. egy bátor kislány és egy beszélő róka kalandja az erdőben…"
-            required
-          ></textarea>
-          <button type="button" class="mic-btn" id="btn-mic" aria-pressed="false" title="Hangbemondás">
-            <span class="mic-icon" aria-hidden="true"></span>
-            <span class="sr-only">Hangbemondás indítása</span>
-          </button>
-        </div>
-        <p class="mic-status" id="mic-status" role="status" aria-live="polite"></p>
-
-        <div class="tune-row">
-          <fieldset class="tune">
-            <legend>Hangulat</legend>
-            <label><input type="radio" name="mood" value="vidam" checked /> Vidám</label>
-            <label><input type="radio" name="mood" value="kalandos" /> Kalandos</label>
-            <label><input type="radio" name="mood" value="mesés" /> Mesés</label>
-          </fieldset>
-          <label class="hero-name">
-            <span>Hős neve (opcionális)</span>
-            <input type="text" id="hero-name" maxlength="40" placeholder="pl. Lili" />
-          </label>
-        </div>
-
-        <details class="voice-settings" id="voice-settings">
-          <summary>ElevenLabs hang (AI felolvasó)</summary>
-          <div class="openai-fields" style="display:grid;margin-top:0.75rem">
-            <label class="hero-name">
-              <span>ElevenLabs API kulcs</span>
-              <input type="password" id="eleven-api-key" maxlength="200" placeholder="xi-..." autocomplete="off" />
-            </label>
-            <label class="hero-name">
-              <span>Voice ID (férfi mesélő)</span>
-              <input type="text" id="eleven-voice-id" maxlength="80" placeholder="pNInz6obpgDQGcFmaJgB" autocomplete="off" />
-            </label>
-            <p class="voice-hint">
-              A legszebb magyar mesélőhanghoz ElevenLabs kell.
-              Ha nincs kulcs / hiba van, automatikusan a böngészős hangra vált.
-              <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">API kulcs</a>
-              · alap Voice ID: Adam (férfi)
-            </p>
-          </div>
-        </details>
-
-        <div class="cta-row">
-          <button type="submit" class="primary-btn" id="btn-start">
-            Induljon a mese
-          </button>
-          <button type="button" class="ghost-btn" id="btn-surprise">Meglepetés mese</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- Mese képernyő -->
-    <section id="screen-story" class="screen screen-story" aria-labelledby="story-title" hidden>
-      <div class="story-meta">
-        <p class="chapter-label" id="chapter-label">1. fejezet</p>
-        <h2 id="story-title" class="story-title">A te meséd</h2>
-      </div>
-
-      <article class="story-page" id="story-page">
-        <p id="story-text" class="story-text"></p>
-      </article>
-
-      <div class="narrator-bar">
-        <button type="button" class="icon-btn" id="btn-speak" aria-pressed="false" title="Felolvasás">
-          <span class="speak-icon" aria-hidden="true"></span>
-          <span id="speak-label">Felolvasás</span>
-        </button>
-        <button type="button" class="icon-btn" id="btn-stop-speak" hidden title="Megállítás">
-          Megállítás
-        </button>
-      </div>
-
-      <div class="choices" id="choices" role="group" aria-label="Választások"></div>
-
-      <div class="story-actions" id="story-actions" hidden>
-        <button type="button" class="ghost-btn" id="btn-download">Mese mentése</button>
-        <button type="button" class="ghost-btn" id="btn-finish">Mesét lezárom mára</button>
-      </div>
-
-      <div class="ending-actions" id="ending-actions" hidden>
-        <button type="button" class="primary-btn" id="btn-restart">Új mese</button>
-        <button type="button" class="ghost-btn" id="btn-download-end">Mese mentése</button>
-        <button type="button" class="ghost-btn" id="btn-continue-forever">Mégis folytatom</button>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <p>Mesehang — hanggal induló, választásokkal szőtt mesék</p>
-  </footer>
 
   <script src="story-engine.js"></script>
   <script src="app.js"></script>

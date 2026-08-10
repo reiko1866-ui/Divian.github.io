@@ -193,20 +193,20 @@
   function moodFlavor(mood) {
     if (mood === "vidam") {
       return {
-        light: "nevetés, csillogás és játékos zene",
+        light: "nevetéssel, csillogással és játékos zenével",
         verb: "vidáman",
         ending: "és a nap oly fényesen ért véget, hogy még a csillagok is tapsikolni látszottak",
       };
     }
     if (mood === "kalandos") {
       return {
-        light: "bátorság, dobogó szív és nagy lélegzetek",
+        light: "bátorsággal, dobogó szívvel és nagy lélegzetekkel",
         verb: "merészen",
         ending: "és ${hero} nevét sokáig emlegették a kalandok között",
       };
     }
     return {
-      light: "csoda, lágy fény és halk dallam",
+      light: "csodával, lágy fénnyel és halk dallammal",
       verb: "csodálkozva",
       ending: "és a csoda még hosszú ideig ott ragyogott a szívekben",
     };
@@ -259,7 +259,7 @@ Először senki sem mozdult. Aztán a ${compShort} elkezdett egy egyszerű, vid�
       journey: {
         start: `${pick(openings)} ${wishLine}
 
-${hero} elindult hazafelé, mert napnyugta előtt szeretett volna visszaérni. Az út először könnyűnek tűnt, tele volt ${mood.light} jeleivel. Útközben csatlakozott hozzá ${companion}. „Ismerem a rövidebb ösvényt” — mondta a ${compShort}. De ahogy mélyebbre értek, ${threat} árnyéka ráborult a tájra, és a megszokott jelek eltűntek. Valahol előttük mégis várt rájuk ${wonder}.`,
+${hero} elindult hazafelé, mert napnyugta előtt szeretett volna visszaérni. Az út először könnyűnek tűnt, tele volt ${mood.light}. Útközben csatlakozott hozzá ${companion}. „Ismerem a rövidebb ösvényt” — mondta a ${compShort}. De ahogy mélyebbre értek, ${threat} árnyéka ráborult a tájra, és a megszokott jelek eltűntek. Valahol előttük mégis várt rájuk ${wonder}.`,
         midA: `Mentek, mendegéltek. A fák között fényjáték táncolt, a porban apró lábnyomok meséltek korábbi vándorokról. ${hero} néha megállt, hogy meghallgassa a csendet.
 
 A ${compShort} egyszerre megmerevedett. „Hallod? ${threat} közelít.” A levegő hűvösebb lett, a színek elhalványultak. Mégis, a távolban ${wonder} gyengéd ragyogása mutatta az irányt, mintha azt súgná: ne add fel, még nincs vége a mesének.`,

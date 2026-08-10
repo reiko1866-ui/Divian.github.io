@@ -65,46 +65,6 @@
           </label>
         </div>
 
-        <details class="voice-settings" id="voice-settings">
-          <summary>Hang beállítások</summary>
-          <fieldset class="tune voice-engine">
-            <legend>Mesélő hang</legend>
-            <label>
-              <input type="radio" name="voice-engine" value="browser" checked />
-              Böngésző hang (ingyenes, férfi ha elérhető)
-            </label>
-            <label>
-              <input type="radio" name="voice-engine" value="openai" />
-              Disney-s férfi mesélő (OpenAI)
-            </label>
-          </fieldset>
-          <div class="openai-fields" id="openai-fields" hidden>
-            <label class="hero-name">
-              <span>OpenAI API kulcs</span>
-              <input type="password" id="openai-key" maxlength="200" placeholder="sk-..." autocomplete="off" />
-            </label>
-            <label class="hero-name">
-              <span>Férfi hangszín</span>
-              <select id="openai-voice">
-                <option value="onyx" selected>Onyx — mély férfi mesélő</option>
-                <option value="echo">Echo — tiszta férfi</option>
-                <option value="ash">Ash — modern férfi</option>
-                <option value="fable">Fable — mesés, meleg</option>
-              </select>
-            </label>
-            <p class="voice-hint">
-              Ez adja a leginkább Disney-s, természetes férfi mesélőhangot.
-              A kulcs csak a te böngésződben marad.
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API kulcs kérése</a>
-            </p>
-          </div>
-          <p class="voice-hint" id="browser-voice-hint">
-            Ingyenes tipp: nyisd meg <strong>Microsoft Edge</strong>-ben — ott van magyar férfi
-            <strong>Tamás</strong> neural hang. Chrome gyakran csak női hangot ad.
-          </p>
-          <p class="voice-hint" id="active-voice-label"></p>
-        </details>
-
         <div class="cta-row">
           <button type="submit" class="primary-btn" id="btn-start">
             Induljon a mese

@@ -31,7 +31,7 @@
       <div class="welcome-copy">
         <p class="eyebrow">Interaktív mesekészítő</p>
         <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
-        <p class="lede">Mondd el hangosan vagy írd be, milyen mesét szeretnél — vagy kérj meglepetés témát. A mesélő hang népmese-tempóban olvassa fel, halk zenével.</p>
+        <p class="lede">Mondd el hangosan vagy írd be, milyen mesét szeretnél — vagy kérj meglepetés témát. Aztán együtt döntünk a folytatásról.</p>
       </div>
 
       <form id="wish-form" class="wish-panel" autocomplete="off">
@@ -65,6 +65,44 @@
           </label>
         </div>
 
+        <details class="voice-settings" id="voice-settings">
+          <summary>Hang beállítások</summary>
+          <fieldset class="tune voice-engine">
+            <legend>Mesélő hang</legend>
+            <label>
+              <input type="radio" name="voice-engine" value="browser" checked />
+              Böngésző hang (ingyenes)
+            </label>
+            <label>
+              <input type="radio" name="voice-engine" value="openai" />
+              Szép AI mesélőhang (OpenAI)
+            </label>
+          </fieldset>
+          <div class="openai-fields" id="openai-fields" hidden>
+            <label class="hero-name">
+              <span>OpenAI API kulcs</span>
+              <input type="password" id="openai-key" maxlength="200" placeholder="sk-..." autocomplete="off" />
+            </label>
+            <label class="hero-name">
+              <span>Hangszín</span>
+              <select id="openai-voice">
+                <option value="onyx" selected>Onyx — mély mesélő</option>
+                <option value="fable">Fable — meleg, mesés</option>
+                <option value="echo">Echo — tiszta</option>
+                <option value="nova">Nova — világos</option>
+              </select>
+            </label>
+            <p class="voice-hint">
+              Ez adja a YouTube-os népmesékhez hasonló, természetes hangot.
+              A kulcs csak a te böngésződben marad.
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API kulcs kérése</a>
+            </p>
+          </div>
+          <p class="voice-hint" id="browser-voice-hint">
+            Ingyenes tipp: <strong>Microsoft Edge</strong> böngészőben a magyar „Tamás” neural hang sokkal szebb, mint Chrome-ban.
+          </p>
+        </details>
+
         <div class="cta-row">
           <button type="submit" class="primary-btn" id="btn-start">
             Induljon a mese
@@ -88,7 +126,7 @@
       <div class="narrator-bar">
         <button type="button" class="icon-btn" id="btn-speak" aria-pressed="false" title="Felolvasás">
           <span class="speak-icon" aria-hidden="true"></span>
-          <span id="speak-label">Mesélő hang</span>
+          <span id="speak-label">Felolvasás</span>
         </button>
         <button type="button" class="icon-btn" id="btn-stop-speak" hidden title="Megállítás">
           Megállítás

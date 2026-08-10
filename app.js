@@ -239,135 +239,77 @@
     }
   });
 
-  /* ----- Soft folk-like underlay (mint a régi mesevideók zenéje) ----- */
-  let musicCtx = null;
-  let musicNodes = [];
-  let musicGain = null;
+  /* ----- Voice settings + clean narration ----- */
+  const openaiFields = $("openai-fields");
+  const openaiKeyInput = $("openai-key");
+  const openaiVoiceSelect = $("openai-voice");
+  const browserVoiceHint = $("browser-voice-hint");
+  const STORAGE_KEY = "mesehang-openai-key";
+  const STORAGE_VOICE = "mesehang-openai-voice";
+  const STORAGE_ENGINE = "mesehang-voice-engine";
 
-  function ensureMusicCtx() {
-    if (musicCtx) return musicCtx;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    musicCtx = new AC();
-    return musicCtx;
+  let activeAudio = null;
+  let activeAudioUrl = null;
+
+  function selectedVoiceEngine() {
+    const el = document.querySelector('input[name="voice-engine"]:checked');
+    return el ? el.value : "browser";
   }
 
-  function startStoryMusic() {
-    const ctx = ensureMusicCtx();
-    if (!ctx) return;
-    stopStoryMusic(false);
-    if (ctx.state === "suspended") ctx.resume();
-
-    musicGain = ctx.createGain();
-    musicGain.gain.value = 0.0001;
-    musicGain.connect(ctx.destination);
-    musicGain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 1.2);
-
-    // Warm drone + soft fifth — old tale / folk feel
-    const freqs = [110, 164.81, 220, 329.63];
-    musicNodes = freqs.map((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      osc.type = i % 2 === 0 ? "sine" : "triangle";
-      osc.frequency.value = freq;
-      filter.type = "lowpass";
-      filter.frequency.value = 700;
-      g.gain.value = i === 0 ? 0.35 : 0.12;
-      osc.connect(filter);
-      filter.connect(g);
-      g.connect(musicGain);
-      osc.start();
-      return { osc, g, filter };
-    });
-
-    // Occasional soft pluck, like distant citera
-    const pluck = () => {
-      if (!musicCtx || !musicGain) return;
-      const o = musicCtx.createOscillator();
-      const g = musicCtx.createGain();
-      o.type = "sine";
-      o.frequency.value = pickQuiet([330, 392, 440, 494]);
-      g.gain.value = 0.0001;
-      o.connect(g);
-      g.connect(musicGain);
-      const t = musicCtx.currentTime;
-      g.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
-      o.start(t);
-      o.stop(t + 1.5);
-    };
-    musicNodes.pluckTimer = setInterval(pluck, 3200);
-    setTimeout(pluck, 400);
+  function syncVoiceSettingsUi() {
+    const engine = selectedVoiceEngine();
+    openaiFields.hidden = engine !== "openai";
+    browserVoiceHint.hidden = engine !== "browser";
   }
 
-  function pickQuiet(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
-
-  function stopStoryMusic(fade = true) {
-    if (musicNodes && musicNodes.pluckTimer) {
-      clearInterval(musicNodes.pluckTimer);
-    }
-    if (!musicCtx || !musicGain) {
-      musicNodes = [];
-      musicGain = null;
-      return;
-    }
-    const ctx = musicCtx;
-    const gain = musicGain;
-    const nodes = musicNodes;
-    musicNodes = [];
-    musicGain = null;
+  function loadSavedVoiceSettings() {
     try {
-      if (fade) {
-        gain.gain.cancelScheduledValues(ctx.currentTime);
-        gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
-        setTimeout(() => {
-          nodes.forEach((n) => {
-            try {
-              n.osc.stop();
-            } catch (_) {
-              /* ignore */
-            }
-          });
-          try {
-            gain.disconnect();
-          } catch (_) {
-            /* ignore */
-          }
-        }, 900);
-      } else {
-        nodes.forEach((n) => {
-          try {
-            n.osc.stop();
-          } catch (_) {
-            /* ignore */
-          }
-        });
-        gain.disconnect();
+      const key = localStorage.getItem(STORAGE_KEY) || "";
+      const voice = localStorage.getItem(STORAGE_VOICE) || "onyx";
+      const engine = localStorage.getItem(STORAGE_ENGINE) || "browser";
+      openaiKeyInput.value = key;
+      if ([...openaiVoiceSelect.options].some((o) => o.value === voice)) {
+        openaiVoiceSelect.value = voice;
       }
+      const radio = document.querySelector(`input[name="voice-engine"][value="${engine}"]`);
+      if (radio) radio.checked = true;
+    } catch (_) {
+      /* ignore */
+    }
+    syncVoiceSettingsUi();
+  }
+
+  function saveVoiceSettings() {
+    try {
+      localStorage.setItem(STORAGE_KEY, openaiKeyInput.value.trim());
+      localStorage.setItem(STORAGE_VOICE, openaiVoiceSelect.value);
+      localStorage.setItem(STORAGE_ENGINE, selectedVoiceEngine());
     } catch (_) {
       /* ignore */
     }
   }
 
-  /* ----- Speech: népmese-mesélő tempó + természetesebb magyar TTS ----- */
+  document.querySelectorAll('input[name="voice-engine"]').forEach((el) => {
+    el.addEventListener("change", () => {
+      syncVoiceSettingsUi();
+      saveVoiceSettings();
+    });
+  });
+  openaiKeyInput.addEventListener("change", saveVoiceSettings);
+  openaiVoiceSelect.addEventListener("change", saveVoiceSettings);
+
   function scoreVoice(voice) {
     const name = voice.name.toLowerCase();
     const lang = (voice.lang || "").toLowerCase();
     let score = 0;
-    if (lang.startsWith("hu")) score += 100;
+    if (lang.startsWith("hu")) score += 120;
     if (/hungarian|magyar/.test(name)) score += 80;
-    // Prefer mature male storyteller voices (népmese feel)
-    if (/szabolcs|balint|bálint|istvan|istván|tamas|tamás|laszlo|lászló|male|férfi|ferfi/.test(name)) {
-      score += 55;
-    }
-    if (/natural|neural|online|google|premium|enhanced|wavenet|studio|neural2/.test(name)) score += 35;
-    // Soften / avoid childish or harsh voices
-    if (/female|női|noi|zira|susan|samantha|girl|child|kids/.test(name)) score -= 25;
-    if (/compact|eloquence|novelty|whisper|zarvox|bad|robot/.test(name)) score -= 40;
+    // Edge neural Hungarian storyteller voices
+    if (/tamás|tamas/.test(name)) score += 70;
+    if (/noémi|noemi/.test(name)) score += 40;
+    if (/natural|neural|online|google|premium|enhanced|wavenet|studio/.test(name)) score += 45;
+    if (/microsoft/.test(name)) score += 15;
+    if (/compact|eloquence|novelty|robot|espeak/.test(name)) score -= 50;
     return score;
   }
 
@@ -379,9 +321,8 @@
     }
     const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
     hungarianVoice =
-      ranked.find((v) => scoreVoice(v) >= 100) ||
       ranked.find((v) => (v.lang || "").toLowerCase().startsWith("hu")) ||
-      ranked[0] ||
+      ranked.find((v) => scoreVoice(v) >= 80) ||
       null;
   }
 
@@ -394,7 +335,7 @@
     speaking = active;
     btnSpeak.classList.toggle("is-active", active);
     btnSpeak.setAttribute("aria-pressed", active ? "true" : "false");
-    speakLabel.textContent = active ? "Mesélés…" : "Mesélő hang";
+    speakLabel.textContent = active ? "Felolvasás…" : "Felolvasás";
     btnStopSpeak.hidden = !active;
   }
 
@@ -405,8 +346,6 @@
     }
   }
 
-  let activeAudio = null;
-
   function stopSpeak() {
     speakGeneration += 1;
     speakQueue = [];
@@ -414,11 +353,16 @@
     if (activeAudio) {
       try {
         activeAudio.pause();
-        activeAudio.src = "";
+        activeAudio.removeAttribute("src");
+        activeAudio.load();
       } catch (_) {
         /* ignore */
       }
       activeAudio = null;
+    }
+    if (activeAudioUrl) {
+      URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
     }
     if (window.speechSynthesis) {
       speechSynthesis.cancel();
@@ -428,7 +372,6 @@
         /* ignore */
       }
     }
-    stopStoryMusic(true);
     setSpeakingUi(false);
   }
 
@@ -436,120 +379,46 @@
     return String(text || "")
       .replace(/[„”"«»]/g, "")
       .replace(/[–—]/g, ", ")
-      .replace(/\s*;\s*/g, ". ")
-      .replace(/\s*:\s*/g, ", ")
-      .replace(/\s*!\s*/g, ". ")
-      .replace(/\s*\?\s*/g, ". ")
-      .replace(/\(\s*/g, ", ")
-      .replace(/\s*\)/g, ",")
       .replace(/\s{2,}/g, " ")
-      .replace(/\s+([,.])/g, "$1")
       .trim();
   }
 
+  /** Natural sentence chunks — no artificial pitch/speed mangling. */
   function splitSpeechChunks(text) {
     const prepared = prepareForSpeech(text);
-    const rough = prepared
-      .split(/(?<=[.!?])\s+|\n+/)
+    return prepared
+      .split(/(?<=[.!?])\s+/)
       .map((s) => s.trim())
       .filter(Boolean);
-
-    const chunks = [];
-    rough.forEach((sentence) => {
-      // Keep chunks shorter for smoother oral cadence + Google TTS limits
-      if (sentence.length <= 110) {
-        chunks.push(sentence);
-        return;
-      }
-      const parts = sentence.split(/(?<=,)\s+/);
-      let buf = "";
-      parts.forEach((part) => {
-        if ((buf + " " + part).trim().length > 95 && buf) {
-          chunks.push(buf.trim());
-          buf = part;
-        } else {
-          buf = (buf ? buf + " " : "") + part;
-        }
-      });
-      if (buf.trim()) chunks.push(buf.trim());
-    });
-    return chunks;
   }
 
-  function pauseMsForChunk(chunk, isLast) {
-    if (isLast) return 350;
-    if (/[.]$/.test(chunk)) return 650;
-    if (/,$/.test(chunk)) return 320;
-    return 480;
-  }
-
-  function googleTtsUrl(text) {
-    return (
-      "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=hu&q=" +
-      encodeURIComponent(text)
-    );
-  }
-
-  function playGoogleChunk(chunk, generation) {
-    return new Promise((resolve, reject) => {
-      if (generation !== speakGeneration) {
-        resolve(false);
-        return;
-      }
-      const audio = new Audio();
-      activeAudio = audio;
-      audio.src = googleTtsUrl(chunk);
-      audio.preload = "auto";
-      // Slightly slower playback ≈ warmer folk narrator
-      audio.playbackRate = 0.92;
-      audio.onended = () => {
-        if (activeAudio === audio) activeAudio = null;
-        resolve(true);
-      };
-      audio.onerror = () => {
-        if (activeAudio === audio) activeAudio = null;
-        reject(new Error("tts-audio-failed"));
-      };
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.then === "function") {
-        playPromise.catch(reject);
-      }
-    });
-  }
-
-  async function speakWithGoogle(chunks, generation) {
-    for (let i = 0; i < chunks.length; i += 1) {
-      if (generation !== speakGeneration) return true;
-      setSpeakingUi(true);
-      try {
-        await playGoogleChunk(chunks[i], generation);
-      } catch (_) {
-        return false;
-      }
-      if (generation !== speakGeneration) return true;
-      const wait = pauseMsForChunk(chunks[i], i === chunks.length - 1);
-      if (wait) await new Promise((r) => setTimeout(r, wait));
+  function speakWithBrowser(text, generation) {
+    if (!window.speechSynthesis) {
+      micStatus.textContent = "A felolvasás nem elérhető ebben a böngészőben. Próbáld Edge-dzsel vagy OpenAI hanggal.";
+      setSpeakingUi(false);
+      return;
     }
-    return true;
-  }
-
-  function speakWithBrowser(chunks, generation) {
+    loadVoices();
+    const chunks = splitSpeechChunks(text);
+    if (!chunks.length) {
+      setSpeakingUi(false);
+      return;
+    }
     speakQueue = chunks.slice();
+
     const speakNext = () => {
       if (generation !== speakGeneration) return;
       if (!speakQueue.length) {
         clearSpeakKeepAlive();
-        stopStoryMusic(true);
         setSpeakingUi(false);
         return;
       }
       const chunk = speakQueue.shift();
-      const isLast = speakQueue.length === 0;
       const utter = new SpeechSynthesisUtterance(chunk);
       utter.lang = (hungarianVoice && hungarianVoice.lang) || "hu-HU";
-      // Slow, low, grandfatherly népmese narrator
-      utter.rate = 0.78;
-      utter.pitch = 0.82;
+      // Clean defaults — no pitch twisting
+      utter.rate = 0.96;
+      utter.pitch = 1;
       utter.volume = 1;
       if (hungarianVoice) utter.voice = hungarianVoice;
 
@@ -562,47 +431,108 @@
             clearSpeakKeepAlive();
             return;
           }
-          if (speechSynthesis.speaking) speechSynthesis.resume();
-        }, 8000);
+          if (speechSynthesis.speaking && speechSynthesis.paused) {
+            speechSynthesis.resume();
+          }
+        }, 10000);
       };
       utter.onend = () => {
         if (generation !== speakGeneration) return;
-        const wait = pauseMsForChunk(chunk, isLast);
-        setTimeout(speakNext, wait);
+        setTimeout(speakNext, 180);
       };
       utter.onerror = () => {
         if (generation !== speakGeneration) return;
-        setTimeout(speakNext, 150);
+        setTimeout(speakNext, 120);
       };
       speechSynthesis.speak(utter);
     };
+
     speakNext();
+  }
+
+  async function speakWithOpenAI(text, generation) {
+    const key = openaiKeyInput.value.trim();
+    if (!key) {
+      micStatus.textContent = "Add meg az OpenAI API kulcsot a Hang beállításokban.";
+      const panel = $("voice-settings");
+      if (panel) panel.open = true;
+      setSpeakingUi(false);
+      return false;
+    }
+
+    setSpeakingUi(true);
+    try {
+      const res = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1-hd",
+          voice: openaiVoiceSelect.value || "onyx",
+          input: prepareForSpeech(text),
+          speed: 0.95,
+        }),
+      });
+
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const err = await res.json();
+          detail = err.error && err.error.message ? err.error.message : "";
+        } catch (_) {
+          /* ignore */
+        }
+        throw new Error(detail || `OpenAI hiba (${res.status})`);
+      }
+
+      if (generation !== speakGeneration) return true;
+
+      const blob = await res.blob();
+      if (generation !== speakGeneration) return true;
+
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(activeAudioUrl);
+      activeAudio = audio;
+
+      await new Promise((resolve, reject) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => reject(new Error("Audio lejátszás sikertelen"));
+        const p = audio.play();
+        if (p && typeof p.then === "function") p.catch(reject);
+      });
+
+      if (generation === speakGeneration) setSpeakingUi(false);
+      return true;
+    } catch (err) {
+      if (generation !== speakGeneration) return true;
+      setSpeakingUi(false);
+      micStatus.textContent =
+        "OpenAI hang nem sikerült: " +
+        (err && err.message ? err.message : "ismeretlen hiba") +
+        " — visszaállok böngésző hangra.";
+      return false;
+    }
   }
 
   async function speakText(text) {
     stopSpeak();
-    loadVoices();
-    const chunks = splitSpeechChunks(text);
-    if (!chunks.length) return;
+    saveVoiceSettings();
     const generation = speakGeneration;
-    startStoryMusic();
-    setSpeakingUi(true);
+    const engine = selectedVoiceEngine();
 
-    // Prefer warmer online Hungarian TTS when available; fallback to browser voice
-    const ok = await speakWithGoogle(chunks, generation);
-    if (generation !== speakGeneration) return;
-    if (ok) {
-      stopStoryMusic(true);
-      setSpeakingUi(false);
+    if (engine === "openai") {
+      const ok = await speakWithOpenAI(text, generation);
+      if (generation !== speakGeneration) return;
+      if (ok) return;
+      // Fallback if key/network fails
+      speakWithBrowser(text, generation);
       return;
     }
-    if (!window.speechSynthesis) {
-      stopStoryMusic(true);
-      setSpeakingUi(false);
-      micStatus.textContent = "A felolvasás most nem elérhető. Próbáld Chrome-ban.";
-      return;
-    }
-    speakWithBrowser(chunks, generation);
+
+    speakWithBrowser(text, generation);
   }
 
   function maybeAutoSpeak() {
@@ -624,6 +554,7 @@
 
   btnStopSpeak.addEventListener("click", stopSpeak);
 
+  loadSavedVoiceSettings();
   initRecognition();
   showWelcome();
 })();

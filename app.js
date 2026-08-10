@@ -244,6 +244,7 @@
   const openaiKeyInput = $("openai-key");
   const openaiVoiceSelect = $("openai-voice");
   const browserVoiceHint = $("browser-voice-hint");
+  const activeVoiceLabel = $("active-voice-label");
   const STORAGE_KEY = "mesehang-openai-key";
   const STORAGE_VOICE = "mesehang-openai-voice";
   const STORAGE_ENGINE = "mesehang-voice-engine";
@@ -260,6 +261,22 @@
     const engine = selectedVoiceEngine();
     openaiFields.hidden = engine !== "openai";
     browserVoiceHint.hidden = engine !== "browser";
+    updateActiveVoiceLabel();
+  }
+
+  function updateActiveVoiceLabel() {
+    if (!activeVoiceLabel) return;
+    if (selectedVoiceEngine() === "openai") {
+      activeVoiceLabel.textContent =
+        "Aktív: OpenAI férfi mesélő (" + (openaiVoiceSelect.value || "onyx") + ")";
+      return;
+    }
+    if (hungarianVoice) {
+      activeVoiceLabel.textContent = "Aktív böngészőhang: " + hungarianVoice.name;
+    } else {
+      activeVoiceLabel.textContent =
+        "Aktív böngészőhang: nem találtam magyar férfi hangot — Edge ajánlott, vagy OpenAI.";
+    }
   }
 
   function loadSavedVoiceSettings() {
@@ -270,6 +287,8 @@
       openaiKeyInput.value = key;
       if ([...openaiVoiceSelect.options].some((o) => o.value === voice)) {
         openaiVoiceSelect.value = voice;
+      } else {
+        openaiVoiceSelect.value = "onyx";
       }
       const radio = document.querySelector(`input[name="voice-engine"][value="${engine}"]`);
       if (radio) radio.checked = true;
@@ -282,7 +301,7 @@
   function saveVoiceSettings() {
     try {
       localStorage.setItem(STORAGE_KEY, openaiKeyInput.value.trim());
-      localStorage.setItem(STORAGE_VOICE, openaiVoiceSelect.value);
+      localStorage.setItem(STORAGE_VOICE, openaiVoiceSelect.value || "onyx");
       localStorage.setItem(STORAGE_ENGINE, selectedVoiceEngine());
     } catch (_) {
       /* ignore */
@@ -296,18 +315,33 @@
     });
   });
   openaiKeyInput.addEventListener("change", saveVoiceSettings);
-  openaiVoiceSelect.addEventListener("change", saveVoiceSettings);
+  openaiVoiceSelect.addEventListener("change", () => {
+    saveVoiceSettings();
+    updateActiveVoiceLabel();
+  });
+
+  function isFemaleVoiceName(name) {
+    return /női|noi|female|woman|girl|noémi|noemi|szilvia|susan|zira|samantha|karen|moira|fiona|victoria|linda|heather|sara|anna|maria|katy|nora|nora\b/.test(
+      name
+    );
+  }
+
+  function isMaleVoiceName(name) {
+    return /férfi|ferfi|male|man|boy|tamás|tamas|szabolcs|bálint|balint|istván|istvan|lászló|laszlo|péter|peter|gabor|gábor|david|daniel|mark|paul|george|james|onyx|echo|ash/.test(
+      name
+    );
+  }
 
   function scoreVoice(voice) {
     const name = voice.name.toLowerCase();
     const lang = (voice.lang || "").toLowerCase();
     let score = 0;
     if (lang.startsWith("hu")) score += 120;
-    if (/hungarian|magyar/.test(name)) score += 80;
-    // Edge neural Hungarian storyteller voices
-    if (/tamás|tamas/.test(name)) score += 70;
-    if (/noémi|noemi/.test(name)) score += 40;
-    if (/natural|neural|online|google|premium|enhanced|wavenet|studio/.test(name)) score += 45;
+    if (/hungarian|magyar/.test(name)) score += 60;
+    if (isMaleVoiceName(name)) score += 90;
+    if (isFemaleVoiceName(name)) score -= 120;
+    if (/tamás|tamas/.test(name)) score += 80;
+    if (/natural|neural|online|premium|enhanced|wavenet|studio/.test(name)) score += 40;
     if (/microsoft/.test(name)) score += 15;
     if (/compact|eloquence|novelty|robot|espeak/.test(name)) score -= 50;
     return score;
@@ -317,13 +351,25 @@
     const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
     if (!voices.length) {
       hungarianVoice = null;
+      updateActiveVoiceLabel();
       return;
     }
-    const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
+    const maleHu = hu.filter((v) => isMaleVoiceName(v.name.toLowerCase()) && !isFemaleVoiceName(v.name.toLowerCase()));
+    const rankedHu = [...hu].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    const rankedAll = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+
     hungarianVoice =
-      ranked.find((v) => (v.lang || "").toLowerCase().startsWith("hu")) ||
-      ranked.find((v) => scoreVoice(v) >= 80) ||
+      maleHu.sort((a, b) => scoreVoice(b) - scoreVoice(a))[0] ||
+      rankedHu.find((v) => !isFemaleVoiceName(v.name.toLowerCase())) ||
+      rankedAll.find((v) => isMaleVoiceName(v.name.toLowerCase()) && (v.lang || "").toLowerCase().startsWith("hu")) ||
       null;
+
+    // Last resort: any Hungarian (may be female) — but warn via label
+    if (!hungarianVoice && rankedHu[0]) {
+      hungarianVoice = rankedHu[0];
+    }
+    updateActiveVoiceLabel();
   }
 
   if (window.speechSynthesis) {
@@ -416,9 +462,9 @@
       const chunk = speakQueue.shift();
       const utter = new SpeechSynthesisUtterance(chunk);
       utter.lang = (hungarianVoice && hungarianVoice.lang) || "hu-HU";
-      // Clean defaults — no pitch twisting
-      utter.rate = 0.96;
-      utter.pitch = 1;
+      // Warm male storyteller: natural pace, never raise pitch into "női" territory
+      utter.rate = 0.94;
+      utter.pitch = hungarianVoice && isFemaleVoiceName(hungarianVoice.name.toLowerCase()) ? 0.75 : 0.92;
       utter.volume = 1;
       if (hungarianVoice) utter.voice = hungarianVoice;
 
@@ -461,20 +507,36 @@
     }
 
     setSpeakingUi(true);
-    try {
+    const voice = openaiVoiceSelect.value || "onyx";
+    const input = prepareForSpeech(text);
+    const disneyInstructions =
+      "Speak as a warm adult male Disney fairy-tale narrator. Deep, kind, expressive storytelling voice. Hungarian language. Gentle smile in the tone, cinematic and magical, never robotic, never childlike, never female.";
+
+    async function requestSpeech(model, withInstructions) {
+      const body = {
+        model,
+        voice,
+        input,
+        speed: 0.95,
+      };
+      if (withInstructions) body.instructions = disneyInstructions;
       const res = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "tts-1-hd",
-          voice: openaiVoiceSelect.value || "onyx",
-          input: prepareForSpeech(text),
-          speed: 0.95,
-        }),
+        body: JSON.stringify(body),
       });
+      return res;
+    }
+
+    try {
+      // Prefer gpt-4o-mini-tts for Disney-style male narration instructions
+      let res = await requestSpeech("gpt-4o-mini-tts", true);
+      if (!res.ok) {
+        res = await requestSpeech("tts-1-hd", false);
+      }
 
       if (!res.ok) {
         let detail = "";

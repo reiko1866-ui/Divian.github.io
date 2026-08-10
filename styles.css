@@ -552,6 +552,7 @@ main {
   font-weight: 500;
   line-height: 1.7;
   position: relative;
+  white-space: pre-wrap;
   animation: text-reveal 0.55s ease both;
 }
 

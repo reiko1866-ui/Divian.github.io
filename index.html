@@ -31,7 +31,7 @@
       <div class="welcome-copy">
         <p class="eyebrow">Interaktív mesekészítő</p>
         <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
-        <p class="lede">Mondd el hangosan vagy írd be, milyen mesét szeretnél — vagy kérj meglepetés témát. Aztán együtt döntünk a folytatásról.</p>
+        <p class="lede">Mondd el, milyen mesét szeretnél — vagy kérj meglepetést. Hosszabb, Disney-s kalandok, férfi mesélőhanggal.</p>
       </div>
 
       <form id="wish-form" class="wish-panel" autocomplete="off">
@@ -71,11 +71,11 @@
             <legend>Mesélő hang</legend>
             <label>
               <input type="radio" name="voice-engine" value="browser" checked />
-              Böngésző hang (ingyenes)
+              Böngésző hang (ingyenes, férfi ha elérhető)
             </label>
             <label>
               <input type="radio" name="voice-engine" value="openai" />
-              Szép AI mesélőhang (OpenAI)
+              Disney-s férfi mesélő (OpenAI)
             </label>
           </fieldset>
           <div class="openai-fields" id="openai-fields" hidden>
@@ -84,23 +84,25 @@
               <input type="password" id="openai-key" maxlength="200" placeholder="sk-..." autocomplete="off" />
             </label>
             <label class="hero-name">
-              <span>Hangszín</span>
+              <span>Férfi hangszín</span>
               <select id="openai-voice">
-                <option value="onyx" selected>Onyx — mély mesélő</option>
-                <option value="fable">Fable — meleg, mesés</option>
-                <option value="echo">Echo — tiszta</option>
-                <option value="nova">Nova — világos</option>
+                <option value="onyx" selected>Onyx — mély férfi mesélő</option>
+                <option value="echo">Echo — tiszta férfi</option>
+                <option value="ash">Ash — modern férfi</option>
+                <option value="fable">Fable — mesés, meleg</option>
               </select>
             </label>
             <p class="voice-hint">
-              Ez adja a YouTube-os népmesékhez hasonló, természetes hangot.
+              Ez adja a leginkább Disney-s, természetes férfi mesélőhangot.
               A kulcs csak a te böngésződben marad.
               <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API kulcs kérése</a>
             </p>
           </div>
           <p class="voice-hint" id="browser-voice-hint">
-            Ingyenes tipp: <strong>Microsoft Edge</strong> böngészőben a magyar „Tamás” neural hang sokkal szebb, mint Chrome-ban.
+            Ingyenes tipp: nyisd meg <strong>Microsoft Edge</strong>-ben — ott van magyar férfi
+            <strong>Tamás</strong> neural hang. Chrome gyakran csak női hangot ad.
           </p>
+          <p class="voice-hint" id="active-voice-label"></p>
         </details>
 
         <div class="cta-row">

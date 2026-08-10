@@ -20,13 +20,20 @@
 
       <div id="elevenlabs-inputs" class="hidden">
         <input type="password" id="api-key" placeholder="ElevenLabs API Kulcs" autocomplete="off" />
-        <input type="text" id="voice-id" placeholder="Voice ID (pl. pNInz6obpgDQGcFmaJgB)" autocomplete="off" />
+        <label for="voice-id" style="margin-top:8px">Férfi mesélő Voice ID</label>
+        <select id="voice-id">
+          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — mély férfi</option>
+          <option value="VR6AewLTigWG4xSOukaG">Arnold — erős férfi</option>
+          <option value="TxGEqnHWrfWFTfGW9XjX">Josh — fiatal férfi</option>
+          <option value="ErXwobaYiN019PkySvjV">Antoni — lágy férfi</option>
+        </select>
+        <p style="margin:6px 0 0;opacity:0.75">Csak férfi hangok. Női Voice ID-t ne használj.</p>
       </div>
     </div>
 
     <section id="setup-panel" class="setup-panel">
-      <label for="wish-input">Milyen mesét szeretnél?</label>
-      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. egy kis róka a Varázserdőben…"></textarea>
+      <label for="wish-input">Milyen Disney-stílusú mesét szeretnél?</label>
+      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. Hamupipőke bálja, jégpalota, lámpás három kívánsága, hableány a tengerben…"></textarea>
 
       <div class="setup-row">
         <label class="inline">

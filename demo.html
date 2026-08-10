@@ -203,13 +203,20 @@ button:active {
 
       <div id="elevenlabs-inputs" class="hidden">
         <input type="password" id="api-key" placeholder="ElevenLabs API Kulcs" autocomplete="off" />
-        <input type="text" id="voice-id" placeholder="Voice ID (pl. pNInz6obpgDQGcFmaJgB)" autocomplete="off" />
+        <label for="voice-id" style="margin-top:8px">Férfi mesélő Voice ID</label>
+        <select id="voice-id">
+          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — mély férfi</option>
+          <option value="VR6AewLTigWG4xSOukaG">Arnold — erős férfi</option>
+          <option value="TxGEqnHWrfWFTfGW9XjX">Josh — fiatal férfi</option>
+          <option value="ErXwobaYiN019PkySvjV">Antoni — lágy férfi</option>
+        </select>
+        <p style="margin:6px 0 0;opacity:0.75">Csak férfi hangok. Női Voice ID-t ne használj.</p>
       </div>
     </div>
 
     <section id="setup-panel" class="setup-panel">
-      <label for="wish-input">Milyen mesét szeretnél?</label>
-      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. egy kis róka a Varázserdőben…"></textarea>
+      <label for="wish-input">Milyen Disney-stílusú mesét szeretnél?</label>
+      <textarea id="wish-input" rows="3" maxlength="400" placeholder="Pl. Hamupipőke bálja, jégpalota, lámpás három kívánsága, hableány a tengerben…"></textarea>
 
       <div class="setup-row">
         <label class="inline">
@@ -254,151 +261,220 @@ button:active {
 
   <script>
 /**
- * Mesehang — végtelen, procedurális Disney-s mesék
- * Minden választás új fejezetet sző; a történet korlátlanul folytatható.
+ * Interaktív Mesemondó — klasszikus / Disney-stílusú mesevilágok
+ * Nyilvános népmesék és tündérmesék hangulatából épít eredeti, végtelen kalandokat.
  */
 (function (global) {
   const HEROES = [
-    "Lili", "Máté", "Noé", "Zsófi", "Ábel", "Emma", "Bence", "Anna",
-    "Kata", "Peti", "Dóra", "Tamás", "Réka", "Marci", "Nóra", "Gergő",
+    "Ella", "Ádám", "Nóra", "Bence", "Léna", "Dániel", "Sára", "Máté",
+    "Zsófia", "Kristóf", "Anna", "Gábor",
   ];
 
+  /**
+   * Disney-stílusú világok = klasszikus tündérmese-motívumok
+   * (nem másolunk védett neveket / párbeszédet, hanem a mesevilág hangulatát)
+   */
   const WORLDS = {
-    erdo: {
-      id: "erdo",
-      titleBits: ["A csillagos tisztás", "A beszélő erdő", "A mohaszőnyeg titka", "A tűzlegyek bálja"],
-      places: ["egy ősi erdő mélyén", "egy sűrű bükkerdő szélén", "egy mohás, lámpafényes ösvényen", "egy páfrányos patakparton"],
-      companions: ["egy beszélő róka", "egy gyors mókus", "egy bölcs bagoly", "egy hűséges kutya"],
-      wonders: ["a tűzlegyek körtánca", "egy éneklő patak", "egy holdfényes tisztás", "egy ezüst mohaszőnyeg"],
-      threats: ["egy zavarodott viharlélek", "egy mogorva vaddisznó", "egy irigy holló", "egy álmos ködér"],
-      keywords: ["erdő", "erdo", "fa", "róka", "roka", "mókus", "mokus", "liget", "bagoly"],
+    hamupipoke: {
+      id: "hamupipoke",
+      titleBits: ["A kristálycipellő bálja", "Az éjféli fogadalom", "A tükörtermi ígéret"],
+      places: [
+        "a királyi bálterem aranyló lépcsőjén",
+        "a padlás poros csendjében",
+        "a kastélykert holdfényes sétányán",
+        "a konyha meleg kályhája mellett",
+      ],
+      companions: ["egy ezüstszárnyú tündérkeresztanya", "egy ügyes egérke", "egy hűséges lovászfiú", "egy beszélő kutyus"],
+      wonders: ["egy pár csillogó cipellő", "egy tökből lett hintó", "egy varázspálca-szikra", "egy éjféli óraütés"],
+      threats: ["egy irigy mostoha", "egy gőgös udvaronc", "egy kapzsi intéző", "egy álnok báltermi pletyka"],
+      keywords: ["hamupipőke", "hamupipoke", "cipellő", "cipello", "bál", "bal", "tündér", "tunder", "mostoha", "kastély", "kastely", "herceg"],
+      openingHook: "ahol egyetlen bál megváltoztathatja a sorsot",
     },
-    kastely: {
-      id: "kastely",
-      titleBits: ["A csillárkert", "A báltermi ígéret", "A tükörterem", "A királyi kert"],
-      places: ["egy aranyló kastélykertben", "egy csilláros bálteremben", "egy tükrös folyosón", "egy rózsalugasban"],
-      companions: ["egy udvari egér", "egy beszélő gyertyatartó", "egy kedves szakács", "egy táncoló seprű"],
-      wonders: ["egy lebegő tánczene", "egy virágzó üvegház", "egy kívánságkút", "egy csillár-eső"],
-      threats: ["egy irigy udvaronc", "egy elfeledett átok", "egy kapzsi főminiszter", "egy mogorva kapuőr"],
-      keywords: ["kastély", "kastely", "herceg", "hercegnő", "hercegno", "bál", "bal", "király", "kiraly", "palota"],
+    hofeherke: {
+      id: "hofeherke",
+      titleBits: ["A tükör titka", "A hét barlang dala", "Az erdei menedék"],
+      places: [
+        "a sötét tükrös toronyban",
+        "a hét törpe meleg kunyhójában",
+        "az almafákkal szegélyezett erdei úton",
+        "egy kristálytiszta forrás partján",
+      ],
+      companions: ["egy kedves törpe", "egy erdei őzike", "egy bölcs madárkirály", "egy hűséges bányász"],
+      wonders: ["egy beszélő tükör", "egy piros alma fénye", "egy üvegkoporsó-csillogás", "egy erdei kórus"],
+      threats: ["egy hiú királynő", "egy mérgezett ajándék", "egy vadász, aki habozik", "egy sötét erdei átok"],
+      keywords: ["hófehérke", "hofeherke", "tükör", "tukor", "alma", "törpe", "torpe", "királynő", "kiralyno", "erdő", "erdo"],
+      openingHook: "ahol a tükör mindig az igazságot súgja",
     },
-    tenger: {
-      id: "tenger",
-      titleBits: ["A hullámok dala", "A szigetlámpa", "A delfinek öble", "A kagylószív"],
-      places: ["egy csillogó tengerparton", "egy színes korallöbölben", "egy szeles kikötőben", "egy habos sziklaszirten"],
-      companions: ["egy kíváncsi delfin", "egy éneklő sirály", "egy kedves teknős", "egy apró rákocska"],
-      wonders: ["egy világító korallkert", "egy éneklő hullám", "egy szivárványos permet", "egy kék üvegöböl"],
-      threats: ["egy mohó örvényúr", "egy viharos tengeri király", "egy irigy polip", "egy ködös zátonyőr"],
-      keywords: ["tenger", "óceán", "ocean", "hajó", "hajo", "hal", "delfin", "sziget", "hullám", "hullam"],
+    hableany: {
+      id: "hableany",
+      titleBits: ["A koralltrón dala", "A hang nélküli ígéret", "A hullámok kapuja"],
+      places: [
+        "a korallpalota fényében",
+        "egy hajóroncs ezüstös mélyén",
+        "a habos tengerpart holdfényénél",
+        "egy világító medúzaösvényen",
+      ],
+      companions: ["egy hűséges tropikushal", "egy kedves teknősbébi", "egy éneklő delfin", "egy hajósfiú a parton"],
+      wonders: ["egy elveszett hang", "egy tengeri gyöngy", "egy vihar utáni szivárvány", "egy varázskagyló"],
+      threats: ["egy sötét tengeri boszorkány", "egy kapzsi hajóskapitány", "egy örvénylő mélység", "egy tiltott felszíni törvény"],
+      keywords: ["hableány", "hableany", "sellő", "sello", "tenger", "hang", "kagyló", "kagylo", "korall", "herceg", "óceán", "ocean"],
+      openingHook: "ahol a tenger és a szárazföld egymásba szerelmes",
     },
-    varos: {
-      id: "varos",
-      titleBits: ["A tetőjárók éneke", "A lámpásutcácska", "A zenélő piac", "Az óra torony álma"],
-      places: ["egy lámpafényes utcácskán", "egy zsúfolt piacon", "egy toronyóra tövében", "egy háztetők közti kertben"],
-      companions: ["egy ügyes macska", "egy utcazenész", "egy kis postagalamb", "egy lámpagyújtogató"],
-      wonders: ["egy éjszakai lámpásünnep", "egy lebegő szappanbuborék-felhő", "egy titkos tetőkertecske", "egy zenélő óratorony"],
-      threats: ["egy szigorú őrmester", "egy irigy kereskedő", "egy zord kapuőr", "egy zajos vihar"],
-      keywords: ["város", "varos", "utca", "ház", "haz", "macska", "piac"],
+    lampas: {
+      id: "lampas",
+      titleBits: ["A lámpás három kívánsága", "A bazár titka", "A repülő szőnyeg"],
+      places: [
+        "a zsúfolt bazár színes utcáin",
+        "egy elásott barlang aranyhomokjában",
+        "a palota márványtornyában",
+        "egy repülő szőnyeg hátán az éjszakai ég alatt",
+      ],
+      companions: ["egy tréfás džinn a lámpásból", "egy okos utcai majom", "egy bátor hercegnő álruhában", "egy hűséges szőnyeg"],
+      wonders: ["egy régi olajlámpás", "egy aranyló kívánság", "egy csillagösvény az égen", "egy varázsszőnyeg"],
+      threats: ["egy hataloméhes varázsló", "egy irigy vezír", "egy bezárt barlangcsapda", "egy hamis kívánság"],
+      keywords: ["aladdin", "aláddin", "lámpás", "lampas", "džinn", "dzsinn", "kívánság", "kivansag", "bazár", "bazar", "szőnyeg", "szonyeg", "barlang"],
+      openingHook: "ahol egyetlen kívánság felforgathat egy egész királyságot",
     },
-    ur: {
-      id: "ur",
-      titleBits: ["A holdbogyó kert", "Csillagközi barátság", "A kis üstökös", "A tejút-hinta"],
-      places: ["egy színes űrállomáson", "egy csendes holdkertben", "egy üstökös hátán", "egy csillaghíd közepén"],
-      companions: ["egy kedves robot", "egy kis űrmacska", "egy nevető üstökös", "egy csillagszemű bagoly"],
-      wonders: ["egy tejút-hinta", "egy csillagszóró zápor", "egy lebegő holdvirág", "egy ezüst űrszivárvány"],
-      threats: ["egy zavarodott űrvihar", "egy irigy holdőr", "egy magányos aszteroida", "egy zajos rakétazúgó"],
-      keywords: ["űr", "ur", "űrhajó", "urhajo", "bolygó", "bolygo", "robot", "rakéta", "raketa", "csillag"],
+    szornyeteg: {
+      id: "szornyeteg",
+      titleBits: ["A rózsa átka", "A varázskastély", "A tükörterem szíve"],
+      places: [
+        "egy elátkozott kastély havas kertjében",
+        "a könyvtár végtelen polcai közt",
+        "egy nyugati szárny lezárt ajtaja előtt",
+        "egy táncteremben, ahol a bútorok élnek",
+      ],
+      companions: ["egy beszélő gyertyatartó", "egy kedves teáskanna", "egy bátor lány a faluból", "egy hűséges karóra"],
+      wonders: ["egy varázsrózsa", "egy élő kastély", "egy tükör, ami messzire lát", "egy bálzene a semmiből"],
+      threats: ["egy régi átok", "egy dühös szörnyű úr", "egy irigy falusi vadász", "egy hervadó rózsaszirmok ideje"],
+      keywords: ["szörny", "szorny", "rózsa", "rozsa", "átok", "atok", "szépség", "szepseg", "kastély", "kastely", "bál", "bal", "könyvtár", "konyvtar"],
+      openingHook: "ahol a szeretet oldhatja fel a legsötétebb átkot is",
     },
-    sarkany: {
-      id: "sarkany",
-      titleBits: ["A szelíd tűz", "A sárkánybál", "A lávahíd", "A pikkelyes barátság"],
-      places: ["egy meleg lávabarlang közelében", "egy tűzhegy tövében", "egy kőhídon a szakadék felett", "egy füstös kilátón"],
-      companions: ["egy félénk kis sárkány", "egy füstös gyík", "egy bátor kecske", "egy parázsszínű lepkecsapat"],
-      wonders: ["egy színes tűzijáték-lehelet", "egy aranyló lávató", "egy meleg kőszív", "egy pikkelyes fényzuhatag"],
-      threats: ["egy irigy kőóriás", "egy mogorva lávakirály", "egy kapzsi kincsvadász", "egy dühös füstfelhő"],
-      keywords: ["sárkány", "sarkany", "tűz", "tuz", "tojás", "tojas", "barlang", "hegy"],
+    rapunzel: {
+      id: "rapunzel",
+      titleBits: ["A torony lámpásai", "A fonott aranyhaj", "Az égi út"],
+      places: [
+        "egy magányos torony csúcsán",
+        "a lámpásokkal teli völgy felett",
+        "egy titkos erdei ösvényen",
+        "egy királyság ünnepi utcáin",
+      ],
+      companions: ["egy furfangos vándor", "egy hűséges kaméleon", "egy ló, aki mindig visszatér", "egy öreg asszony, aki nem az, aminek látszik"],
+      wonders: ["egy fonott aranyhaj", "ezer lebegő lámpás", "egy elveszett koronajel", "egy dal a torony ablakából"],
+      threats: ["egy birtokló őrző", "egy sötét árulás", "egy szakadék a szabadság előtt", "egy hamis ígéret"],
+      keywords: ["rapunzel", "rapunzel", "torony", "haj", "lámpás", "lampas", "fonott", "vándor", "vandor"],
+      openingHook: "ahol a szabadság fényei az égen úsznak",
     },
-    teli: {
-      id: "teli",
-      titleBits: ["A hópehelybál", "A száncsengő-dal", "A jégvirágkert", "A meleg ablak"],
-      places: ["egy havas erdei úton", "egy befagyott tó partján", "egy füstölgő házikóban", "egy csengős szánösvényen"],
-      companions: ["egy meleg bundás kutya", "egy táncoló hópehelytündér", "egy kedves szarvas", "egy piros sálas hóember"],
-      wonders: ["egy jégvirágkert", "egy csengős szánút", "egy meleg kakaógőz", "egy hópehely-keringő"],
-      threats: ["egy fázós jégúr", "egy viharos északi szél", "egy mogorva hótorlasz", "egy hangos jégrepedés"],
-      keywords: ["tél", "tel", "hó", "ho", "karácsony", "szán", "jég", "jeg", "mikulás", "mikulas"],
+    jegkiraly: {
+      id: "jegkiraly",
+      titleBits: ["A jégpalota", "A szív olvadása", "Az északi fény kapuja"],
+      places: [
+        "egy kristályos jégpalotában",
+        "egy havas fjord partján",
+        "egy meleg falusi piactéren a hidegben",
+        "egy északi fényes hegygerincen",
+      ],
+      companions: ["egy hűséges testvér", "egy vidám hóember", "egy szánon járó kereskedő", "egy rénszarvas"],
+      wonders: ["egy jégből nőtt palota", "egy olvadó szívfény", "egy északi fény-híd", "egy varázskezű hóvihar"],
+      threats: ["egy elszabadult jégvarázs", "egy sötét herceg álcája", "egy örök tél", "egy félelem, ami fagyaszt"],
+      keywords: ["jég", "jeg", "hó", "ho", "tél", "tel", "jégkirálynő", "jegkiralyno", "frozen", "palota", "fjord", "hóember", "hoember"],
+      openingHook: "ahol a szeretet melege erősebb minden fagynál",
     },
-    allat: {
-      id: "allat",
-      titleBits: ["A baromfiudvar bálja", "A nyúl és a teknős", "A méhkirálynő dala", "A három barát"],
-      places: ["egy vidám baromfiudvarban", "egy zöld mező közepén", "egy méhkaptár tövében", "egy gyümölcsös szélén"],
-      companions: ["egy okos nyúl", "egy lassú teknős", "egy zümmögő méhecske", "egy büszke kakas"],
-      wonders: ["egy virágos réti körjáték", "egy mézédes ünnep", "egy napsugár-hinta", "egy illatos almáskert"],
-      threats: ["egy éhes róka", "egy lustaság szelleme", "egy irigy varjú", "egy zajos viharfelhő"],
-      keywords: ["állat", "allat", "nyúl", "nyul", "teknős", "teknos", "méh", "meh", "kakas", "tyúk", "tyuk"],
+    oroszlan: {
+      id: "oroszlan",
+      titleBits: ["A szavanna koronája", "A körforgás dala", "A sziklák visszhangja"],
+      places: [
+        "a napfelkeltés szikláján",
+        "a szavanna aranyló füvében",
+        "egy sötét szurdok árnyékában",
+        "egy oázis pálmái alatt",
+      ],
+      companions: ["egy bölcs mandrill", "egy tréfás meerkat", "egy kövér, kedves varacskosdisznó", "egy hűséges oroszlánbarát"],
+      wonders: ["egy ősök csillagképe", "egy koronázó napfelkelte", "egy életkör dal", "egy eső utáni zöldülés"],
+      threats: ["egy irigy nagybácsi", "egy hiéna csapat", "egy aszály", "egy elveszett büszkeség"],
+      keywords: ["oroszlán", "oroszlan", "szavanna", "korona", "büszkeség", "buszkeseg", "afrika", "hiéna", "hiena", "szikla"],
+      openingHook: "ahol az élet nagy körforgása soha nem ér véget",
+    },
+    sohaorszag: {
+      id: "sohaorszag",
+      titleBits: ["A sohaország csillaga", "A kalózhajó", "A tündérpor ösvény"],
+      places: [
+        "egy lebegő sziget felett",
+        "egy kalózhajó árbockosarában",
+        "egy indián tábor tábortüzénél",
+        "egy sellőöböl holdfényénél",
+      ],
+      companions: ["egy apró tündér", "egy elveszett fiúcsapat", "egy kedves sellőlány", "egy okos papagáj"],
+      wonders: ["egy marék tündérpor", "egy második csillag jobbra", "egy örök gyerekkor-sziget", "egy árnyék, ami él"],
+      threats: ["egy kapzsi kalózkapitány", "egy krokodil a mélyből", "egy felnőtté válás félelme", "egy vihar a csillagok közt"],
+      keywords: ["peter", "pan", "sohaország", "sohaorszag", "tündérpor", "tunderpor", "kalóz", "kaloz", "sziget", "árnyék", "arnyek"],
+      openingHook: "ahol soha nem kell felnőni — hacsak a szív mást nem kíván",
     },
   };
 
-  const BEATS = ["discovery", "obstacle", "kindness", "wonder", "chase", "rest", "song", "bridge", "secret", "storm", "festival", "dream"];
+  const BEATS = [
+    "ball", "quest", "betrayal", "magic", "mentor", "escape", "song",
+    "trial", "reveal", "storm", "ally", "climax_build",
+  ];
 
   const TOPIC_SEEDS = [
-    "egy bátor kislány és egy beszélő róka az erdőben",
-    "egy kis robot, aki barátot keres a holdkertben",
-    "egy kíváncsi delfin, aki megtanulja a hullámok dalát",
-    "egy macska, aki az éjszakai lámpásünnepre siet",
-    "egy félénk sárkány, aki először táncol a tűzhegynél",
-    "egy tündér, aki a kastélykertben elvesztette a nevetését",
-    "egy havas úton járó gyerek és a hópehelybál",
-    "egy okos nyúl és egy lassú teknős barátságversenye",
-    "egy utcazenész, aki a városnak visszaadja a zenét",
-    "egy üstökösön utazó kisfiú",
-    "egy hercegnő és egy beszélő gyertyatartó a bálteremben",
-    "egy hajósgyerek, aki megmenti a delfinöblöt",
-    "egy szarvas, aki hazavezet a hóban",
-    "egy méhecske, aki a méhkirálynő ünnepére készül",
-    "egy űrmacska és a tejút-hinta",
-    "egy bagoly, aki éjszakai bált rendez az erdőben",
+    "Hamupipőke stílusú bál a királyi kastélyban",
+    "Hófehérke és a beszélő tükör titka",
+    "Egy hableány, aki a felszínre vágyik",
+    "Egy lámpás három kívánsága a bazárban",
+    "Egy elátkozott kastély és egy varázsrózsa",
+    "Egy toronyba zárt lány és az ezer lámpás",
+    "Egy jégpalota, ahol a szív megfagyott",
+    "Egy oroszlánkölyök útja a napfelkeltés sziklájához",
+    "Sohaország és a második csillag jobbra",
+    "Egy hercegnő álruhában a bál előtt",
+    "Egy džinn, aki csak igaz kívánságot teljesít",
+    "Egy törpebánya és egy mérgezett alma",
+    "Egy tengeri boszorkány fogadása",
+    "Egy repülő szőnyeg az éjszakai város felett",
+    "Egy hóember, aki megmutatja az utat a jégpalotához",
   ];
 
   const ACTIONS = {
     kind: {
       labels: [
-        "Kedvességgel lépnek tovább",
-        "Megölelik a pillanatot, és segítenek",
-        "Barátsággal oldják meg",
+        "Kedvességgel és bátorsággal lép tovább",
+        "Megbocsát, és új esélyt ad",
+        "A szívét követi, nem a félelmet",
       ],
-      nextBias: ["kindness", "festival", "song", "rest"],
+      nextBias: ["ally", "song", "mentor", "reveal"],
     },
     brave: {
       labels: [
-        "Bátran mennek előre",
-        "Szembenéznek a bajjal",
-        "Merészen vágnak neki az útnak",
+        "Szembenéz a sötét erővel",
+        "Bátran a veszélyes útra lép",
+        "Megvédi, akit szeret",
       ],
-      nextBias: ["obstacle", "chase", "storm", "bridge"],
+      nextBias: ["trial", "escape", "storm", "climax_build"],
     },
     curious: {
       labels: [
-        "Kíváncsian követik a fényt",
-        "Felfedezik a titkos ösvényt",
-        "Meghallgatják a táj suttogását",
+        "Követi a varázslat hívását",
+        "Felfedezi a tiltott szárnyat",
+        "Megkérdezi a tükörtől / lámpástól az igazságot",
       ],
-      nextBias: ["discovery", "secret", "wonder", "dream"],
+      nextBias: ["magic", "quest", "reveal", "ball"],
     },
     clever: {
       labels: [
-        "Okos tervet eszelnek ki",
-        "Ravasz trükkel fordítanak",
-        "Új ötletet próbálnak ki",
+        "Ravasz tervet sző a királyság megmentésére",
+        "Trükkel fordítja meg a játszmát",
+        "Új szövetséget köt az ellenség ellen",
       ],
-      nextBias: ["secret", "bridge", "obstacle", "chase"],
+      nextBias: ["betrayal", "escape", "trial", "quest"],
     },
     rest: {
       labels: [
-        "Egy kicsit pihennek, aztán folytatják",
-        "Dalt dúdolnak az út mellett",
-        "Megosztanak egy meleg falatot",
+        "Megpihen, és erőt merít a dalból",
+        "A mentor tanácsát kéri",
+        "Egy bálon / ünnepen újra reményt talál",
       ],
-      nextBias: ["rest", "song", "dream", "festival"],
+      nextBias: ["song", "mentor", "ball", "ally"],
     },
   };
 
@@ -416,18 +492,7 @@ button:active {
   }
 
   function randomWish() {
-    if (Math.random() < 0.6) return pick(TOPIC_SEEDS);
-    const world = pick(Object.values(WORLDS));
-    const hero = pick(["egy kislány", "egy kisfiú", "egy testvérpár", "egy kíváncsi gyerek", "egy bátor herceg"]);
-    const companion = pick(world.companions).replace(/^egy /, "");
-    const place = pick(world.places);
-    const wonder = pick(world.wonders);
-    return pick([
-      `${hero} és ${companion} kalandja ${place}`,
-      `${hero}, aki először látja: ${wonder}`,
-      `egy mese ${companion} társaságában, ${place}`,
-      `${hero} megmenti a napot ${place}, ${companion} segítségével`,
-    ]);
+    return pick(TOPIC_SEEDS);
   }
 
   function detectWorld(wish) {
@@ -437,33 +502,28 @@ button:active {
     for (const world of Object.values(WORLDS)) {
       let s = 0;
       for (const kw of world.keywords) {
-        if (text.includes(kw)) s += 1;
+        if (kw && text.includes(kw)) s += 1;
       }
       if (s > score) {
         score = s;
         best = world;
       }
     }
+    // Disney-stílusú meglepetés: ha nincs egyértelmű találat, véletlen klasszikus világ
     return !best || score === 0 ? pick(Object.values(WORLDS)) : best;
   }
 
   function extractCompanion(wish, world) {
     const text = (wish || "").toLowerCase();
     const map = [
-      [/róka|roka/, "egy beszélő róka"],
-      [/macska/, "egy ügyes macska"],
-      [/delfin/, "egy kíváncsi delfin"],
-      [/robot/, "egy kedves robot"],
-      [/sárkány|sarkany/, "egy félénk kis sárkány"],
-      [/tündér|tunder/, "egy apró csillagtündér"],
-      [/mókus|mokus/, "egy gyors mókus"],
-      [/kutya/, "egy hűséges kutya"],
-      [/bagoly/, "egy bölcs bagoly"],
+      [/tündér|tunder|keresztanya/, "egy ezüstszárnyú tündérkeresztanya"],
+      [/törpe|torpe/, "egy kedves törpe"],
+      [/džinn|dzsinn|szellem/, "egy tréfás džinn a lámpásból"],
       [/gyertyatartó|gyertyatarto/, "egy beszélő gyertyatartó"],
-      [/nyúl|nyul/, "egy okos nyúl"],
-      [/teknős|teknos/, "egy lassú teknős"],
-      [/méh|meh/, "egy zümmögő méhecske"],
-      [/szarvas/, "egy kedves szarvas"],
+      [/hóember|hoember/, "egy vidám hóember"],
+      [/delfin|hal/, "egy éneklő delfin"],
+      [/tündérpor|tunder/, "egy apró tündér"],
+      [/oroszlán|oroszlan/, "egy hűséges oroszlánbarát"],
     ];
     for (const [re, name] of map) {
       if (re.test(text)) return name;
@@ -473,24 +533,12 @@ button:active {
 
   function moodFlavor(mood) {
     if (mood === "vidam") {
-      return {
-        light: "nevetéssel, csillogással és játékos zenével",
-        verb: "vidáman",
-        color: "aranyos",
-      };
+      return { light: "nevetéssel és csillogással", verb: "vidáman", tone: "játékos" };
     }
     if (mood === "kalandos") {
-      return {
-        light: "bátorsággal, dobogó szívvel és nagy lélegzetekkel",
-        verb: "merészen",
-        color: "tüzes",
-      };
+      return { light: "dobogó szívvel és bátorsággal", verb: "merészen", tone: "epikus" };
     }
-    return {
-      light: "csodával, lágy fénnyel és halk dallammal",
-      verb: "csodálkozva",
-      color: "ezüstös",
-    };
+    return { light: "lágy fénnyel és csodával", verb: "áhítattal", tone: "mesés" };
   }
 
   function worldOf(story) {
@@ -498,23 +546,11 @@ button:active {
   }
 
   function maybeShiftSetting(story) {
-    // Every few chapters, gently refresh place/wonder/threat so it never stalls
-    if (story.chapterNum > 1 && story.chapterNum % 3 === 0) {
+    if (story.chapterNum > 1 && story.chapterNum % 4 === 0) {
       const world = worldOf(story);
-      story.place = pick(world.places.filter((p) => p !== story.place).concat(world.places));
+      story.place = pick(world.places);
       story.wonder = pick(world.wonders);
       story.threat = pick(world.threats);
-    }
-    if (story.chapterNum > 1 && story.chapterNum % 7 === 0 && Math.random() < 0.45) {
-      // Occasional world hop for infinite variety
-      const nextWorld = pick(Object.values(WORLDS).filter((w) => w.id !== story.worldId).concat([worldOf(story)]));
-      story.worldId = nextWorld.id;
-      story.place = pick(nextWorld.places);
-      story.wonder = pick(nextWorld.wonders);
-      story.threat = pick(nextWorld.threats);
-      if (Math.random() < 0.35) {
-        story.companion = pick(nextWorld.companions);
-      }
     }
   }
 
@@ -528,7 +564,7 @@ button:active {
     return pick(BEATS);
   }
 
-  function makeChoices() {
+  function makeChoices(world) {
     const keys = shuffle(Object.keys(ACTIONS)).slice(0, 3);
     return keys.map((action) => ({
       label: pick(ACTIONS[action].labels),
@@ -538,120 +574,114 @@ button:active {
 
   function chapterText(story, beat) {
     const hero = story.hero;
-    const companion = story.companion;
-    const comp = companion.replace(/^egy /, "");
-    const place = story.place;
-    const wonder = story.wonder;
-    const threat = story.threat;
-    const mood = story.mood;
-    const n = story.chapterNum;
+    const comp = story.companion.replace(/^egy /, "");
+    const { place, wonder, threat, mood, chapterNum: n } = story;
+    const world = worldOf(story);
 
-    const bridges = [
-      `A mese pedig nem ért véget. Sőt: épp csak igazán elkezdődött.`,
-      `Ha azt hitted, itt megáll a történet, tévedtél. Új ösvény nyílt.`,
-      `A szél tovább fújt, a fény tovább hívott, és ${hero} tudta: még sok fejezet vár rájuk.`,
-      `Egy Disney-mese néha akkor a legszebb, amikor azt hiszed, vége — aztán jön a következő csoda.`,
-    ];
+    const continueLine = pick([
+      `De a mese még nem ért véget — ${world.openingHook}.`,
+      `A függöny egy pillanatra összeért, aztán újra szétnyílt: a történet folytatódott.`,
+      `Ahogy a nagy Disney-mesékben is, egy csoda után mindig jön a következő próba.`,
+      `A királyság lélegzetet vett. ${hero} tudta: ez csak egy fejezet volt a nagy meséből.`,
+    ]);
 
     const templates = {
-      discovery: `${hero} és ${comp} továbbmentek ${place}. A ${n}. napon a levegő tele volt ${mood.light}. Hirtelen a földön különös jeleket láttak: fényköröket, apró lábnyomokat, és egy nyilacskát, ami ${wonder} felé mutatott.
+      ball: `A ${n}. fejezet egy ünneppel kezdődött ${place}. Zene szállt, selymek suhogtak, és ${wonder} úgy ragyogott, mintha az egész királyság szívdobbanása lett volna.
 
-A ${comp} izgatottan suttogott. Nézd csak. Ez nem véletlen. ${hero} ${mood.verb} térdre ereszkedett, megérintette a fényt, és a táj mintha megszólalt volna. Hallatszott egy távoli dallam, aztán egy halk nevetés. Valami új kaland készülődött, nagyobb, mint az előző.
+${hero} ${mood.verb} lépett a fénybe, ${comp} pedig az oldalán maradt. Nem csupán mulatság volt ez: a bálokon dőlnek el a sorsok. Tekintetek találkoztak, titkok cseréltek gazdát, és ${threat} árnyéka is megjelent a terem szélén — mosolyogva, túlságosan udvariasan.
 
-${threat} árnyéka csak messziről hunyorgott, mintha maga is kíváncsi lett volna. ${pick(bridges)}`,
+${hero} érezte a ${mood.light} teli levegőt, és megértette: ma este választania kell a biztonság és a szíve között. ${continueLine}`,
 
-      obstacle: `Az út ${place} egyszerre elszűkült. Előttük ${threat} állt, és a fények egy pillanatra elhalványultak. ${hero} szíve gyorsabban vert, a ${comp} pedig szorosabban simulhatott mellé.
+      quest: `${hero} útnak indult, mert ${wonder} hívása erősebb volt minden félelemnél. ${place} ösvényei ismeretlenek voltak, mégis mintha a táj maga emlékezett volna a régi mesékre.
 
-Nem kell félnünk, mondta ${hero}, bár a hangja remegett egy kicsit. A Disney-hősök is félnek néha. A különbség az, hogy mégis lépnek. ${wonder} gyenge csillogása a háttérben erőt adott.
+${comp} végig ott volt. „A nagy kalandok nem a térképen kezdődnek”, súgta, „hanem abban a pillanatban, amikor valaki elindul.” Útközben jeleket láttak: elveszett koronát, régi lábnyomot, egy félbehagyott dalt.
 
-Együtt okosan, ${mood.verb} kerestek rést a bajon. Egy hang, egy mosoly, egy bátor lépés — és az akadály megremegett. ${pick(bridges)}`,
+De ${threat} is mozgott a háttérben. A küldetés igazsága lassan kirajzolódott: nem kincs kellett, hanem bátorság. ${continueLine}`,
 
-      kindness: `${hero} észrevette, hogy valaki szomorúan ül az út szélén. Nem ${threat} volt ezúttal, hanem egy kicsi, elfáradt lény, aki elvesztette a ritmusát. A ${comp} odasúgott: Ha most továbbmegyünk, talán gyorsabbak leszünk. Ha megállunk, talán jobbak.
+      betrayal: `Valaki, akiben ${hero} bízott, váratlanul elfordult. ${place} hirtelen hidegebb lett, ${wonder} fénye megremeglett, és ${threat} hangja túl közelről szólt.
 
-${hero} megállt. Odaült mellé, megosztotta a melegét, a türelmét, és egy apró dalt. A lény lassan elmosolyodott. Abban a pillanatban ${wonder} fénye megsokszorozódott körülöttük, mintha a világ megjutalmazta volna a kedvességet.
+${comp} megszorította ${hero} kezét. „Az árulás fáj”, mondta halkan, „de megmutatja, ki áll melletted igazán.” A Disney-mesék legszebb hősei ilyenkor nem törnek össze: felemelkednek.
 
-${place} újra ragyogni kezdett. ${pick(bridges)}`,
+${hero} letörölte a könnyét, és új fogadalmat tett. A történet sötétebb lett — ezért ragyoghat majd fényesebben. ${continueLine}`,
 
-      wonder: `Aztán megérkeztek oda, ahol ${wonder} teljes szépségében várt. ${place} olyan volt, mint egy élő képeskönyv: színek úsztak a levegőben, a hangok táncoltak, és még a por is csillogott.
+      magic: `A varázslat kitört ${place}. ${wonder} életre kelt: fény, dallam, lebegő por és lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, és a világ egy pillanatra meghajlott.
 
-${hero} ${mood.verb} állt a csoda közepén. A ${comp} felnevetett, majd hirtelen elkomolyodott. Ez a fény nemcsak szép, mondta. Üzenetet is hoz. És valóban: a ragyogásban apró képek villantak fel — régi barátok, új ösvények, és egy kapu, ami még nincs nyitva.
+${comp} felkiáltott a csodától. Még ${threat} is megállt, mert a valódi mágia előtt még a sötétség is elbizonytalanodik. Ám minden varázslatnak ára van, és a mese most ezt súgta a fülébe.
 
-${threat} messziről figyelt, de most nem merte elrontani a pillanatot. ${pick(bridges)}`,
+${hero} választott: nem a könnyű hatalmat kérte, hanem azt az erőt, ami megvédheti, akiket szeret. ${continueLine}`,
 
-      chase: `Hirtelen minden felgyorsult. ${threat} árnyéka megmozdult, a szél megszaladt, és ${hero} meg a ${comp} futni kezdtek ${place} kanyarjai között. Nem félelemből — inkább azért, mert a kaland most sebességet kért.
+      mentor: `Megjelent egy mentor ${place} — nem feltétlenül öreg és bölcsnek látszó, de a szavaiban ott volt az egész királyság emlékezete. ${comp} bólintott: ideje volt hallgatni.
 
-Ugrottak fényfoltokon, átbújtak hanghidakon, kikerültek táncoló köveket. ${wonder} villanásai mutatták az irányt, mint iránytű. A ${comp} kiáltott: Balra. Most jobbra. Most nevetni is szabad!
+„${wonder} nem elég önmagában”, mondta a mentor. „A hős azzá válik, amit megment, nem azzá, amit megszerez.” ${threat} neve is elhangzott, és ${hero} végre megértette a tétet.
 
-Amikor végül megálltak, lihegve és ragyogva, rájöttek: a hajsza közelebb vitte őket egymáshoz. ${pick(bridges)}`,
+A tanács után a táj tisztábbnak tűnt. ${hero} már nem csak menekült: célja volt. ${continueLine}`,
 
-      rest: `Egy csendes zugban megpihentek. ${place} halkabb lett, a tűz legyintésszerűen melegített, és ${hero} végre mélyet lélegzett. A ${comp} mellé kuporodott.
+      escape: `Futniuk kellett. ${threat} árnyéka rájuk zúdult ${place}, ajtók csapódtak, hidak ingadoztak, és ${wonder} csak villanásokban mutatta az utat.
 
-Mesélj, kérte a ${comp}. ${hero} elmondta, miért indult el, és hogy a kívánsága így hangzott: ${story.wish}. A szavak után a csend is barátságosnak tűnt. ${wonder} távoli fénye úgy hunyorgott, mintha bólogatna.
+${hero} és ${comp} egymást húzták előre. Egy Disney-kalandban a menekülés nem gyávaság: időt nyer a szívnek, hogy felkészüljön a döntő pillanatra. Egy titkos folyosó, egy váratlan szövetséges, egy utolsó ugrás —
 
-Pihenés közben új erő gyűlt bennük. A mese nem sietett. A jó mesék tudnak várni is. ${pick(bridges)}`,
+és kiszabadultak, lihegve, élve, készen a folytatásra. ${continueLine}`,
 
-      song: `Valahonnan dallam szállt feléjük. Először csak pár hang, aztán egész kórus, mintha ${place} maga énekelne. ${hero} és a ${comp} akaratlanul is beléptek a ritmusba.
+      song: `Aztán dal támadt ${place}. Nem kötelező kórus volt ez, hanem olyan zene, ami a szereplők legmélyebb kívánságát mondta ki. ${hero} hangja összekeveredett ${comp} bátorításával.
 
-Énekeltek a bátorságról, a nevetésről, és arról a ${mood.color} fényről, amit ${wonder} adott nekik. Még ${threat} is megállt messzebb, és egy darabig csak hallgatózott — a zene ugyanis még a mogorvaságot is meglágyítja.
+${wonder} a dallamra ragyogott fel. Még a távoli ${threat} is hallotta — és egy pillanatra megremegett. A nagy mesékben a dal gyakran erősebb fegyver, mint a kard.
 
-Amikor a dal elhalkult, az ösvény szélesebben ragyogott, mint előtte. ${pick(bridges)}`,
+Amikor a zene elült, ${hero} már másképp állt a világban: emeltebb fejjel, tisztább szándékkal. ${continueLine}`,
 
-      bridge: `Egy szakadék felett remegő híd feszült. Alatta köd kavargott, felette ${wonder} fénye hívott. ${hero} megfogta a ${comp} mancsát, szárnyát vagy kezét — mindegy is, a lényeg a szorítás volt.
+      trial: `Eljött a próba. ${place} közepén ${hero} egyedül maradt egy döntéssel, miközben ${comp} csak távolabbról súghatott. ${wonder} az egyik oldalon ragyogott, ${threat} a másikon árnyékot vetett.
 
-Lépésről lépésre haladtak. A híd néha meglibbent, néha megéneklődött. ${threat} a túloldalon várt, de már nem úgy, mint ellenség: inkább mint valaki, aki maga is át szeretne kelni, csak nem meri egyedül.
+„Ha hibázol, nem a mese ér véget”, rebesgette a szél, „hanem valaki szíve.” ${hero} ${mood.verb} lépett, és a választása ${mood.tone} hősiességről mesélt.
 
-${hero} visszanyúlt, és segített. A túlparton mindhárman fellélegeztek. ${pick(bridges)}`,
+A próba után sebhely és bölcsesség maradt. Pontosan annyi, amennyi a következő fejezethez kell. ${continueLine}`,
 
-      secret: `Egy rejtett ajtó vált láthatóvá ${place}. Olyan apró volt, hogy csak az vett észre, aki igazán figyelt. A ${comp} kacsintott. Titok.
+      reveal: `Egy titok lelepleződött ${place}. ${wonder} fényében kiderült, ki ${threat} valójában — és miért fájt neki annyira a világ. ${hero} döbbenten hallgatott, ${comp} pedig a vállára tette a kezét.
 
-${hero} belépett. Belül egy másik világfoszlány várt: kisebb fények, puhább hangok, és egy térkép, amin még üres foltok voltak. A térkép közepén ${wonder} jele csillogott, a szélén pedig ${threat} árnyképe — nem végleges ellenségként, hanem következő próbaként.
+A legszebb mesékben a gonosz nem mindig született sötétnek. Néha csak elveszett. Ez nem mentség, de esély. ${hero} eldönthette: bosszút áll, vagy nagyobb lesz a gyűlöletnél.
 
-${hero} a térképet a szívéhez érintette. Érezte: a történetnek még sok üres oldala van. ${pick(bridges)}`,
+A leleplezés után minden másképp hangzott. A történet mélyebb lett. ${continueLine}`,
 
-      storm: `Vihar kerekedett. Nem csak szél és zápor: érzések vihara is. ${place} megrázkódott, ${threat} hangja hangosabb lett, és egy pillanatra ${hero} is kételkedett.
+      storm: `Vihar szakadt ${place} fölé — külső is, belső is. ${threat} ereje felszabadult, ${wonder} hunyorgott, és ${hero} majdnem elvesztette a reményt.
 
-A ${comp} azonban nem engedte el. Maradunk együtt, mondta. A Disney-mesékben a vihar gyakran azért jön, hogy a fény utána tisztább legyen. ${hero} ${mood.verb} belenézett a szélbe, és kimondta a saját bátorságát.
+${comp} kiabálta a nevét a szélben. A nagy mesék viharjelenetei azért kellenek, hogy a fény utána igazibb legyen. ${hero} a földbe kapaszkodott, aztán felállt.
 
-Lassan a vihar engedett. ${wonder} ismét előbukkant a felhők mögül, mint ígéret. ${pick(bridges)}`,
+Amikor a vihar elvonult, a táj sebes volt, de járható. És ${hero} már tudta a következő lépést. ${continueLine}`,
 
-      festival: `Váratlanul ünnep kerekedett körülöttük. Lámpások gyúltak, illatok szálltak, és idegenek is barátokká váltak. ${place} táncba lendült.
+      ally: `Új szövetséges érkezett ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte: ez a találkozás nem véletlen.
 
-${hero} a ${comp}sel együtt pörgött a körben. ${wonder} volt a középpont, ${threat} pedig — csodák csodája — az ünnep szélén tapsolt, ügyetlenül, de őszintén. A nevetés hangosabb volt minden félelemnél.
+Együtt erősebbek lettek, mint külön-külön. ${wonder} mintha áldását adta volna a szövetségre, miközben ${threat} máris új tervet szőtt a háttérben.
 
-Az ünnep után új ajtók nyíltak. Mert az öröm néha a következő kaland kulcsa. ${pick(bridges)}`,
+A csapat összeállt. A mese pedig felgyorsult, mint ahogy a nagy finálék előtt szokott. ${continueLine}`,
 
-      dream: `Este álom szállt ${hero}ra. Az álomban ${place} másképp ragyogott, ${wonder} beszélni tudott, és a ${comp} egyenesen a csillagokból integetett.
+      climax_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} már nem volt távoli jelkép: arasznyira álltak egymástól. ${hero} szíve úgy dobogott, mint egy egész királyság dobja.
 
-Az álom azt súgta: a mese addig tart, amíg van bátorság továbbmenni. ${threat} az álomban sem volt csupa rossz — csak egy elakadt dal, amit még ki kell békíteni.
+${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.” ${hero} ${mood.verb} lépett a fénybe, készen arra, hogy a következő döntés új irányt adjon az egész mesének.
 
-Amikor ${hero} felébredt, tudta a következő lépést. És a történet, mint egy végtelen szalag, továbbtekert. ${pick(bridges)}`,
+A levegő megtelt ${mood.light}. A csúcspont közelgett — de a történetnek még mindig volt hova nőnie. ${continueLine}`,
     };
 
-    return templates[beat] || templates.discovery;
+    return templates[beat] || templates.quest;
   }
 
   function openingText(story) {
-    const openings = [
-      `Egyszer volt, hol nem volt, messzi tájakon, ${story.place} élt ${story.hero}. A levegő tele volt ${story.mood.light}, mintha maga a világ készülődne egy nagy, hosszan tartó mesére.`,
-      `Halljátok csak. ${story.place} lakott ${story.hero}, akinek a szíve tele volt kíváncsisággal. Este halk zene szállt a távolból, és mindenki érezte: ez a történet nem fog egyhamar véget érni.`,
-      `Réges-régen, ahol a csodák még mindennapos vendégek voltak, ${story.place} élt ${story.hero}. Abban a világban a meséknek nem szabtak oldalszámot.`,
-    ];
-    return `${pick(openings)}
+    const world = worldOf(story);
+    const comp = story.companion.replace(/^egy /, "");
+    return `Réges-régen, egy olyan királyságban, ${world.openingHook}, kezdődött ${story.hero} története.
 
-${story.hero} olyan kalandra vágyott, mint amilyet te is kívántál: ${story.wish}. Útközben találkozott ${story.companion} társával. A ${story.companion.replace(/^egy /, "")} megszorította a kezét, és így szólt: Akkor induljunk. Aztán meglátták ${story.wonder} fényét, és messzebb ${story.threat} árnyékát is.
+${story.place} már akkor is tele volt ${story.mood.light}, amikor ${story.hero} először meghallotta a kívánságát — pont olyat, mint a tiéd: ${story.wish}. Mellé szegődött ${story.companion}, és együtt meglátták ${story.wonder} ragyogását. De messzebb, az árnyékban, ${story.threat} is mozdult.
 
-Ez volt az első fejezet. De a mese kapuja nyitva maradt.`;
+${comp} megszorította ${story.hero} kezét. „Ez lesz a mi mesénk”, súgta. „Olyan, mint a nagyok: tele próbával, dallal, árulással és csodával.”
+
+Az első fejezet kapuja kitárult. A történetnek pedig — mint a legszebb Disney-stílusú meséknek — nem szabtak rövid határt.`;
   }
 
   function createScene(story, beat, isOpening) {
     const id = "ch-" + story.chapterNum + "-" + beat + "-" + Math.floor(Math.random() * 100000);
-    const text = isOpening ? openingText(story) : chapterText(story, beat);
     return {
       id,
       chapter: story.chapterNum + ". fejezet",
       beat,
-      text,
-      choices: makeChoices(),
+      text: isOpening ? openingText(story) : chapterText(story, beat),
+      choices: makeChoices(worldOf(story)),
       ending: false,
     };
   }
@@ -672,14 +702,14 @@ Ez volt az első fejezet. De a mese kapuja nyitva maradt.`;
       wonder: pick(world.wonders),
       threat: pick(world.threats),
       chapterNum: 1,
-      recentBeats: ["discovery"],
+      recentBeats: ["quest"],
       scenes: {},
       currentId: null,
       log: [],
       finished: false,
     };
 
-    const scene = createScene(story, "discovery", true);
+    const scene = createScene(story, "quest", true);
     story.scenes[scene.id] = scene;
     story.currentId = scene.id;
     return story;
@@ -691,23 +721,15 @@ Ez volt az első fejezet. De a mese kapuja nyitva maradt.`;
 
   function choose(story, action) {
     if (story.finished) return getScene(story);
-
     const current = getScene(story);
-    story.log.push({
-      chapter: current.chapter,
-      text: current.text,
-      choiceTo: action,
-    });
+    story.log.push({ chapter: current.chapter, text: current.text, choiceTo: action });
 
-    if (action === "__end__") {
-      return finishStory(story);
-    }
+    if (action === "__end__") return finishStory(story);
 
     story.chapterNum += 1;
     maybeShiftSetting(story);
     const beat = pickBeat(story, action);
     story.recentBeats = (story.recentBeats || []).concat([beat]).slice(-4);
-
     const scene = createScene(story, beat, false);
     story.scenes[scene.id] = scene;
     story.currentId = scene.id;
@@ -717,26 +739,19 @@ Ez volt az első fejezet. De a mese kapuja nyitva maradt.`;
   function finishStory(story) {
     const current = getScene(story);
     if (!story.log.length || story.log[story.log.length - 1].text !== current.text) {
-      story.log.push({
-        chapter: current.chapter,
-        text: current.text,
-        choiceTo: "__end__",
-      });
+      story.log.push({ chapter: current.chapter, text: current.text, choiceTo: "__end__" });
     }
-
     story.chapterNum += 1;
     const id = "ending-" + Date.now();
     const comp = story.companion.replace(/^egy /, "");
-    const text = `Aznap ${story.hero} és ${comp} leültek egy csendes fénykörbe ${story.place}. Nem azért, mert vége a mesének örökre — csak azért, mert minden jó kalandnak jár egy mély lélegzet.
-
-${story.wonder} még mindig ragyogott a távolban, mint nyitott kapu. ${story.threat} árnyéka sem tűnt el teljesen, csak megszeldült. ${story.hero} mosolygott.
-
-Ezt a részt most lezárjuk. De ha újra kívánod, a történet bármikor folytatódhat. Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`;
-
     const scene = {
       id,
-      chapter: "Pihenő",
-      text,
+      chapter: "Pihenő a függöny előtt",
+      text: `${story.hero} és ${comp} megálltak ${story.place}. ${story.wonder} még ragyogott, ${story.threat} árnyéka pedig nem tűnt el örökre — csak várta a következő felvonást.
+
+Mert a legszebb mesékben a „vége” gyakran csak annyi: ma este idáig tartott a kaland. Ha újra kívánod, a királyság kapuja ismét kinyílik.
+
+Itt a (mai) vége, fuss el véle — a csoda maradjon ébren.`,
       choices: [],
       ending: true,
     };
@@ -750,9 +765,7 @@ Ezt a részt most lezárjuk. De ha újra kívánod, a történet bármikor folyt
     const parts = story.log.map((entry) => `${entry.chapter}\n${entry.text}`);
     const last = getScene(story);
     const lastBlock = `${last.chapter}\n${last.text}`;
-    if (!parts.length || parts[parts.length - 1] !== lastBlock) {
-      parts.push(lastBlock);
-    }
+    if (!parts.length || parts[parts.length - 1] !== lastBlock) parts.push(lastBlock);
     return `${story.title}\n\n${parts.join("\n\n")}\n`;
   }
 
@@ -798,17 +811,45 @@ Ezt a részt most lezárjuk. De ha újra kívánod, a történet bármikor folyt
   const STORAGE_ENGINE = "mesemondo-engine";
   const STORAGE_KEY = "mesemondo-eleven-key";
   const STORAGE_VOICE = "mesemondo-eleven-voice";
-  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB";
+  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam — férfi mesélő (NE Rachel/női!)
 
   let story = null;
   let currentAudioObject = null;
   let activeAudioUrl = null;
+  let cachedMaleVoice = null;
+
+  function isFemaleVoiceName(name) {
+    const n = (name || "").toLowerCase();
+    return /női|noi|female|woman|girl|noémi|noemi|szilvia|susan|zira|samantha|rachel|sarah|domi|bella|elli|emily|aria/.test(n);
+  }
+
+  function isMaleVoiceName(name) {
+    const n = (name || "").toLowerCase();
+    return /férfi|ferfi|male|man|tamás|tamas|szabolcs|bálint|balint|istván|istvan|lászló|laszlo|adam|arnold|josh|antoni|daniel|david/.test(n);
+  }
+
+  function pickMaleHuVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
+    const maleHu = hu.filter((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name));
+    if (maleHu.length) return maleHu[0];
+    // Ha van Tamás / Szabolcs a névben
+    const named = hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name));
+    if (named) return named;
+    // Kerüljük a női hangokat
+    const nonFemale = hu.find((v) => !isFemaleVoiceName(v.name));
+    return nonFemale || null;
+  }
 
   function loadSettings() {
     try {
       engineSelect.value = localStorage.getItem(STORAGE_ENGINE) || "native";
       apiKeyInput.value = localStorage.getItem(STORAGE_KEY) || "";
-      voiceIdInput.value = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
+      const savedVoice = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
+      // Ha valaki korábban női Rachel ID-t mentett, cseréljük férfira
+      const femaleIds = ["21m00Tcm4TlvDq8ikWAM", "EXAVITQu4vr4xnSDxMaL", "MF3mGyEYCl7XYWbV9V6O"];
+      voiceIdInput.value = femaleIds.includes(savedVoice) ? DEFAULT_VOICE : savedVoice;
     } catch (_) {
       voiceIdInput.value = DEFAULT_VOICE;
     }
@@ -928,11 +969,16 @@ Ezt a részt most lezárjuk. De ha újra kívánod, a történet bármikor folyt
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "hu-HU";
     utterance.rate = 0.88; // Nyugodt mesélős tempó
-    utterance.pitch = 1.05;
+    // Férfi mesélő: kissé mélyebb hangszín, ne nőies pitch
+    utterance.pitch = 0.9;
 
-    const voices = window.speechSynthesis.getVoices();
-    const huVoice = voices.find((v) => v.lang.startsWith("hu"));
-    if (huVoice) utterance.voice = huVoice;
+    cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
+    if (cachedMaleVoice) {
+      utterance.voice = cachedMaleVoice;
+    } else {
+      // Ha csak női magyar hang van, ne emeljük a pitch-et — inkább mélyítsük
+      utterance.pitch = 0.75;
+    }
 
     window.speechSynthesis.speak(utterance);
   }
@@ -1017,7 +1063,10 @@ Ezt a részt most lezárjuk. De ha újra kívánod, a történet bármikor folyt
 
   // Indítás
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {};
+    window.speechSynthesis.onvoiceschanged = () => {
+      cachedMaleVoice = pickMaleHuVoice();
+    };
+    cachedMaleVoice = pickMaleHuVoice();
   }
   loadSettings();
   showSetup();

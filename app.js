@@ -25,17 +25,45 @@
   const STORAGE_ENGINE = "mesemondo-engine";
   const STORAGE_KEY = "mesemondo-eleven-key";
   const STORAGE_VOICE = "mesemondo-eleven-voice";
-  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB";
+  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam — férfi mesélő (NE Rachel/női!)
 
   let story = null;
   let currentAudioObject = null;
   let activeAudioUrl = null;
+  let cachedMaleVoice = null;
+
+  function isFemaleVoiceName(name) {
+    const n = (name || "").toLowerCase();
+    return /női|noi|female|woman|girl|noémi|noemi|szilvia|susan|zira|samantha|rachel|sarah|domi|bella|elli|emily|aria/.test(n);
+  }
+
+  function isMaleVoiceName(name) {
+    const n = (name || "").toLowerCase();
+    return /férfi|ferfi|male|man|tamás|tamas|szabolcs|bálint|balint|istván|istvan|lászló|laszlo|adam|arnold|josh|antoni|daniel|david/.test(n);
+  }
+
+  function pickMaleHuVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
+    const maleHu = hu.filter((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name));
+    if (maleHu.length) return maleHu[0];
+    // Ha van Tamás / Szabolcs a névben
+    const named = hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name));
+    if (named) return named;
+    // Kerüljük a női hangokat
+    const nonFemale = hu.find((v) => !isFemaleVoiceName(v.name));
+    return nonFemale || null;
+  }
 
   function loadSettings() {
     try {
       engineSelect.value = localStorage.getItem(STORAGE_ENGINE) || "native";
       apiKeyInput.value = localStorage.getItem(STORAGE_KEY) || "";
-      voiceIdInput.value = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
+      const savedVoice = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
+      // Ha valaki korábban női Rachel ID-t mentett, cseréljük férfira
+      const femaleIds = ["21m00Tcm4TlvDq8ikWAM", "EXAVITQu4vr4xnSDxMaL", "MF3mGyEYCl7XYWbV9V6O"];
+      voiceIdInput.value = femaleIds.includes(savedVoice) ? DEFAULT_VOICE : savedVoice;
     } catch (_) {
       voiceIdInput.value = DEFAULT_VOICE;
     }
@@ -155,11 +183,16 @@
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "hu-HU";
     utterance.rate = 0.88; // Nyugodt mesélős tempó
-    utterance.pitch = 1.05;
+    // Férfi mesélő: kissé mélyebb hangszín, ne nőies pitch
+    utterance.pitch = 0.9;
 
-    const voices = window.speechSynthesis.getVoices();
-    const huVoice = voices.find((v) => v.lang.startsWith("hu"));
-    if (huVoice) utterance.voice = huVoice;
+    cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
+    if (cachedMaleVoice) {
+      utterance.voice = cachedMaleVoice;
+    } else {
+      // Ha csak női magyar hang van, ne emeljük a pitch-et — inkább mélyítsük
+      utterance.pitch = 0.75;
+    }
 
     window.speechSynthesis.speak(utterance);
   }
@@ -244,7 +277,10 @@
 
   // Indítás
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {};
+    window.speechSynthesis.onvoiceschanged = () => {
+      cachedMaleVoice = pickMaleHuVoice();
+    };
+    cachedMaleVoice = pickMaleHuVoice();
   }
   loadSettings();
   showSetup();

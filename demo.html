@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Mesehang — interaktív mesekészítő. Mondd el, milyen mesét szeretnél, és együtt szőjük meg." />
+  <title>Mesehang — Interaktív mesekészítő</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+:root {
+  --ink: #14212b;
+  --ink-soft: #2a3d4a;
+  --parchment: #f3e8d4;
+  --parchment-deep: #e8d5b5;
+  --gold: #d4a24c;
+  --gold-bright: #f0c56a;
+  --teal: #1f6f6a;
+  --teal-glow: #3a9e96;
+  --dusk-a: #0c1a24;
+  --dusk-b: #163447;
+  --dusk-c: #2a4d5c;
+  --rose-mist: #6b4e5e;
+  --foam: rgba(243, 232, 212, 0.92);
+  --shadow: 0 18px 50px rgba(8, 18, 26, 0.45);
+  --radius: 18px;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Nunito", "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--parchment);
+  background: var(--dusk-a);
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* Atmosphere */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 70% 10%, rgba(212, 162, 76, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 15% 80%, rgba(31, 111, 106, 0.35), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 85% 75%, rgba(107, 78, 94, 0.28), transparent 55%),
+    linear-gradient(165deg, var(--dusk-a) 0%, var(--dusk-b) 45%, var(--dusk-c) 100%);
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(243, 232, 212, 0.85), transparent),
+    radial-gradient(1px 1px at 28% 42%, rgba(240, 197, 106, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 55% 12%, rgba(243, 232, 212, 0.75), transparent),
+    radial-gradient(1px 1px at 72% 35%, rgba(243, 232, 212, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 88% 22%, rgba(240, 197, 106, 0.65), transparent),
+    radial-gradient(1px 1px at 40% 70%, rgba(243, 232, 212, 0.45), transparent),
+    radial-gradient(1px 1px at 63% 82%, rgba(243, 232, 212, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 18% 88%, rgba(240, 197, 106, 0.4), transparent);
+  animation: twinkle 7s ease-in-out infinite alternate;
+}
+
+.mist {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: 40%;
+  bottom: 0;
+  background: linear-gradient(to top, rgba(20, 40, 50, 0.55), transparent);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.mist-a {
+  animation: drift 18s ease-in-out infinite alternate;
+  opacity: 0.7;
+}
+
+.mist-b {
+  height: 28%;
+  bottom: 8%;
+  animation: drift 24s ease-in-out infinite alternate-reverse;
+  opacity: 0.45;
+}
+
+@keyframes twinkle {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@keyframes drift {
+  from { transform: translateX(-3%); }
+  to { transform: translateX(4%); }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(212, 162, 76, 0.55); }
+  70% { box-shadow: 0 0 0 14px rgba(212, 162, 76, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 162, 76, 0); }
+}
+
+@keyframes text-reveal {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Layout */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem clamp(1rem, 4vw, 2.5rem);
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--parchment);
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--gold-bright), var(--gold) 55%, var(--teal) 100%);
+  box-shadow: 0 0 16px rgba(212, 162, 76, 0.45);
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+}
+
+main {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 4vw, 2rem) 3rem;
+}
+
+.screen {
+  display: none;
+}
+
+.screen.is-active {
+  display: block;
+  animation: rise-in 0.7s ease both;
+}
+
+.screen[hidden] {
+  display: none !important;
+}
+
+/* Welcome */
+.welcome-copy {
+  text-align: center;
+  padding: 1.5rem 0 1.75rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  opacity: 0.9;
+}
+
+.brand-hero {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 12vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, var(--parchment) 20%, var(--gold-bright) 55%, var(--parchment) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rise-in 0.8s ease both;
+}
+
+.lede {
+  margin: 1rem auto 0;
+  max-width: 34rem;
+  font-size: clamp(1.05rem, 2.6vw, 1.2rem);
+  color: rgba(243, 232, 212, 0.88);
+}
+
+.wish-panel {
+  background: linear-gradient(160deg, rgba(20, 40, 52, 0.72), rgba(18, 33, 42, 0.88));
+  border: 1px solid rgba(243, 232, 212, 0.14);
+  border-radius: calc(var(--radius) + 6px);
+  padding: clamp(1.2rem, 3vw, 1.75rem);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  animation: rise-in 0.9s 0.1s ease both;
+}
+
+.wish-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin-bottom: 0.65rem;
+}
+
+.wish-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+#wish-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 5.5rem;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(243, 232, 212, 0.22);
+  background: rgba(8, 18, 26, 0.45);
+  color: var(--parchment);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+#wish-input::placeholder {
+  color: rgba(243, 232, 212, 0.42);
+}
+
+#wish-input:focus {
+  outline: 2px solid rgba(212, 162, 76, 0.65);
+  outline-offset: 2px;
+  border-color: transparent;
+}
+
+.mic-btn {
+  width: 4.2rem;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--teal-glow), var(--teal));
+  color: var(--parchment);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.mic-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.mic-btn.is-listening {
+  background: linear-gradient(160deg, var(--gold-bright), var(--gold));
+  color: var(--ink);
+  animation: pulse-ring 1.4s ease infinite;
+}
+
+.mic-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50% 50% 45% 45%;
+  background: currentColor;
+  position: relative;
+  display: block;
+}
+
+.mic-icon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.35rem;
+  width: 1.1rem;
+  height: 0.55rem;
+  border: 2px solid currentColor;
+  border-top: none;
+  border-radius: 0 0 0.7rem 0.7rem;
+  transform: translateX(-50%);
+}
+
+.mic-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.7rem;
+  width: 2px;
+  height: 0.35rem;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.mic-status {
+  min-height: 1.25rem;
+  margin: 0.55rem 0 0;
+  font-size: 0.92rem;
+  color: var(--gold-bright);
+}
+
+.tune-row {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.15rem;
+}
+
+@media (min-width: 640px) {
+  .tune-row {
+    grid-template-columns: 1.3fr 1fr;
+    align-items: end;
+  }
+}
+
+.tune {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.tune legend {
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(243, 232, 212, 0.7);
+  margin-bottom: 0.5rem;
+}
+
+.tune label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.85rem;
+  margin-bottom: 0.35rem;
+  cursor: pointer;
+  font-size: 0.98rem;
+}
+
+.tune input {
+  accent-color: var(--gold);
+}
+
+.hero-name {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(243, 232, 212, 0.7);
+}
+
+.hero-name input {
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 232, 212, 0.22);
+  background: rgba(8, 18, 26, 0.45);
+  color: var(--parchment);
+  font: inherit;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.hero-name input:focus {
+  outline: 2px solid rgba(212, 162, 76, 0.65);
+  outline-offset: 2px;
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.primary-btn,
+.ghost-btn,
+.choice-btn,
+.icon-btn {
+  font: inherit;
+  cursor: pointer;
+}
+
+.primary-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.45rem;
+  background: linear-gradient(120deg, var(--gold-bright), var(--gold));
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(212, 162, 76, 0.28);
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.ghost-btn {
+  border: 1px solid rgba(243, 232, 212, 0.28);
+  border-radius: 999px;
+  padding: 0.8rem 1.25rem;
+  background: transparent;
+  color: var(--parchment);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ghost-btn:hover {
+  background: rgba(243, 232, 212, 0.08);
+  border-color: rgba(243, 232, 212, 0.45);
+}
+
+/* Story */
+.story-meta {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.chapter-label {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.story-title {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4.5vw, 2.35rem);
+  font-weight: 700;
+}
+
+.story-page {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.97), rgba(232, 213, 181, 0.95));
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: clamp(1.35rem, 4vw, 2rem);
+  box-shadow: var(--shadow);
+  min-height: 10rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.story-page::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(42, 61, 74, 0.12);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.story-text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.12rem, 2.8vw, 1.35rem);
+  font-weight: 500;
+  line-height: 1.7;
+  position: relative;
+  animation: text-reveal 0.55s ease both;
+}
+
+.story-text.is-refreshing {
+  animation: text-reveal 0.55s ease both;
+}
+
+.narrator-bar {
+  display: flex;
+  gap: 0.65rem;
+  margin: 1rem 0 0.35rem;
+  justify-content: center;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(243, 232, 212, 0.28);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  background: rgba(8, 18, 26, 0.35);
+  color: var(--parchment);
+}
+
+.icon-btn.is-active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+.speak-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  background: currentColor;
+  clip-path: polygon(0 25%, 45% 25%, 80% 0, 80% 100%, 45% 75%, 0 75%);
+}
+
+.choices {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.choice-btn {
+  text-align: left;
+  border: 1px solid rgba(243, 232, 212, 0.22);
+  border-radius: 14px;
+  padding: 0.95rem 1.1rem;
+  background: rgba(18, 33, 42, 0.72);
+  color: var(--parchment);
+  font-size: 1.02rem;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  animation: rise-in 0.45s ease both;
+}
+
+.choice-btn:nth-child(2) { animation-delay: 0.06s; }
+.choice-btn:nth-child(3) { animation-delay: 0.12s; }
+
+.choice-btn:hover,
+.choice-btn:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  background: rgba(31, 111, 106, 0.35);
+  outline: none;
+}
+
+.ending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.site-footer {
+  text-align: center;
+  padding: 1rem 1.25rem 2rem;
+  color: rgba(243, 232, 212, 0.45);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 520px) {
+  .wish-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mic-btn {
+    width: 100%;
+    min-height: 3.2rem;
+  }
+
+  .cta-row {
+    flex-direction: column;
+  }
+
+  .primary-btn,
+  .ghost-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+</style>
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="mist mist-a"></div>
+    <div class="mist mist-b"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="#" id="brand-home" aria-label="Mesehang kezdőlap">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Mesehang</span>
+    </a>
+    <button type="button" class="ghost-btn" id="btn-new-story" hidden>Új mese</button>
+  </header>
+
+  <main>
+    <!-- Kezdő képernyő -->
+    <section id="screen-welcome" class="screen screen-welcome is-active" aria-labelledby="welcome-title">
+      <div class="welcome-copy">
+        <p class="eyebrow">Interaktív mesekészítő</p>
+        <h1 id="welcome-title" class="brand-hero">Mesehang</h1>
+        <p class="lede">Mondd el hangosan vagy írd be, milyen mesét szeretnél — aztán együtt döntünk a folytatásról.</p>
+      </div>
+
+      <form id="wish-form" class="wish-panel" autocomplete="off">
+        <label for="wish-input" class="wish-label">Milyen mesét szeretnél?</label>
+        <div class="wish-row">
+          <textarea
+            id="wish-input"
+            name="wish"
+            rows="3"
+            maxlength="400"
+            placeholder="Pl. egy bátor kislány és egy beszélő róka kalandja az erdőben…"
+            required
+          ></textarea>
+          <button type="button" class="mic-btn" id="btn-mic" aria-pressed="false" title="Hangbemondás">
+            <span class="mic-icon" aria-hidden="true"></span>
+            <span class="sr-only">Hangbemondás indítása</span>
+          </button>
+        </div>
+        <p class="mic-status" id="mic-status" role="status" aria-live="polite"></p>
+
+        <div class="tune-row">
+          <fieldset class="tune">
+            <legend>Hangulat</legend>
+            <label><input type="radio" name="mood" value="vidam" checked /> Vidám</label>
+            <label><input type="radio" name="mood" value="kalandos" /> Kalandos</label>
+            <label><input type="radio" name="mood" value="mesés" /> Mesés</label>
+          </fieldset>
+          <label class="hero-name">
+            <span>Hős neve (opcionális)</span>
+            <input type="text" id="hero-name" maxlength="40" placeholder="pl. Lili" />
+          </label>
+        </div>
+
+        <div class="cta-row">
+          <button type="submit" class="primary-btn" id="btn-start">
+            Induljon a mese
+          </button>
+          <button type="button" class="ghost-btn" id="btn-surprise">Meglepetés mese</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Mese képernyő -->
+    <section id="screen-story" class="screen screen-story" aria-labelledby="story-title" hidden>
+      <div class="story-meta">
+        <p class="chapter-label" id="chapter-label">1. fejezet</p>
+        <h2 id="story-title" class="story-title">A te meséd</h2>
+      </div>
+
+      <article class="story-page" id="story-page">
+        <p id="story-text" class="story-text"></p>
+      </article>
+
+      <div class="narrator-bar">
+        <button type="button" class="icon-btn" id="btn-speak" aria-pressed="false" title="Felolvasás">
+          <span class="speak-icon" aria-hidden="true"></span>
+          <span id="speak-label">Felolvasás</span>
+        </button>
+        <button type="button" class="icon-btn" id="btn-stop-speak" hidden title="Megállítás">
+          Megállítás
+        </button>
+      </div>
+
+      <div class="choices" id="choices" role="group" aria-label="Választások"></div>
+
+      <div class="ending-actions" id="ending-actions" hidden>
+        <button type="button" class="primary-btn" id="btn-restart">Új mese</button>
+        <button type="button" class="ghost-btn" id="btn-download">Mese mentése</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Mesehang — hanggal induló, választásokkal szőtt mesék</p>
+  </footer>
+
+  <script>
+/**
+ * Mesehang — procedural interactive story engine (Hungarian)
+ */
+(function (global) {
+  const WORLDS = {
+    erdo: {
+      id: "erdo",
+      titleBits: ["Az erdei titok", "A mókusösvény", "A holdfényes liget"],
+      place: "egy ősi erdő mélyén",
+      companionDefault: "egy beszélő róka",
+      object: "egy fényes makkot",
+      threat: "egy zavarodott viharlélek",
+      keywords: ["erdő", "erdo", "fa", "róka", "roka", "mókus", "mokus", "liget", "erdőben", "erdoben"],
+    },
+    varazs: {
+      id: "varazs",
+      titleBits: ["A csillagtorony", "A varázskönyv", "A holdkút meséje"],
+      place: "egy lebegő varázstoronyban",
+      companionDefault: "egy apró csillagtündér",
+      object: "egy beszélő varázskönyvet",
+      threat: "egy elfeledett átok",
+      keywords: ["varázs", "varazs", "tündér", "tunder", "boszi", "mágia", "magia", "varázsló", "varazslo", "csillag"],
+    },
+    tenger: {
+      id: "tenger",
+      titleBits: ["A hullámlámpás", "A kagylókirály", "A tengeri ösvény"],
+      place: "egy csillogó tengerparton",
+      companionDefault: "egy kíváncsi delfin",
+      object: "egy éneklő kagylót",
+      threat: "egy mohó örvényúr",
+      keywords: ["tenger", "óceán", "ocean", "hajó", "hajo", "hal", "delfin", "sziget", "hullám", "hullam", "kalóz", "kaloz"],
+    },
+    varos: {
+      id: "varos",
+      titleBits: ["A rejtett utcácska", "A tetőjárók", "A piaci rejtély"],
+      place: "egy régi város háztetőin",
+      companionDefault: "egy ügyes macska",
+      object: "egy arany kulcsot",
+      threat: "egy kapzsi toronyőr",
+      keywords: ["város", "varos", "utca", "ház", "haz", "macska", "piac", "kastély", "kastely", "palota"],
+    },
+    ur: {
+      id: "ur",
+      titleBits: ["A holdbogyó űrhajó", "Csillagközi csempész", "A kis üstökös"],
+      place: "egy színes űrállomáson",
+      companionDefault: "egy kedves robot",
+      object: "egy éneklő meteoritot",
+      threat: "egy mohó aszteroida-gyűjtő",
+      keywords: ["űr", "ur", "űrhajó", "urhajo", "bolygó", "bolygo", "robot", "csillag", "rakéta", "raketa", "űrben"],
+    },
+    sarkany: {
+      id: "sarkany",
+      titleBits: ["A barátságos sárkány", "A tűzhegy titka", "A sárkánytojás"],
+      place: "egy meleg lávabarlang közelében",
+      companionDefault: "egy félénk kis sárkány",
+      object: "egy szelíd tűzkövet",
+      threat: "egy irigy kőóriás",
+      keywords: ["sárkány", "sarkany", "tűz", "tuz", "tojás", "tojas", "barlang", "hegy"],
+    },
+  };
+
+  const SURPRISES = [
+    "egy bátor kislány és egy beszélő róka kalandja az erdőben",
+    "egy kis robot, aki megtalálja az elveszett csillagot az űrben",
+    "egy kíváncsi delfin és egy éneklő kagyló meséje a tengeren",
+    "egy macska, aki a város tetőin keresi az arany kulcsot",
+    "egy félénk sárkány, aki megtanulja, hogy a tűz barát is lehet",
+    "egy tündér, aki a holdkútban elveszett nevetét keresi",
+  ];
+
+  function pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function detectWorld(wish) {
+    const text = (wish || "").toLowerCase();
+    let best = WORLDS.erdo;
+    let score = 0;
+    for (const world of Object.values(WORLDS)) {
+      let s = 0;
+      for (const kw of world.keywords) {
+        if (text.includes(kw)) s += 1;
+      }
+      if (s > score) {
+        score = s;
+        best = world;
+      }
+    }
+    return best;
+  }
+
+  function extractCompanion(wish, world) {
+    const text = (wish || "").toLowerCase();
+    const map = [
+      [/róka|roka/, "egy beszélő róka"],
+      [/macska/, "egy ügyes macska"],
+      [/delfin/, "egy kíváncsi delfin"],
+      [/robot/, "egy kedves robot"],
+      [/sárkány|sarkany/, "egy félénk kis sárkány"],
+      [/tündér|tunder/, "egy apró csillagtündér"],
+      [/mókus|mokus/, "egy gyors mókus"],
+      [/kutya/, "egy hűséges kutya"],
+      [/bagoly/, "egy bölcs bagoly"],
+    ];
+    for (const [re, name] of map) {
+      if (re.test(text)) return name;
+    }
+    return world.companionDefault;
+  }
+
+  function moodFlavor(mood) {
+    if (mood === "vidam") {
+      return {
+        tone: "nevetés és játékosság",
+        verb: "vidáman",
+        ending: "és mindenki nagyot nevetett a végén",
+      };
+    }
+    if (mood === "kalandos") {
+      return {
+        tone: "bátorság és gyors döntések",
+        verb: "merészen",
+        ending: "és a kaland hősévé vált",
+      };
+    }
+    return {
+      tone: "csillogó csodák",
+      verb: "halkan, csodálkozva",
+      ending: "és a csoda sokáig velük maradt",
+    };
+  }
+
+  function buildStory(opts) {
+    const wish = (opts.wish || "").trim();
+    const world = detectWorld(wish);
+    const hero = (opts.heroName || "").trim() || pick(["Lili", "Máté", "Noé", "Zsófi", "Ábel", "Emma"]);
+    const companion = extractCompanion(wish, world);
+    const mood = moodFlavor(opts.mood || "vidam");
+    const title = pick(world.titleBits);
+    const object = world.object;
+    const place = world.place;
+    const threat = world.threat;
+
+    const log = [];
+
+    const scenes = {
+      start: {
+        id: "start",
+        chapter: "1. fejezet",
+        text: `Egyszer volt, hol nem volt, ${place} élt ${hero}. Egy nap ${mood.verb} útnak indult, mert ${wish ? `pont olyan mesét szeretett volna, mint amit te is: „${wish}”` : "egy igazi kalandra vágyott"}. Nemsokára találkozott ${companion.replace(/^egy /, "egy ")} társával. „Hallod?” — suttogta a társ. „Valaki elrejtette ${object}!”`,
+        choices: [
+          { label: `Együtt keresik meg ${object}`, next: "search" },
+          { label: "Előbb a biztonságos ösvényt követik", next: "path" },
+          { label: "Megkérdezik a szél suttogását", next: "listen" },
+        ],
+      },
+      search: {
+        id: "search",
+        chapter: "2. fejezet",
+        text: `${hero} és társa ${mood.verb} nekiláttak a keresésnek. Nyomok vezettek egy rejtett tisztásra, ahol ${threat} őrködött. A lény nem volt teljesen rossz — csak nagyon félt, hogy elveszíti, ami fényt ad neki. ${hero} szívében most ${mood.tone} keveredett.`,
+        choices: [
+          { label: "Barátságosan beszélnek vele", next: "talk" },
+          { label: "Okos trükkel terelik el", next: "trick" },
+          { label: "Ajándékot kínálnak cserébe", next: "gift" },
+        ],
+      },
+      path: {
+        id: "path",
+        chapter: "2. fejezet",
+        text: `Az ösvény nyugodtnak tűnt, de hamarosan elágazott. Az egyik út fényes volt, a másik halk zenét játszott. ${companion} a zenés irányba bólintott. Közben messziről felhangzott ${threat} morgása — mintha ${object} körül forogna a gond.`,
+        choices: [
+          { label: "A zenés ösvényen mennek tovább", next: "search" },
+          { label: "A fényes úton sietnek", next: "listen" },
+        ],
+      },
+      listen: {
+        id: "listen",
+        chapter: "2. fejezet",
+        text: `${hero} megállt, és hallgatózott. A szél azt súgta: „${object} csak annak ragyog, aki megosztja.” Ezután megjelent ${threat}, de már nem volt olyan félelmetes — csak magányos. ${hero} megértette, hogy a mese igazi kulcsa a megosztás.`,
+        choices: [
+          { label: "Megosztják a fényt mindenkivel", next: "talk" },
+          { label: "Megígérik, hogy vigyáznak rá együtt", next: "gift" },
+        ],
+      },
+      talk: {
+        id: "talk",
+        chapter: "3. fejezet",
+        text: `${hero} nyugodt hangon szólt: „Nem ellopni jöttünk. Csak szeretnénk, ha a fény mindenkinek jutna.” ${threat} lassan megnyugodott. Együtt felemelték ${object}, és a helyszín megtelt meleg ragyogással. ${companion} mosolygott: „Ez volt a hiányzó rész.”`,
+        choices: [
+          { label: "Hazaviszik a fény egy részét", next: "ending_home" },
+          { label: "Ünnepet rendeznek a helyszínen", next: "ending_party" },
+        ],
+      },
+      trick: {
+        id: "trick",
+        chapter: "3. fejezet",
+        text: `${hero} és ${companion} ravasz tervet eszeltek ki: tükrökkel és visszhanggal úgy tűnt, mintha ${object} egyszerre több helyen ragyogna. ${threat} összezavarodott, majd elnevette magát: „Áá, ügyesek vagytok!” A feszültség feloldódott, és közösen eldöntötték, hogy a kincs nem egy emberé.`,
+        choices: [
+          { label: "Békét kötnek, és együtt őrzik", next: "ending_home" },
+          { label: "A trükkből játékot csinálnak", next: "ending_party" },
+        ],
+      },
+      gift: {
+        id: "gift",
+        chapter: "3. fejezet",
+        text: `${hero} elővett egy apró ajándékot: egy saját emlékfoszlányt — nevetést, bátorságot és egy ígéretet. „Ezt adom cserébe.” ${threat} elfogadta, és odaadta ${object}. A fény kettévált: egyik fele a hősé, a másik a helyé lett, hogy senki se maradjon sötétben.`,
+        choices: [
+          { label: "Új barátsággal térnek haza", next: "ending_home" },
+          { label: "Megünneplik az új szövetséget", next: "ending_party" },
+        ],
+      },
+      ending_home: {
+        id: "ending_home",
+        chapter: "Befejezés",
+        text: `Így tért haza ${hero}, ${companion} társaságában, és magával vitte a fény egy kis darabját. Otthon elmesélte a kalandot, ${mood.ending}. Aki hallotta a mesét, egy kicsit bátrabban nézett holnapra. Itt a vége, fuss el véle!`,
+        choices: [],
+        ending: true,
+      },
+      ending_party: {
+        id: "ending_party",
+        chapter: "Befejezés",
+        text: `Aznap este nagy ünnep kerekedett ${place}. Zenélt a szél, táncolt a fény, és ${hero} körül barátok gyűltek. ${threat} is ott ült a körben, már nem ijesztő vendégként. ${mood.ending}. Itt a vége, fuss el véle!`,
+        choices: [],
+        ending: true,
+      },
+    };
+
+    return {
+      title,
+      hero,
+      companion,
+      world: world.id,
+      wish,
+      mood: opts.mood || "vidam",
+      scenes,
+      currentId: "start",
+      log,
+    };
+  }
+
+  function getScene(story) {
+    return story.scenes[story.currentId];
+  }
+
+  function choose(story, nextId) {
+    const current = getScene(story);
+    story.log.push({
+      chapter: current.chapter,
+      text: current.text,
+      choiceTo: nextId,
+    });
+    story.currentId = nextId;
+    return getScene(story);
+  }
+
+  function fullTranscript(story) {
+    const parts = story.log.map((entry) => `${entry.chapter}\n${entry.text}`);
+    const last = getScene(story);
+    const lastBlock = `${last.chapter}\n${last.text}`;
+    if (!parts.length || parts[parts.length - 1] !== lastBlock) {
+      parts.push(lastBlock);
+    }
+    return `${story.title}\n\n${parts.join("\n\n")}\n`;
+  }
+
+  global.MeseEngine = {
+    WORLDS,
+    SURPRISES,
+    buildStory,
+    getScene,
+    choose,
+    fullTranscript,
+    pick,
+  };
+})(window);
+
+</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const screenWelcome = $("screen-welcome");
+  const screenStory = $("screen-story");
+  const wishForm = $("wish-form");
+  const wishInput = $("wish-input");
+  const heroNameInput = $("hero-name");
+  const micBtn = $("btn-mic");
+  const micStatus = $("mic-status");
+  const btnSurprise = $("btn-surprise");
+  const btnNewStory = $("btn-new-story");
+  const chapterLabel = $("chapter-label");
+  const storyTitle = $("story-title");
+  const storyText = $("story-text");
+  const choicesEl = $("choices");
+  const endingActions = $("ending-actions");
+  const btnSpeak = $("btn-speak");
+  const btnStopSpeak = $("btn-stop-speak");
+  const speakLabel = $("speak-label");
+  const btnRestart = $("btn-restart");
+  const btnDownload = $("btn-download");
+  const brandHome = $("brand-home");
+
+  let story = null;
+  let recognition = null;
+  let listening = false;
+  let speaking = false;
+  let hungarianVoice = null;
+
+  function selectedMood() {
+    const el = document.querySelector('input[name="mood"]:checked');
+    return el ? el.value : "vidam";
+  }
+
+  function showWelcome() {
+    stopSpeak();
+    stopMic();
+    story = null;
+    screenWelcome.hidden = false;
+    screenWelcome.classList.add("is-active");
+    screenStory.hidden = true;
+    screenStory.classList.remove("is-active");
+    btnNewStory.hidden = true;
+    endingActions.hidden = true;
+    choicesEl.innerHTML = "";
+  }
+
+  function showStory() {
+    screenWelcome.hidden = true;
+    screenWelcome.classList.remove("is-active");
+    screenStory.hidden = false;
+    screenStory.classList.add("is-active");
+    btnNewStory.hidden = false;
+  }
+
+  function renderScene() {
+    if (!story) return;
+    const scene = MeseEngine.getScene(story);
+    chapterLabel.textContent = scene.chapter;
+    storyTitle.textContent = story.title;
+    storyText.textContent = scene.text;
+    storyText.classList.remove("is-refreshing");
+    void storyText.offsetWidth;
+    storyText.classList.add("is-refreshing");
+
+    choicesEl.innerHTML = "";
+    endingActions.hidden = !scene.ending;
+
+    if (!scene.ending) {
+      scene.choices.forEach((choice) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.textContent = choice.label;
+        btn.addEventListener("click", () => {
+          stopSpeak();
+          MeseEngine.choose(story, choice.next);
+          renderScene();
+        });
+        choicesEl.appendChild(btn);
+      });
+    }
+
+    maybeAutoSpeak();
+  }
+
+  function startStoryFromWish(wish) {
+    const cleaned = (wish || "").trim();
+    if (!cleaned) {
+      micStatus.textContent = "Írd be vagy mondd be, milyen mesét szeretnél.";
+      wishInput.focus();
+      return;
+    }
+    story = MeseEngine.buildStory({
+      wish: cleaned,
+      mood: selectedMood(),
+      heroName: heroNameInput.value,
+    });
+    // reset log so ending doesn't duplicate oddly
+    story.log = [];
+    showStory();
+    renderScene();
+  }
+
+  wishForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    stopMic();
+    startStoryFromWish(wishInput.value);
+  });
+
+  btnSurprise.addEventListener("click", () => {
+    const wish = MeseEngine.pick(MeseEngine.SURPRISES);
+    wishInput.value = wish;
+    startStoryFromWish(wish);
+  });
+
+  function goHome(e) {
+    if (e) e.preventDefault();
+    showWelcome();
+    micStatus.textContent = "";
+  }
+
+  btnNewStory.addEventListener("click", goHome);
+  btnRestart.addEventListener("click", goHome);
+  brandHome.addEventListener("click", goHome);
+
+  btnDownload.addEventListener("click", () => {
+    if (!story) return;
+    // Reconstruct clean transcript from visited path
+    const text = buildDownloadText();
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${story.title.replace(/\s+/g, "_")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  function buildDownloadText() {
+    // Prefer engine transcript, but dedupe consecutive identical blocks
+    const raw = MeseEngine.fullTranscript(story);
+    const blocks = raw.split(/\n\n+/);
+    const out = [];
+    let prev = "";
+    for (const b of blocks) {
+      if (b !== prev) out.push(b);
+      prev = b;
+    }
+    return out.join("\n\n") + "\n";
+  }
+
+  /* ----- Speech recognition (bemondás) ----- */
+  function initRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      micBtn.disabled = true;
+      micBtn.title = "A böngésző nem támogatja a hangbemondást";
+      micStatus.textContent = "A hangbemondás ebben a böngészőben nem elérhető — írd be a meséd.";
+      return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.lang = "hu-HU";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      listening = true;
+      micBtn.classList.add("is-listening");
+      micBtn.setAttribute("aria-pressed", "true");
+      micStatus.textContent = "Hallgatlak… mondd el, milyen mesét szeretnél.";
+    };
+
+    recognition.onerror = (event) => {
+      listening = false;
+      micBtn.classList.remove("is-listening");
+      micBtn.setAttribute("aria-pressed", "false");
+      if (event.error === "not-allowed") {
+        micStatus.textContent = "Nincs mikrofon-engedély. Engedélyezd, vagy írd be a mesét.";
+      } else if (event.error !== "aborted") {
+        micStatus.textContent = "Nem hallottam tisztán. Próbáld újra, vagy írd be.";
+      }
+    };
+
+    recognition.onend = () => {
+      listening = false;
+      micBtn.classList.remove("is-listening");
+      micBtn.setAttribute("aria-pressed", "false");
+      if (!wishInput.value.trim()) {
+        micStatus.textContent = "Nem érkezett szöveg. Koppints újra a mikrofonra.";
+      } else if (micStatus.textContent.startsWith("Hallgatlak")) {
+        micStatus.textContent = "Kész! Nyomd meg: Induljon a mese.";
+      }
+    };
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      let finalText = "";
+      for (let i = 0; i < event.results.length; i += 1) {
+        const piece = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += piece;
+        else interim += piece;
+      }
+      wishInput.value = (finalText || interim).trim();
+      if (finalText) {
+        micStatus.textContent = "Meghallottam. Indíthatod a mesét!";
+      }
+    };
+  }
+
+  function stopMic() {
+    if (recognition && listening) {
+      try {
+        recognition.stop();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+
+  micBtn.addEventListener("click", () => {
+    if (!recognition) {
+      micStatus.textContent = "A hangbemondás nem elérhető ebben a böngészőben.";
+      return;
+    }
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    stopSpeak();
+    try {
+      recognition.start();
+    } catch (_) {
+      micStatus.textContent = "Várj egy pillanatot, és próbáld újra.";
+    }
+  });
+
+  /* ----- Speech synthesis (felolvasás) ----- */
+  function loadVoices() {
+    const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+    hungarianVoice =
+      voices.find((v) => v.lang.toLowerCase().startsWith("hu")) ||
+      voices.find((v) => /hungarian|magyar/i.test(v.name)) ||
+      null;
+  }
+
+  if (window.speechSynthesis) {
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  function stopSpeak() {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    speaking = false;
+    btnSpeak.classList.remove("is-active");
+    btnSpeak.setAttribute("aria-pressed", "false");
+    speakLabel.textContent = "Felolvasás";
+    btnStopSpeak.hidden = true;
+  }
+
+  function speakText(text) {
+    if (!window.speechSynthesis) {
+      micStatus.textContent = "A felolvasás nem támogatott ebben a böngészőben.";
+      return;
+    }
+    stopSpeak();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "hu-HU";
+    utter.rate = 1.02;
+    utter.pitch = 1;
+    if (hungarianVoice) utter.voice = hungarianVoice;
+    utter.onstart = () => {
+      speaking = true;
+      btnSpeak.classList.add("is-active");
+      btnSpeak.setAttribute("aria-pressed", "true");
+      speakLabel.textContent = "Felolvasás…";
+      btnStopSpeak.hidden = false;
+    };
+    utter.onend = stopSpeak;
+    utter.onerror = stopSpeak;
+    speechSynthesis.speak(utter);
+  }
+
+  function maybeAutoSpeak() {
+    // Auto-read first scene lightly only if user already used speak once in session
+    if (sessionStorage.getItem("mesehang-auto-speak") === "1" && story) {
+      const scene = MeseEngine.getScene(story);
+      speakText(scene.text);
+    }
+  }
+
+  btnSpeak.addEventListener("click", () => {
+    if (!story) return;
+    if (speaking) {
+      stopSpeak();
+      return;
+    }
+    sessionStorage.setItem("mesehang-auto-speak", "1");
+    speakText(MeseEngine.getScene(story).text);
+  });
+
+  btnStopSpeak.addEventListener("click", stopSpeak);
+
+  initRecognition();
+  showWelcome();
+})();
+
+</script>
+</body>
+</html>

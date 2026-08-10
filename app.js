@@ -27,6 +27,9 @@
   let listening = false;
   let speaking = false;
   let hungarianVoice = null;
+  let speakQueue = [];
+  let speakKeepAlive = null;
+  let speakGeneration = 0;
 
   function selectedMood() {
     const el = document.querySelector('input[name="mood"]:checked');
@@ -236,12 +239,33 @@
     }
   });
 
-  /* ----- Speech synthesis (felolvasás) ----- */
+  /* ----- Speech synthesis (természetesebb felolvasás) ----- */
+  function scoreVoice(voice) {
+    const name = voice.name.toLowerCase();
+    const lang = (voice.lang || "").toLowerCase();
+    let score = 0;
+    if (lang.startsWith("hu")) score += 100;
+    if (/hungarian|magyar/.test(name)) score += 80;
+    // Prefer neural / natural / online / premium voices when present
+    if (/natural|neural|online|google|premium|enhanced|wavenet|studio/.test(name)) score += 40;
+    if (/microsoft|samantha|aria|jenny|zira/.test(name)) score += 10;
+    // Deprioritize harsh/robotic local voices
+    if (/compact|eloquence|novelty|whisper|zarvox|bad/.test(name)) score -= 30;
+    if (voice.localService) score -= 5;
+    return score;
+  }
+
   function loadVoices() {
     const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+    if (!voices.length) {
+      hungarianVoice = null;
+      return;
+    }
+    const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
     hungarianVoice =
-      voices.find((v) => v.lang.toLowerCase().startsWith("hu")) ||
-      voices.find((v) => /hungarian|magyar/i.test(v.name)) ||
+      ranked.find((v) => scoreVoice(v) >= 80) ||
+      ranked.find((v) => (v.lang || "").toLowerCase().startsWith("hu")) ||
+      ranked[0] ||
       null;
   }
 
@@ -250,13 +274,143 @@
     speechSynthesis.onvoiceschanged = loadVoices;
   }
 
+  function setSpeakingUi(active) {
+    speaking = active;
+    btnSpeak.classList.toggle("is-active", active);
+    btnSpeak.setAttribute("aria-pressed", active ? "true" : "false");
+    speakLabel.textContent = active ? "Felolvasás…" : "Felolvasás";
+    btnStopSpeak.hidden = !active;
+  }
+
+  function clearSpeakKeepAlive() {
+    if (speakKeepAlive) {
+      clearInterval(speakKeepAlive);
+      speakKeepAlive = null;
+    }
+  }
+
   function stopSpeak() {
-    if (window.speechSynthesis) speechSynthesis.cancel();
-    speaking = false;
-    btnSpeak.classList.remove("is-active");
-    btnSpeak.setAttribute("aria-pressed", "false");
-    speakLabel.textContent = "Felolvasás";
-    btnStopSpeak.hidden = true;
+    speakGeneration += 1;
+    speakQueue = [];
+    clearSpeakKeepAlive();
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+      // Chrome sometimes stays paused after cancel
+      try {
+        speechSynthesis.resume();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    setSpeakingUi(false);
+  }
+
+  /** Soften punctuation so TTS does not sound clipped / blocky. */
+  function prepareForSpeech(text) {
+    return String(text || "")
+      .replace(/[„”"«»]/g, "")
+      .replace(/[–—]/g, ", ")
+      .replace(/\s*;\s*/g, ". ")
+      .replace(/\s*:\s*/g, ", ")
+      .replace(/\s*!\s*/g, ". ")
+      .replace(/\s*\?\s*/g, "? ")
+      .replace(/\(\s*/g, ", ")
+      .replace(/\s*\)/g, ",")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.!?])/g, "$1")
+      .trim();
+  }
+
+  /** Split into short breath-groups for smoother storytelling cadence. */
+  function splitSpeechChunks(text) {
+    const prepared = prepareForSpeech(text);
+    const rough = prepared
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const chunks = [];
+    rough.forEach((sentence) => {
+      if (sentence.length <= 140) {
+        chunks.push(sentence);
+        return;
+      }
+      // Break long sentences on commas without cutting words harshly
+      const parts = sentence.split(/(?<=,)\s+/);
+      let buf = "";
+      parts.forEach((part) => {
+        if ((buf + " " + part).trim().length > 120 && buf) {
+          chunks.push(buf.trim());
+          buf = part;
+        } else {
+          buf = (buf ? buf + " " : "") + part;
+        }
+      });
+      if (buf.trim()) chunks.push(buf.trim());
+    });
+    return chunks;
+  }
+
+  function pauseMsForChunk(chunk, isLast) {
+    if (isLast) return 0;
+    if (/[.!?]$/.test(chunk)) return 420;
+    if (/,$/.test(chunk)) return 220;
+    return 280;
+  }
+
+  function speakNextChunk(generation) {
+    if (generation !== speakGeneration) return;
+    if (!speakQueue.length) {
+      clearSpeakKeepAlive();
+      setSpeakingUi(false);
+      return;
+    }
+
+    const chunk = speakQueue.shift();
+    const isLast = speakQueue.length === 0;
+    const utter = new SpeechSynthesisUtterance(chunk);
+    utter.lang = (hungarianVoice && hungarianVoice.lang) || "hu-HU";
+    // Slower, warmer storytelling pace — less "blocky"
+    utter.rate = 0.9;
+    utter.pitch = 1.04;
+    utter.volume = 1;
+    if (hungarianVoice) utter.voice = hungarianVoice;
+
+    utter.onstart = () => {
+      if (generation !== speakGeneration) return;
+      setSpeakingUi(true);
+      // Chrome bug: speech can freeze mid-utterance without periodic resume
+      clearSpeakKeepAlive();
+      speakKeepAlive = setInterval(() => {
+        if (generation !== speakGeneration) {
+          clearSpeakKeepAlive();
+          return;
+        }
+        if (speechSynthesis.speaking && speechSynthesis.paused) {
+          speechSynthesis.resume();
+        } else if (speechSynthesis.speaking) {
+          speechSynthesis.resume();
+        }
+      }, 8000);
+    };
+
+    utter.onend = () => {
+      if (generation !== speakGeneration) return;
+      const wait = pauseMsForChunk(chunk, isLast);
+      if (wait > 0) {
+        setTimeout(() => speakNextChunk(generation), wait);
+      } else {
+        speakNextChunk(generation);
+      }
+    };
+
+    utter.onerror = () => {
+      if (generation !== speakGeneration) return;
+      // Skip a failed chunk instead of aborting the whole tale harshly
+      setTimeout(() => speakNextChunk(generation), 120);
+    };
+
+    speechSynthesis.speak(utter);
   }
 
   function speakText(text) {
@@ -265,25 +419,19 @@
       return;
     }
     stopSpeak();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "hu-HU";
-    utter.rate = 1.02;
-    utter.pitch = 1;
-    if (hungarianVoice) utter.voice = hungarianVoice;
-    utter.onstart = () => {
-      speaking = true;
-      btnSpeak.classList.add("is-active");
-      btnSpeak.setAttribute("aria-pressed", "true");
-      speakLabel.textContent = "Felolvasás…";
-      btnStopSpeak.hidden = false;
-    };
-    utter.onend = stopSpeak;
-    utter.onerror = stopSpeak;
-    speechSynthesis.speak(utter);
+    loadVoices();
+    const chunks = splitSpeechChunks(text);
+    if (!chunks.length) return;
+    speakQueue = chunks;
+    const generation = speakGeneration;
+    // Tiny delay helps some browsers attach the preferred voice cleanly
+    setTimeout(() => {
+      if (generation !== speakGeneration) return;
+      speakNextChunk(generation);
+    }, 60);
   }
 
   function maybeAutoSpeak() {
-    // Auto-read first scene lightly only if user already used speak once in session
     if (sessionStorage.getItem("mesehang-auto-speak") === "1" && story) {
       const scene = MeseEngine.getScene(story);
       speakText(scene.text);

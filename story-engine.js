@@ -147,7 +147,7 @@
       start: {
         id: "start",
         chapter: "1. fejezet",
-        text: `Egyszer volt, hol nem volt, ${place} élt ${hero}. Egy nap ${mood.verb} útnak indult, mert ${wish ? `pont olyan mesét szeretett volna, mint amit te is: „${wish}”` : "egy igazi kalandra vágyott"}. Nemsokára találkozott ${companion.replace(/^egy /, "egy ")} társával. „Hallod?” — suttogta a társ. „Valaki elrejtette ${object}!”`,
+        text: `Egyszer volt, hol nem volt, ${place} élt ${hero}. Egy nap ${mood.verb} útnak indult, mert ${wish ? `pont olyan mesét szeretett volna, mint amit te is kívántál: ${wish}` : "egy igazi kalandra vágyott"}. Nemsokára találkozott ${companion.replace(/^egy /, "egy ")} társával. A társ halkan suttogta: Hallod. Valaki elrejtette ${object}.`,
         choices: [
           { label: `Együtt keresik meg ${object}`, next: "search" },
           { label: "Előbb a biztonságos ösvényt követik", next: "path" },
@@ -157,7 +157,7 @@
       search: {
         id: "search",
         chapter: "2. fejezet",
-        text: `${hero} és társa ${mood.verb} nekiláttak a keresésnek. Nyomok vezettek egy rejtett tisztásra, ahol ${threat} őrködött. A lény nem volt teljesen rossz — csak nagyon félt, hogy elveszíti, ami fényt ad neki. ${hero} szívében most ${mood.tone} keveredett.`,
+        text: `${hero} és társa ${mood.verb} nekiláttak a keresésnek. Nyomok vezettek egy rejtett tisztásra, ahol ${threat} őrködött. A lény nem volt teljesen rossz, csak nagyon félt, hogy elveszíti, ami fényt ad neki. ${hero} szívében most ${mood.tone} keveredett.`,
         choices: [
           { label: "Barátságosan beszélnek vele", next: "talk" },
           { label: "Okos trükkel terelik el", next: "trick" },
@@ -167,7 +167,7 @@
       path: {
         id: "path",
         chapter: "2. fejezet",
-        text: `Az ösvény nyugodtnak tűnt, de hamarosan elágazott. Az egyik út fényes volt, a másik halk zenét játszott. ${companion} a zenés irányba bólintott. Közben messziről felhangzott ${threat} morgása — mintha ${object} körül forogna a gond.`,
+        text: `Az ösvény nyugodtnak tűnt, de hamarosan elágazott. Az egyik út fényes volt, a másik halk zenét játszott. ${companion} a zenés irányba bólintott. Közben messziről felhangzott ${threat} morgása, mintha ${object} körül forogna a gond.`,
         choices: [
           { label: "A zenés ösvényen mennek tovább", next: "search" },
           { label: "A fényes úton sietnek", next: "listen" },
@@ -176,7 +176,7 @@
       listen: {
         id: "listen",
         chapter: "2. fejezet",
-        text: `${hero} megállt, és hallgatózott. A szél azt súgta: „${object} csak annak ragyog, aki megosztja.” Ezután megjelent ${threat}, de már nem volt olyan félelmetes — csak magányos. ${hero} megértette, hogy a mese igazi kulcsa a megosztás.`,
+        text: `${hero} megállt, és hallgatózott. A szél azt súgta, hogy ${object} csak annak ragyog, aki megosztja. Ezután megjelent ${threat}, de már nem volt olyan félelmetes, csak magányos. ${hero} megértette, hogy a mese igazi kulcsa a megosztás.`,
         choices: [
           { label: "Megosztják a fényt mindenkivel", next: "talk" },
           { label: "Megígérik, hogy vigyáznak rá együtt", next: "gift" },
@@ -185,7 +185,7 @@
       talk: {
         id: "talk",
         chapter: "3. fejezet",
-        text: `${hero} nyugodt hangon szólt: „Nem ellopni jöttünk. Csak szeretnénk, ha a fény mindenkinek jutna.” ${threat} lassan megnyugodott. Együtt felemelték ${object}, és a helyszín megtelt meleg ragyogással. ${companion} mosolygott: „Ez volt a hiányzó rész.”`,
+        text: `${hero} nyugodt hangon szólt. Nem ellopni jöttünk. Csak szeretnénk, ha a fény mindenkinek jutna. ${threat} lassan megnyugodott. Együtt felemelték ${object}, és a helyszín megtelt meleg ragyogással. ${companion} mosolygott, és azt mondta, ez volt a hiányzó rész.`,
         choices: [
           { label: "Hazaviszik a fény egy részét", next: "ending_home" },
           { label: "Ünnepet rendeznek a helyszínen", next: "ending_party" },
@@ -194,7 +194,7 @@
       trick: {
         id: "trick",
         chapter: "3. fejezet",
-        text: `${hero} és ${companion} ravasz tervet eszeltek ki: tükrökkel és visszhanggal úgy tűnt, mintha ${object} egyszerre több helyen ragyogna. ${threat} összezavarodott, majd elnevette magát: „Áá, ügyesek vagytok!” A feszültség feloldódott, és közösen eldöntötték, hogy a kincs nem egy emberé.`,
+        text: `${hero} és ${companion} ravasz tervet eszeltek ki. Tükrökkel és visszhanggal úgy tűnt, mintha ${object} egyszerre több helyen ragyogna. ${threat} összezavarodott, majd elnevette magát, és elismerte, hogy ügyesek voltak. A feszültség feloldódott, és közösen eldöntötték, hogy a kincs nem egy emberé.`,
         choices: [
           { label: "Békét kötnek, és együtt őrzik", next: "ending_home" },
           { label: "A trükkből játékot csinálnak", next: "ending_party" },
@@ -203,7 +203,7 @@
       gift: {
         id: "gift",
         chapter: "3. fejezet",
-        text: `${hero} elővett egy apró ajándékot: egy saját emlékfoszlányt — nevetést, bátorságot és egy ígéretet. „Ezt adom cserébe.” ${threat} elfogadta, és odaadta ${object}. A fény kettévált: egyik fele a hősé, a másik a helyé lett, hogy senki se maradjon sötétben.`,
+        text: `${hero} elővett egy apró ajándékot, egy saját emlékfoszlányt, nevetést, bátorságot és egy ígéretet. Ezt adom cserébe, mondta halkan. ${threat} elfogadta, és odaadta ${object}. A fény kettévált. Egyik fele a hősé, a másik a helyé lett, hogy senki se maradjon sötétben.`,
         choices: [
           { label: "Új barátsággal térnek haza", next: "ending_home" },
           { label: "Megünneplik az új szövetséget", next: "ending_party" },
@@ -212,14 +212,14 @@
       ending_home: {
         id: "ending_home",
         chapter: "Befejezés",
-        text: `Így tért haza ${hero}, ${companion} társaságában, és magával vitte a fény egy kis darabját. Otthon elmesélte a kalandot, ${mood.ending}. Aki hallotta a mesét, egy kicsit bátrabban nézett holnapra. Itt a vége, fuss el véle!`,
+        text: `Így tért haza ${hero}, ${companion} társaságában, és magával vitte a fény egy kis darabját. Otthon elmesélte a kalandot, ${mood.ending}. Aki hallotta a mesét, egy kicsit bátrabban nézett holnapra. Itt a vége, fuss el véle.`,
         choices: [],
         ending: true,
       },
       ending_party: {
         id: "ending_party",
         chapter: "Befejezés",
-        text: `Aznap este nagy ünnep kerekedett ${place}. Zenélt a szél, táncolt a fény, és ${hero} körül barátok gyűltek. ${threat} is ott ült a körben, már nem ijesztő vendégként. ${mood.ending}. Itt a vége, fuss el véle!`,
+        text: `Aznap este nagy ünnep kerekedett ${place}. Zenélt a szél, táncolt a fény, és ${hero} körül barátok gyűltek. ${threat} is ott ült a körben, már nem ijesztő vendégként. ${mood.ending}. Itt a vége, fuss el véle.`,
         choices: [],
         ending: true,
       },

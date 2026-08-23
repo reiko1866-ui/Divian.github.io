@@ -77,8 +77,8 @@
     t = t.replace(/\s+/g, " ");
     const fixes = [
       [/divi|divi|didi|didi|tiví|tivi|dévi/gi, "Divi"],
-      [/mesé figur|mese figur|mesefigura|mese-figura/gi, "mesefigurád"],
-      [/kedvenc(e|ed)? figur/gi, "kedvenc mesefigurád"],
+      [/mesé?\s*figur[aáe]?d?/gi, "mesefigurád"],
+      [/kedvenc(e|ed)?\s+figur/gi, "kedvenc mesefigurád"],
       [/hány éves vagy\??/gi, "hány éves vagy"],
       [/mi a neved\??/gi, "mi a neved"],
       [/mondj egy viccet|viccet kérnék|poént/gi, "mondj egy viccet"],

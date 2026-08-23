@@ -417,7 +417,10 @@
   }
 
   async function handleUserText(raw) {
-    const text = (raw || "").trim();
+    const text = (typeof DiviBrain.normalizeSpeech === "function"
+      ? DiviBrain.normalizeSpeech(raw)
+      : String(raw || "")
+    ).trim();
     if (!text || busy) return;
     busy = true;
     stopListening();

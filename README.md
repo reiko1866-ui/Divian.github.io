@@ -25,5 +25,11 @@ A kulcs a böngésző `localStorage` kulcsába kerül: **`divi-gemini-key`**.
 
 Kulcs igénylése: [Google AI Studio](https://aistudio.google.com/apikey)
 
+## HTTP 429 (kvóta)
+Ha túl sok a kérés, a Gemini `429 RESOURCE_EXHAUSTED` hibát ad.
+Az app automatikusan **újrapróbál exponenciális várakozással**, sorba állítja a hívásokat,
+és rövid válaszokat kér. Ha a hang-kvóta is tele, a szöveg továbbra is megjelenik.
+Várj 1–2 percet, vagy nézd meg a kvótát az AI Studio Rate limits oldalán.
+
 ## Futtatás
 Nyisd meg az `index.html` fájlt, vagy a GitHub Pages URL-t.

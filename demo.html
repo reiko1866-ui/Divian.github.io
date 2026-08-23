@@ -1003,12 +1003,127 @@ body {
     );
   };
 
+  function sleep(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  function parseRetryAfterMs(res, attempt) {
+    const header = res && res.headers && res.headers.get ? res.headers.get("retry-after") : null;
+    if (header) {
+      const asNum = Number(header);
+      if (!Number.isNaN(asNum) && asNum >= 0) return Math.min(60000, asNum * 1000);
+      const asDate = Date.parse(header);
+      if (!Number.isNaN(asDate)) return Math.min(60000, Math.max(0, asDate - Date.now()));
+    }
+    // Exponential backoff + jitter: ~1.2s, 2.4s, 4.8s…
+    const base = Math.min(20000, 1200 * Math.pow(2, Math.max(0, attempt)));
+    const jitter = Math.floor(Math.random() * 400);
+    return base + jitter;
+  }
+
+  function isQuotaOrTransient(status) {
+    return status === 429 || status === 503 || status === 500 || status === 502 || status === 504;
+  }
+
+  function makeApiError(kind, status, model, detail) {
+    const err = new Error(
+      (kind === "tts" ? "Gemini hang" : "Gemini szöveg") +
+        " HTTP " +
+        status +
+        " (" +
+        model +
+        ") " +
+        String(detail || "").slice(0, 180)
+    );
+    err.status = status;
+    err.code = status === 429 ? "QUOTA_EXCEEDED" : "GEMINI_HTTP_" + status;
+    err.model = model;
+    return err;
+  }
+
+  /** Egy közös sor — szöveg + TTS ne lőjön egyszerre a kvótába */
+  let geminiQueue = Promise.resolve();
+  function enqueueGemini(task) {
+    const run = geminiQueue.then(task, task);
+    geminiQueue = run.then(
+      function () {},
+      function () {}
+    );
+    return run;
+  }
+
+  /**
+   * generateContent hívás 429/5xx újrapróbával (exponenciális várakozás).
+   * Ugyanarra a modellre próbál újra; csak tartós hiba után vált.
+   */
+  async function generateContentWithRetry(apiKey, model, body, kind) {
+    const maxAttempts = 4;
+    let lastErr = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      let res;
+      try {
+        res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/" +
+            model +
+            ":generateContent?key=" +
+            encodeURIComponent(apiKey),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+      } catch (networkErr) {
+        lastErr = networkErr;
+        await sleep(parseRetryAfterMs(null, attempt));
+        continue;
+      }
+
+      if (res.ok) {
+        return res.json();
+      }
+
+      const errText = await res.text().catch(function () {
+        return "";
+      });
+      lastErr = makeApiError(kind, res.status, model, errText);
+
+      if (!isQuotaOrTransient(res.status)) {
+        throw lastErr;
+      }
+
+      const waitMs = parseRetryAfterMs(res, attempt);
+      console.warn(
+        "[Divi] Gemini " +
+          (kind || "api") +
+          " " +
+          res.status +
+          " (" +
+          model +
+          ") — újrapróba " +
+          (attempt + 1) +
+          "/" +
+          maxAttempts +
+          " " +
+          waitMs +
+          " ms múlva"
+      );
+      await sleep(waitMs);
+    }
+
+    throw lastErr || makeApiError(kind, 429, model, "kvóta / átmeneti hiba");
+  }
+
   async function replyWithGemini(brain, userText, apiKey) {
     if (!apiKey) {
       throw new Error("MISSING_GEMINI_KEY");
     }
     const contents = [];
-    brain.history.slice(-10).forEach(function (h) {
+    // Rövid history — kevesebb token = kevesebb TPM / kvótanyomás
+    brain.history.slice(-6).forEach(function (h) {
       contents.push({
         role: h.role === "assistant" ? "model" : "user",
         parts: [{ text: h.content }],
@@ -1022,48 +1137,48 @@ body {
       contents.push({ role: "user", parts: [{ text: userText }] });
     }
 
-    const models = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.6-flash"];
+    // Lite modellek előnyben; a 3.6 flash gondolkodó tokeneket égethet
+    const models = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
     let lastErr = null;
+    const body = {
+      systemInstruction: { parts: [{ text: brain.buildSystemPrompt() }] },
+      contents: contents,
+      generationConfig: {
+        temperature: 0.95,
+        maxOutputTokens: 256,
+        topP: 0.9,
+      },
+    };
 
-    for (let m = 0; m < models.length; m += 1) {
-      const model = models[m];
-      try {
-        const res = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/" +
-            model +
-            ":generateContent?key=" +
-            encodeURIComponent(apiKey),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: brain.buildSystemPrompt() }] },
-              contents: contents,
-              generationConfig: {
-                temperature: 0.95,
-                maxOutputTokens: 1024,
-                topP: 0.9,
-              },
-            }),
+    return enqueueGemini(async function () {
+      for (let m = 0; m < models.length; m += 1) {
+        const model = models[m];
+        try {
+          const data = await generateContentWithRetry(apiKey, model, body, "text");
+          const parts = ((((data.candidates || [])[0] || {}).content || {}).parts) || [];
+          const text = parts
+            .map(function (p) {
+              return p.text || "";
+            })
+            .join("")
+            .trim();
+          if (text) {
+            return {
+              text: text,
+              emotion: /haha|hehe|vicc|poén|😄|😂/i.test(text) ? "laugh" : "speaking",
+            };
           }
-        );
-        if (!res.ok) {
-          const errText = await res.text().catch(function () { return ""; });
-          lastErr = new Error("Gemini szöveg HTTP " + res.status + " (" + model + ") " + errText.slice(0, 160));
-          continue;
+          lastErr = new Error("Üres Gemini válasz (" + model + ")");
+        } catch (err) {
+          lastErr = err;
+          // 429 után várjunk a következő modell előtt is (ne lőjük ki a kvótát)
+          if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED")) {
+            await sleep(1500 + Math.floor(Math.random() * 500));
+          }
         }
-        const data = await res.json();
-        const parts = ((((data.candidates || [])[0] || {}).content || {}).parts) || [];
-        const text = parts.map(function (p) { return p.text || ""; }).join("").trim();
-        if (text) {
-          return { text: text, emotion: /haha|hehe|vicc|poén|😄|😂/i.test(text) ? "laugh" : "speaking" };
-        }
-        lastErr = new Error("Üres Gemini válasz (" + model + ")");
-      } catch (err) {
-        lastErr = err;
       }
-    }
-    throw lastErr || new Error("Gemini szöveg nem elérhető");
+      throw lastErr || new Error("Gemini szöveg nem elérhető");
+    });
   }
 
   /** PCM L16 base64 → WAV Blob (Gemini TTS) */
@@ -1109,62 +1224,53 @@ body {
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
+    // Rövidítsük a TTS bemenetet — kevesebb karakter = kisebb kvótanyomás
+    const spoken = clean.length > 420 ? clean.slice(0, 417).trim() + "…" : clean;
     const models = ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"];
     let lastErr = null;
     const voice = voiceName || "Aoede";
+    const body = {
+      contents: [{ parts: [{ text: spoken }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voice },
+          },
+        },
+      },
+    };
 
-    for (let i = 0; i < models.length; i += 1) {
-      const model = models[i];
-      try {
-        const res = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/" +
-            model +
-            ":generateContent?key=" +
-            encodeURIComponent(apiKey),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: clean }] }],
-              generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                  voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: voice },
-                  },
-                },
-              },
-            }),
+    return enqueueGemini(async function () {
+      for (let i = 0; i < models.length; i += 1) {
+        const model = models[i];
+        try {
+          const data = await generateContentWithRetry(apiKey, model, body, "tts");
+          const part = ((((data.candidates || [])[0] || {}).content || {}).parts || [])[0] || {};
+          const inline = part.inlineData || part.inline_data || {};
+          const b64 = inline.data || "";
+          const mime = inline.mimeType || inline.mime_type || "";
+          if (!b64) {
+            lastErr = new Error("Gemini TTS üres hang (" + model + ")");
+            continue;
           }
-        );
-        if (!res.ok) {
-          const errText = await res.text().catch(function () { return ""; });
-          lastErr = new Error("Gemini TTS HTTP " + res.status + " (" + model + ") " + errText.slice(0, 160));
-          continue;
+          if (/audio\/mpeg|audio\/mp3|audio\/wav/i.test(mime) && !/L16|pcm/i.test(mime)) {
+            const raw = atob(b64);
+            const arr = new Uint8Array(raw.length);
+            for (let j = 0; j < raw.length; j += 1) arr[j] = raw.charCodeAt(j);
+            return { blob: new Blob([arr], { type: mime.split(";")[0] }), mime: mime };
+          }
+          const rate = parsePcmRate(mime);
+          return { blob: pcmBase64ToWavBlob(b64, rate), mime: "audio/wav" };
+        } catch (err) {
+          lastErr = err;
+          if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED")) {
+            await sleep(2000 + Math.floor(Math.random() * 800));
+          }
         }
-        const data = await res.json();
-        const part = ((((data.candidates || [])[0] || {}).content || {}).parts || [])[0] || {};
-        const inline = part.inlineData || part.inline_data || {};
-        const b64 = inline.data || "";
-        const mime = inline.mimeType || inline.mime_type || "";
-        if (!b64) {
-          lastErr = new Error("Gemini TTS üres hang (" + model + ")");
-          continue;
-        }
-        if (/audio\/mpeg|audio\/mp3|audio\/wav/i.test(mime) && !/L16|pcm/i.test(mime)) {
-          const raw = atob(b64);
-          const arr = new Uint8Array(raw.length);
-          for (let j = 0; j < raw.length; j += 1) arr[j] = raw.charCodeAt(j);
-          return { blob: new Blob([arr], { type: mime.split(";")[0] }), mime: mime };
-        }
-        // Default: PCM L16 @ 24kHz → WAV
-        const rate = parsePcmRate(mime);
-        return { blob: pcmBase64ToWavBlob(b64, rate), mime: "audio/wav" };
-      } catch (err) {
-        lastErr = err;
       }
-    }
-    throw lastErr || new Error("Gemini TTS nem elérhető");
+      throw lastErr || new Error("Gemini TTS nem elérhető");
+    });
   }
 
   Brain.prototype.record = function (role, content) {
@@ -1196,6 +1302,14 @@ body {
       return out;
     } catch (err) {
       console.error("Gemini válasz hiba:", err);
+      // Tartós 429: ideiglenes helyi válasz, hogy a gyerek ne akadjon el
+      if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED")) {
+        console.warn("[Divi] Kvóta tele — ideiglenes helyi válasz, majd próbáld újra pár perc múlva.");
+        const out = this.localReply(cleaned);
+        out.quotaFallback = true;
+        this.record("assistant", out.text);
+        return out;
+      }
       throw err;
     }
   };
@@ -1647,17 +1761,28 @@ body {
     } catch (err) {
       console.error("[Divi] Gemini hanghiba:", err);
       if (token === speakToken) {
-        const hint =
-          err && err.message === "MISSING_GEMINI_KEY"
-            ? "Hiányzik a Gemini API kulcs a Beállításokban."
-            : "A hang most nem ment (" +
-              ((err && err.message) || "hiba") +
-              "), de a szöveg megvan.";
+        let hint = "A hang most nem ment, de a szöveg megvan.";
+        if (err && err.message === "MISSING_GEMINI_KEY") {
+          hint = "Hiányzik a Gemini API kulcs a Beállításokban.";
+        } else if (
+          err &&
+          (err.status === 429 ||
+            err.code === "QUOTA_EXCEEDED" ||
+            /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))
+        ) {
+          hint =
+            "Hang-kvóta tele (429). Várj egy percet — a szöveg megvan, a hang majd újra megy.";
+        } else if (err && err.message) {
+          hint = "A hang most nem ment (" + err.message.slice(0, 120) + "), de a szöveg megvan.";
+        }
         setStatus(hint);
         showBubble(clean);
+        // Viseme „néma beszéd”, hogy ne álljon meg teljesen a karakter
+        character.startVisemeLipSync(clean, { charsPerSecond: 12 });
         await new Promise(function (r) {
-          setTimeout(r, 2200);
+          setTimeout(r, Math.min(2800, 700 + clean.length * 45));
         });
+        character.stopLipSync();
       }
     }
 
@@ -1793,6 +1918,10 @@ body {
         geminiKey: getGeminiKey(),
       });
       addChat("bot", reply.text);
+      if (reply.quotaFallback) {
+        setStatus("Gemini kvóta tele (429) — ideiglenes válasz. Várj 1–2 percet, majd próbáld újra.");
+        console.warn("[Divi] QUOTA_EXCEEDED — helyi fallback válasz.");
+      }
       if (reply.emotion === "laugh") character.react("laugh");
       await speak(reply.text);
     } catch (err) {
@@ -1802,6 +1931,9 @@ body {
         msg = "Hiányzik a Gemini API kulcs. Illeszd be a ⚙️ Beállításokban.";
         settingsPanel.classList.remove("hidden");
         geminiKeyInput.focus();
+      } else if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED" || /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))) {
+        msg =
+          "A Gemini kvóta ideiglenesen betelt (HTTP 429). Várj 1–2 percet, majd kérdezz újra — Divi addig is itt van!";
       } else if (err && err.message) {
         msg = err.message.slice(0, 220);
       }

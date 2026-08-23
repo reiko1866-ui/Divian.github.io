@@ -210,17 +210,28 @@
     } catch (err) {
       console.error("[Divi] Gemini hanghiba:", err);
       if (token === speakToken) {
-        const hint =
-          err && err.message === "MISSING_GEMINI_KEY"
-            ? "Hiányzik a Gemini API kulcs a Beállításokban."
-            : "A hang most nem ment (" +
-              ((err && err.message) || "hiba") +
-              "), de a szöveg megvan.";
+        let hint = "A hang most nem ment, de a szöveg megvan.";
+        if (err && err.message === "MISSING_GEMINI_KEY") {
+          hint = "Hiányzik a Gemini API kulcs a Beállításokban.";
+        } else if (
+          err &&
+          (err.status === 429 ||
+            err.code === "QUOTA_EXCEEDED" ||
+            /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))
+        ) {
+          hint =
+            "Hang-kvóta tele (429). Várj egy percet — a szöveg megvan, a hang majd újra megy.";
+        } else if (err && err.message) {
+          hint = "A hang most nem ment (" + err.message.slice(0, 120) + "), de a szöveg megvan.";
+        }
         setStatus(hint);
         showBubble(clean);
+        // Viseme „néma beszéd”, hogy ne álljon meg teljesen a karakter
+        character.startVisemeLipSync(clean, { charsPerSecond: 12 });
         await new Promise(function (r) {
-          setTimeout(r, 2200);
+          setTimeout(r, Math.min(2800, 700 + clean.length * 45));
         });
+        character.stopLipSync();
       }
     }
 
@@ -356,6 +367,10 @@
         geminiKey: getGeminiKey(),
       });
       addChat("bot", reply.text);
+      if (reply.quotaFallback) {
+        setStatus("Gemini kvóta tele (429) — ideiglenes válasz. Várj 1–2 percet, majd próbáld újra.");
+        console.warn("[Divi] QUOTA_EXCEEDED — helyi fallback válasz.");
+      }
       if (reply.emotion === "laugh") character.react("laugh");
       await speak(reply.text);
     } catch (err) {
@@ -365,6 +380,9 @@
         msg = "Hiányzik a Gemini API kulcs. Illeszd be a ⚙️ Beállításokban.";
         settingsPanel.classList.remove("hidden");
         geminiKeyInput.focus();
+      } else if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED" || /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))) {
+        msg =
+          "A Gemini kvóta ideiglenesen betelt (HTTP 429). Várj 1–2 percet, majd kérdezz újra — Divi addig is itt van!";
       } else if (err && err.message) {
         msg = err.message.slice(0, 220);
       }

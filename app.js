@@ -142,7 +142,7 @@
   function revealBubble(fullText, progress01) {
     const chars = Array.from(fullText);
     const n = Math.max(1, Math.floor(chars.length * Math.max(0, Math.min(1, progress01))));
-    showBubble(chars.slice(0, n).join("") + (progress01 < 0.98 ? "▍" : ""));
+    showBubble(chars.slice(0, n).join("") + (progress01 < 0.98 ? "…" : ""));
   }
 
   function speakNativeChunk(text, token) {
@@ -322,6 +322,11 @@
     btnMic.classList.remove("listening");
     btnMic.setAttribute("aria-pressed", "false");
     try {
+      if (recognition && recognition._clearSilence) recognition._clearSilence();
+    } catch (_) {
+      /* ignore */
+    }
+    try {
       if (recognition) recognition.abort();
     } catch (_) {
       try {
@@ -452,38 +457,91 @@
     const rec = new SR();
     rec.lang = "hu-HU";
     rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    rec.continuous = false;
+    rec.maxAlternatives = 3;
+    // continuous: hosszabb mondatokhoz; mi magunk zárjuk le csend után
+    rec.continuous = true;
 
     let finalTranscript = "";
+    let silenceTimer = null;
+    let handled = false;
+
+    function clearSilence() {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer);
+        silenceTimer = null;
+      }
+    }
+
+    function pickBestAlternative(result) {
+      let best = result[0];
+      let bestScore = typeof best.confidence === "number" ? best.confidence : 0.5;
+      for (let i = 1; i < result.length; i += 1) {
+        const c = typeof result[i].confidence === "number" ? result[i].confidence : 0;
+        if (c > bestScore) {
+          best = result[i];
+          bestScore = c;
+        }
+      }
+      return best.transcript || "";
+    }
+
+    function commitSpeech() {
+      clearSilence();
+      if (handled) return;
+      const said = (typeof DiviBrain.normalizeSpeech === "function"
+        ? DiviBrain.normalizeSpeech(finalTranscript)
+        : finalTranscript
+      ).trim();
+      if (!said) {
+        setStatus("Nem értettem tisztán — próbáld újra, kicsit lassabban");
+        return;
+      }
+      handled = true;
+      stopListening();
+      setStatus("Értem: „" + said + "”");
+      handleUserText(said);
+    }
+
+    function scheduleCommit() {
+      clearSilence();
+      // Várj egy kis csendet — így a hosszabb kérdések is megmaradnak
+      silenceTimer = setTimeout(commitSpeech, 1100);
+    }
 
     rec.onstart = function () {
       listening = true;
       startingMic = false;
+      handled = false;
       finalTranscript = "";
+      clearSilence();
       btnMic.classList.add("listening");
       btnMic.setAttribute("aria-pressed", "true");
       character.setState("listening");
-      setStatus("Hallgatlak… beszélj bátran!");
+      setStatus("Hallgatlak… beszélj nyugodtan, megvárom amíg végzel");
     };
 
     rec.onresult = function (event) {
       let interim = "";
-      finalTranscript = "";
-      for (let i = 0; i < event.results.length; i += 1) {
-        const piece = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalTranscript += piece;
-        else interim += piece;
-      }
-      if (interim) setStatus("Hallom: " + interim);
-      if (finalTranscript.trim()) {
-        const said = finalTranscript.trim();
-        stopListening();
-        handleUserText(said);
+      // Csak az új részeket adjuk hozzá a finalhoz
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const piece = pickBestAlternative(result).trim();
+        if (!piece) continue;
+        if (result.isFinal) {
+          finalTranscript = (finalTranscript + " " + piece).replace(/\s+/g, " ").trim();
+          setStatus("Hallom: " + finalTranscript);
+          scheduleCommit();
+        } else {
+          interim += (interim ? " " : "") + piece;
+          setStatus("Hallom: " + (finalTranscript ? finalTranscript + " " : "") + interim + "…");
+          // Ha van interim, toljuk a csend-órát
+          if (finalTranscript) scheduleCommit();
+        }
       }
     };
 
     rec.onerror = function (event) {
+      clearSilence();
       listening = false;
       startingMic = false;
       btnMic.classList.remove("listening");
@@ -495,7 +553,15 @@
         micPermission = "denied";
         setStatus("Mikrofon tiltva. A címsor 🔒 ikonnál engedd engedélyezni, majd nyomd újra a mikrofont.");
       } else if (err === "no-speech") {
-        setStatus("Nem hallottam semmit — nyomd meg újra a mikrofont");
+        // Egy automatikus újrapróbálás
+        if (!handled && micPermission === "granted") {
+          setStatus("Nem hallottam — figyelek még egy kicsit…");
+          setTimeout(function () {
+            if (!busy && !listening) startListening();
+          }, 400);
+        } else {
+          setStatus("Nem hallottam semmit — nyomd meg újra a mikrofont");
+        }
       } else if (err === "audio-capture") {
         setStatus("Nem találok mikrofont. Csatlakoztass egyet, vagy írj szöveggel.");
       } else if (err === "network") {
@@ -506,6 +572,12 @@
     };
 
     rec.onend = function () {
+      clearSilence();
+      // Ha van félkész szöveg és még nem kezeltük — mentsük
+      if (!handled && finalTranscript.trim() && !busy) {
+        commitSpeech();
+        return;
+      }
       listening = false;
       startingMic = false;
       btnMic.classList.remove("listening");
@@ -513,6 +585,7 @@
       if (!busy && character.state === "listening") character.setState("idle");
     };
 
+    rec._clearSilence = clearSilence;
     return rec;
   }
 

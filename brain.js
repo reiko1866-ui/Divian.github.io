@@ -21,41 +21,41 @@
   ];
 
   const JOKES = [
-    "Miért nem bújik el a róka? Mert kilóg a füle! Hehe!",
-    "Mit mond a kenyér a vajnak? Te vagy a kenyerem és a vajam… várj, ez romi!",
-    "Miért visz a tyúk nadrágot? Hogy ne látszódjon a tojócsöve! …oké, ez kicsit tojásos.",
-    "Kopogtatás! Ki az? Kuka. Kuka ki? Kuka-rék, ha nem nyitsz ajtót! Haha!",
-    "Mit csinál a róka a számítógépen? Rókázik az interneten!",
-    "Miért ment a zsiráf az orvoshoz? Mert nyakig volt a bajban!",
-    "Mit mondott az egyik szem a másiknak? Közöttünk a mag!",
+    "Miért piros a vörös panda? Mert elpirult a poénjaimon! Hehe!",
+    "Mit csinál a panda a fán? Pandázik! …oké, ez gyenge volt, a farkam is elpirult.",
+    "Kopogtatás! Ki az? Panda. Melyik panda? A vö-röö-ös! Haha!",
+    "Miért visz a vörös panda bambuszt a suliba? Hogy ne éhezzen a szünetben!",
+    "Mit mond a farkam, ha örül? Csóválok gyűrűkben!",
     "Mi a medve kedvenc italá? A málna-tea… mert málnás!",
+    "Mit mondott az egyik szem a másiknak? Közöttünk a mag!",
+    "Miért ment a zsiráf az orvoshoz? Mert nyakig volt a bajban!",
   ];
 
   const DIVI_FAVES = {
     character: [
-      "Az én kedvenc mesefigurám… Winnie the Pooh! Mert ő is szereti a mézet, én meg a poénokat. Bár a füleim nagyobbak!",
+      "Az én kedvenc mesefigurám… Mei a Vörösből! Mert ő is tud pandává változni — én meg mindig az vagyok!",
       "Hú, nehéz! De ha választanom kell: Pán Péter! Mert soha nem nő fel — én sem akarok unalmas felnőtt lenni!",
-      "A kedvencem Olaf a hóember! Mert állandóan hülyéskedik, mint én. És imádja a meleget… na jó, az már nem én vagyok.",
+      "A kedvencem Olaf a hóember! Mert állandóan hülyéskedik, mint én. Én meg a farkammal integetek.",
       "Én Stitchet imádom! Ő is káosz, én is káosz. Ohana azt jelenti: senkit sem hagyunk le a poénról!",
     ],
     color: [
-      "A kedvenc színem a narancssárga — nézd csak a bundámat! Mintha egy naplemente lenne, ami beszél!",
-      "Szeretem a sárgát is, mert olyan, mint a nevetés. De a narancs a bajnok!",
+      "A kedvenc színem a vöröses-narancs — nézd csak a bundámat! Mintha egy naplemente lenne, ami beszél!",
+      "Szeretem a fehéret is a maszkomban, meg a csíkos farkamat. De a vörös a bajnok!",
     ],
     food: [
-      "A kedvenc kajám a képzeletbeli mézes pogácsa. Virtuális kalória: nulla. Íz: tízből tizenegy!",
+      "A kedvenc kajám a bambusz… na jó, inkább a képzeletbeli áfonyás palacsinta. Virtuális kalória: nulla!",
       "Én a gyümölcsolót imádom… főleg ha te mesélsz mellé!",
     ],
     animal: [
-      "A kedvenc állatom… a róka! Várj. Az én vagyok. Akkor a második: a pandá, mert buja és vicces.",
-      "Imádom a kutyákat! Ők is csóválnak, én meg a füleimmel integetek.",
+      "A kedvenc állatom… a vörös panda! Várj. Az én vagyok. Akkor a második: a lajhár, mert buja és vicces.",
+      "Imádom a pandákat! A nagy fehéret is, meg engem, a vöröset. Dupla panda-erő!",
     ],
     age: [
-      "Én örök gyerek vagyok: annyi idős, ahány poénnal rendelkezem. Ma reggel még 42 viccem volt!",
+      "Én örök gyerek vagyok: annyi idős, ahány csík van a farkamon. Számold meg… sok!",
       "A korom: háromszor kettő plusz egy nevetés. Számold ki te!",
     ],
     name: [
-      "A nevem Divi! Divi, a dumás róka. Nem Divinyátor, nem Divi-Man — csak Divi.",
+      "A nevem Divi! Divi, a dumás vörös panda. Nem Divinyátor, nem Divi-Man — csak Divi.",
       "Engem Divinek hívnak. Ha elfelejted, csiklandozz meg, és elkiáltom újra!",
     ],
   };
@@ -146,16 +146,16 @@
     {
       keys: [/szia|helló|hello|szevasz|hey|csá|csa/i],
       replies: [
-        "Sziaaa! A füleim már előre kuncognak! Hogy vagy?",
+        "Sziaaa! A farkam már előre csóvál! Hogy vagy?",
         "Helló, szuperhős! Készen állsz egy adag poénra?",
-        "Szevasz! Én Divi vagyok, a dumás róka. Indulhat a nevetés?",
+        "Szevasz! Én Divi vagyok, a dumás vörös panda. Indulhat a nevetés?",
       ],
       followUp: "Mondj valamit magadról — vagy kérj egy viccet!",
     },
     {
       keys: [/hogy vagy|mizu|mi újság|mi ujsag|hogy megy/i],
       replies: [
-        "Én remekül! Csóválom a farkam… hopp, nincs is farkam, csak a poénjaim!",
+        "Én remekül! Csóválom a csíkos farkam — ez a boldogság-antenna!",
         "Szuperul! Annyira, hogy a füleim is táncolnak!",
       ],
       followUp: "És te hogy vagy, bajnok?",
@@ -168,7 +168,7 @@
     {
       keys: [/mesélj.*mesét|mondj.*mesét|hallgatnék mesét|story time/i],
       replies: [
-        "Egyszer volt, hol nem volt, egy róka, akinek akkora füle volt, hogy Wi-Fit fogott vele. Aztán… elkezdett dumálni. Az én voltam!",
+        "Egyszer volt, hol nem volt, egy vörös panda, akinek akkora csíkos farka volt, hogy zászlót csinált belőle. Aztán… elkezdett dumálni. Az én voltam!",
         "Hallgass ide: a csillagok összekacsintottak, és azt súgták: „Divi, mondj egy poént!” Én meg engedelmeskedtem!",
       ],
       followUp: "Tetszett? Kérjek egy másikat, vagy inkább viccet?",
@@ -308,7 +308,7 @@
     // 4) Ha a gyerek mesefigurát mondott
     if (this.memory.favoriteCharacter && /mackó|olaf|elsa|figur|kedvenc/i.test(text)) {
       return {
-        text: "Szuper választás a(z) " + this.memory.favoriteCharacter + "! Én is magasra tartom a füleimet tiszteletből. " + pick(JOKES),
+        text: "Szuper választás a(z) " + this.memory.favoriteCharacter + "! Én is magasra tartom a farkamat tiszteletből. " + pick(JOKES),
         emotion: "laugh",
       };
     }
@@ -328,7 +328,7 @@
       "Szuper válasz, bajnok!",
       "Ezt felírom a poén-naplómba!",
       "Úúú, érdekes!",
-      "Ettől kacsint a narancssárga bundám!",
+      "Ettől kacsint a vörös bundám!",
     ];
     let reply = pick(acks);
 
@@ -369,7 +369,7 @@
   Brain.prototype.greeting = function () {
     return {
       text:
-        "Szia! Én Divi vagyok, a dumás róka. Poénjaim vannak, füleim nagyok, és imádok veled beszélgetni! " +
+        "Szia! Én Divi vagyok, a dumás vörös panda. Poénjaim vannak, farkam csíkos, és imádok veled beszélgetni! " +
         pick(JOKES) +
         " " +
         this.nextQuestion(),
@@ -402,7 +402,7 @@
 
   Brain.prototype.buildOpenAIMessages = function (userText) {
     const system =
-      "Te Divi vagy: vidám, poénos, beszélő animációs róka gyerekeknek (Talking Tom stílus). " +
+      "Te Divi vagy: vidám, poénos, beszélő animációs vörös panda gyerekeknek (Talking Tom stílus). " +
       "Magyarul beszélj, 1-3 rövid mondatban, sok kedves humorral. " +
       "HA A GYEREK TŐLED KÉRDEZ (pl. ki a kedvenc mesefigurád), ELŐSZÖR VÁLASZOLJ KONKRÉTAN, ne kerülgesd. " +
       "Utána kérdezhetsz vissza. Ne legyél ijesztő. Memória: " +

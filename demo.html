@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Divi — interaktív beszélő animációs karakter. Kérdez, felel, játszik veled." />
-  <title>Divi — Beszélő barát</title>
+  <meta name="description" content="Divi — interaktív beszélő vörös panda. Kérdez, felel, játszik veled." />
+  <title>Divi — Beszélő vörös panda</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
@@ -322,9 +322,14 @@ body {
   animation: giggle 0.45s ease-in-out 3;
 }
 
-@keyframes breathe {
-  0%, 100% { transform: translateY(0) scale(1, 1); }
-  50% { transform: translateY(-4px) scale(1.02, 0.98); }
+.character.state-idle .tail {
+  transform-origin: 200px 250px;
+  animation: tail-sway 3.6s ease-in-out infinite;
+}
+
+@keyframes tail-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(6deg); }
 }
 
 @keyframes sway {
@@ -535,10 +540,10 @@ body {
   <div class="app">
     <header class="top-bar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true">🦊</span>
+        <span class="brand-mark" aria-hidden="true">🐼</span>
         <div>
           <h1>Divi</h1>
-          <p class="tagline">Beszélő barátod</p>
+          <p class="tagline">Beszélő vörös pandád</p>
         </div>
       </div>
       <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
@@ -594,80 +599,100 @@ body {
       </div>
 
       <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
-        <svg id="character" class="character state-idle" viewBox="0 0 280 340" xmlns="http://www.w3.org/2000/svg">
+        <svg id="character" class="character state-idle" viewBox="0 0 280 360" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f4a261" />
-              <stop offset="100%" stop-color="#e76f51" />
+              <stop offset="0%" stop-color="#f07a45" />
+              <stop offset="55%" stop-color="#e85d2c" />
+              <stop offset="100%" stop-color="#c43c1a" />
             </linearGradient>
             <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#fff3e0" />
-              <stop offset="100%" stop-color="#ffe0b2" />
+              <stop offset="0%" stop-color="#fff8f0" />
+              <stop offset="100%" stop-color="#ffe8d2" />
+            </linearGradient>
+            <linearGradient id="tailGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#c43c1a" />
+              <stop offset="100%" stop-color="#f07a45" />
             </linearGradient>
           </defs>
 
           <!-- shadow -->
-          <ellipse class="shadow" cx="140" cy="318" rx="70" ry="12" fill="rgba(40,30,20,0.18)" />
+          <ellipse class="shadow" cx="140" cy="340" rx="72" ry="12" fill="rgba(40,30,20,0.18)" />
+
+          <!-- ringed tail (red panda signature) -->
+          <g class="tail">
+            <path d="M200 250 Q250 220 255 160 Q258 120 240 95" fill="none" stroke="url(#tailGrad)" stroke-width="28" stroke-linecap="round" />
+            <path d="M200 250 Q250 220 255 160 Q258 120 240 95" fill="none" stroke="#fff3e0" stroke-width="28" stroke-linecap="round" stroke-dasharray="0 18 14 18 14 18 14 18 14 200" opacity="0.85" />
+          </g>
 
           <!-- body -->
           <g class="body">
-            <ellipse cx="140" cy="230" rx="78" ry="88" fill="url(#fur)" />
-            <ellipse cx="140" cy="238" rx="48" ry="58" fill="url(#belly)" />
+            <ellipse cx="140" cy="235" rx="72" ry="82" fill="url(#fur)" />
+            <ellipse cx="140" cy="245" rx="44" ry="52" fill="url(#belly)" />
 
             <!-- arms -->
             <g class="arm arm-left">
-              <ellipse cx="62" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(-18 62 220)" />
-              <circle cx="48" cy="248" r="16" fill="#ffcc80" />
+              <ellipse cx="68" cy="225" rx="20" ry="34" fill="#e85d2c" transform="rotate(-16 68 225)" />
+              <ellipse cx="54" cy="252" rx="15" ry="13" fill="#3d2b1f" />
             </g>
             <g class="arm arm-right">
-              <ellipse cx="218" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(18 218 220)" />
-              <circle cx="232" cy="248" r="16" fill="#ffcc80" />
+              <ellipse cx="212" cy="225" rx="20" ry="34" fill="#e85d2c" transform="rotate(16 212 225)" />
+              <ellipse cx="226" cy="252" rx="15" ry="13" fill="#3d2b1f" />
             </g>
 
-            <!-- legs -->
-            <ellipse cx="108" cy="300" rx="24" ry="18" fill="#d62828" />
-            <ellipse cx="172" cy="300" rx="24" ry="18" fill="#d62828" />
+            <!-- legs / dark socks -->
+            <ellipse cx="112" cy="310" rx="22" ry="20" fill="#3d2b1f" />
+            <ellipse cx="168" cy="310" rx="22" ry="20" fill="#3d2b1f" />
+            <ellipse cx="112" cy="292" rx="18" ry="14" fill="#c43c1a" />
+            <ellipse cx="168" cy="292" rx="18" ry="14" fill="#c43c1a" />
           </g>
 
           <!-- head -->
           <g class="head">
-            <ellipse cx="140" cy="118" rx="86" ry="78" fill="url(#fur)" />
-            <!-- ears -->
+            <ellipse cx="140" cy="120" rx="84" ry="76" fill="url(#fur)" />
+
+            <!-- round ears -->
             <g class="ear ear-left">
-              <polygon points="70,70 52,18 98,52" fill="#e76f51" />
-              <polygon points="70,62 58,28 90,52" fill="#ffcc80" />
+              <ellipse cx="68" cy="58" rx="28" ry="26" fill="#e85d2c" />
+              <ellipse cx="70" cy="60" rx="14" ry="13" fill="#fff3e0" />
             </g>
             <g class="ear ear-right">
-              <polygon points="210,70 228,18 182,52" fill="#e76f51" />
-              <polygon points="210,62 222,28 190,52" fill="#ffcc80" />
+              <ellipse cx="212" cy="58" rx="28" ry="26" fill="#e85d2c" />
+              <ellipse cx="210" cy="60" rx="14" ry="13" fill="#fff3e0" />
             </g>
+
+            <!-- white face mask -->
+            <ellipse cx="140" cy="128" rx="58" ry="48" fill="#fff8f0" />
+            <!-- tear-drop cheek patches -->
+            <path d="M78 118 Q70 145 95 155 Q100 130 90 115 Z" fill="#e85d2c" opacity="0.95" />
+            <path d="M202 118 Q210 145 185 155 Q180 130 190 115 Z" fill="#e85d2c" opacity="0.95" />
+
             <!-- muzzle -->
-            <ellipse cx="140" cy="142" rx="42" ry="32" fill="#fff3e0" />
-            <ellipse class="nose" cx="140" cy="132" rx="12" ry="9" fill="#2b2d42" />
+            <ellipse cx="140" cy="148" rx="28" ry="22" fill="#ffffff" />
+            <ellipse class="nose" cx="140" cy="138" rx="11" ry="8" fill="#2b2d42" />
+
             <!-- eyes -->
             <g class="eyes">
               <g class="eye eye-left">
-                <ellipse cx="108" cy="108" rx="16" ry="18" fill="#fff" />
-                <circle class="pupil" cx="110" cy="110" r="8" fill="#1d3557" />
-                <circle cx="113" cy="106" r="3" fill="#fff" />
+                <ellipse cx="112" cy="112" rx="15" ry="17" fill="#fff" />
+                <circle class="pupil" cx="114" cy="114" r="7.5" fill="#1d3557" />
+                <circle cx="117" cy="110" r="2.5" fill="#fff" />
               </g>
               <g class="eye eye-right">
-                <ellipse cx="172" cy="108" rx="16" ry="18" fill="#fff" />
-                <circle class="pupil" cx="170" cy="110" r="8" fill="#1d3557" />
-                <circle cx="173" cy="106" r="3" fill="#fff" />
+                <ellipse cx="168" cy="112" rx="15" ry="17" fill="#fff" />
+                <circle class="pupil" cx="166" cy="114" r="7.5" fill="#1d3557" />
+                <circle cx="169" cy="110" r="2.5" fill="#fff" />
               </g>
-              <rect class="blink-lid lid-left" x="92" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
-              <rect class="blink-lid lid-right" x="156" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
+              <rect class="blink-lid lid-left" x="97" y="102" width="30" height="20" rx="10" fill="url(#fur)" opacity="0" />
+              <rect class="blink-lid lid-right" x="153" y="102" width="30" height="20" rx="10" fill="url(#fur)" opacity="0" />
             </g>
+
             <!-- mouth — JS lip-sync morph -->
             <g class="mouth">
-              <path class="mouth-closed" d="M122 158 Q140 166 158 158" fill="none" stroke="#2b2d42" stroke-width="3.5" stroke-linecap="round" />
-              <ellipse class="mouth-open" cx="140" cy="164" rx="10" ry="3" fill="#2b2d42" opacity="0" />
-              <ellipse class="mouth-tongue" cx="140" cy="170" rx="7" ry="4" fill="#e63946" opacity="0" />
+              <path class="mouth-closed" d="M124 162 Q140 170 156 162" fill="none" stroke="#2b2d42" stroke-width="3.5" stroke-linecap="round" />
+              <ellipse class="mouth-open" cx="140" cy="168" rx="10" ry="3" fill="#2b2d42" opacity="0" />
+              <ellipse class="mouth-tongue" cx="140" cy="174" rx="7" ry="4" fill="#e63946" opacity="0" />
             </g>
-            <!-- cheeks -->
-            <circle cx="78" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
-            <circle cx="202" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
           </g>
         </svg>
         <span class="tap-hint">Koppints rám!</span>
@@ -721,41 +746,41 @@ body {
   ];
 
   const JOKES = [
-    "Miért nem bújik el a róka? Mert kilóg a füle! Hehe!",
-    "Mit mond a kenyér a vajnak? Te vagy a kenyerem és a vajam… várj, ez romi!",
-    "Miért visz a tyúk nadrágot? Hogy ne látszódjon a tojócsöve! …oké, ez kicsit tojásos.",
-    "Kopogtatás! Ki az? Kuka. Kuka ki? Kuka-rék, ha nem nyitsz ajtót! Haha!",
-    "Mit csinál a róka a számítógépen? Rókázik az interneten!",
-    "Miért ment a zsiráf az orvoshoz? Mert nyakig volt a bajban!",
-    "Mit mondott az egyik szem a másiknak? Közöttünk a mag!",
+    "Miért piros a vörös panda? Mert elpirult a poénjaimon! Hehe!",
+    "Mit csinál a panda a fán? Pandázik! …oké, ez gyenge volt, a farkam is elpirult.",
+    "Kopogtatás! Ki az? Panda. Melyik panda? A vö-röö-ös! Haha!",
+    "Miért visz a vörös panda bambuszt a suliba? Hogy ne éhezzen a szünetben!",
+    "Mit mond a farkam, ha örül? Csóválok gyűrűkben!",
     "Mi a medve kedvenc italá? A málna-tea… mert málnás!",
+    "Mit mondott az egyik szem a másiknak? Közöttünk a mag!",
+    "Miért ment a zsiráf az orvoshoz? Mert nyakig volt a bajban!",
   ];
 
   const DIVI_FAVES = {
     character: [
-      "Az én kedvenc mesefigurám… Winnie the Pooh! Mert ő is szereti a mézet, én meg a poénokat. Bár a füleim nagyobbak!",
+      "Az én kedvenc mesefigurám… Mei a Vörösből! Mert ő is tud pandává változni — én meg mindig az vagyok!",
       "Hú, nehéz! De ha választanom kell: Pán Péter! Mert soha nem nő fel — én sem akarok unalmas felnőtt lenni!",
-      "A kedvencem Olaf a hóember! Mert állandóan hülyéskedik, mint én. És imádja a meleget… na jó, az már nem én vagyok.",
+      "A kedvencem Olaf a hóember! Mert állandóan hülyéskedik, mint én. Én meg a farkammal integetek.",
       "Én Stitchet imádom! Ő is káosz, én is káosz. Ohana azt jelenti: senkit sem hagyunk le a poénról!",
     ],
     color: [
-      "A kedvenc színem a narancssárga — nézd csak a bundámat! Mintha egy naplemente lenne, ami beszél!",
-      "Szeretem a sárgát is, mert olyan, mint a nevetés. De a narancs a bajnok!",
+      "A kedvenc színem a vöröses-narancs — nézd csak a bundámat! Mintha egy naplemente lenne, ami beszél!",
+      "Szeretem a fehéret is a maszkomban, meg a csíkos farkamat. De a vörös a bajnok!",
     ],
     food: [
-      "A kedvenc kajám a képzeletbeli mézes pogácsa. Virtuális kalória: nulla. Íz: tízből tizenegy!",
+      "A kedvenc kajám a bambusz… na jó, inkább a képzeletbeli áfonyás palacsinta. Virtuális kalória: nulla!",
       "Én a gyümölcsolót imádom… főleg ha te mesélsz mellé!",
     ],
     animal: [
-      "A kedvenc állatom… a róka! Várj. Az én vagyok. Akkor a második: a pandá, mert buja és vicces.",
-      "Imádom a kutyákat! Ők is csóválnak, én meg a füleimmel integetek.",
+      "A kedvenc állatom… a vörös panda! Várj. Az én vagyok. Akkor a második: a lajhár, mert buja és vicces.",
+      "Imádom a pandákat! A nagy fehéret is, meg engem, a vöröset. Dupla panda-erő!",
     ],
     age: [
-      "Én örök gyerek vagyok: annyi idős, ahány poénnal rendelkezem. Ma reggel még 42 viccem volt!",
+      "Én örök gyerek vagyok: annyi idős, ahány csík van a farkamon. Számold meg… sok!",
       "A korom: háromszor kettő plusz egy nevetés. Számold ki te!",
     ],
     name: [
-      "A nevem Divi! Divi, a dumás róka. Nem Divinyátor, nem Divi-Man — csak Divi.",
+      "A nevem Divi! Divi, a dumás vörös panda. Nem Divinyátor, nem Divi-Man — csak Divi.",
       "Engem Divinek hívnak. Ha elfelejted, csiklandozz meg, és elkiáltom újra!",
     ],
   };
@@ -846,16 +871,16 @@ body {
     {
       keys: [/szia|helló|hello|szevasz|hey|csá|csa/i],
       replies: [
-        "Sziaaa! A füleim már előre kuncognak! Hogy vagy?",
+        "Sziaaa! A farkam már előre csóvál! Hogy vagy?",
         "Helló, szuperhős! Készen állsz egy adag poénra?",
-        "Szevasz! Én Divi vagyok, a dumás róka. Indulhat a nevetés?",
+        "Szevasz! Én Divi vagyok, a dumás vörös panda. Indulhat a nevetés?",
       ],
       followUp: "Mondj valamit magadról — vagy kérj egy viccet!",
     },
     {
       keys: [/hogy vagy|mizu|mi újság|mi ujsag|hogy megy/i],
       replies: [
-        "Én remekül! Csóválom a farkam… hopp, nincs is farkam, csak a poénjaim!",
+        "Én remekül! Csóválom a csíkos farkam — ez a boldogság-antenna!",
         "Szuperul! Annyira, hogy a füleim is táncolnak!",
       ],
       followUp: "És te hogy vagy, bajnok?",
@@ -868,7 +893,7 @@ body {
     {
       keys: [/mesélj.*mesét|mondj.*mesét|hallgatnék mesét|story time/i],
       replies: [
-        "Egyszer volt, hol nem volt, egy róka, akinek akkora füle volt, hogy Wi-Fit fogott vele. Aztán… elkezdett dumálni. Az én voltam!",
+        "Egyszer volt, hol nem volt, egy vörös panda, akinek akkora csíkos farka volt, hogy zászlót csinált belőle. Aztán… elkezdett dumálni. Az én voltam!",
         "Hallgass ide: a csillagok összekacsintottak, és azt súgták: „Divi, mondj egy poént!” Én meg engedelmeskedtem!",
       ],
       followUp: "Tetszett? Kérjek egy másikat, vagy inkább viccet?",
@@ -1008,7 +1033,7 @@ body {
     // 4) Ha a gyerek mesefigurát mondott
     if (this.memory.favoriteCharacter && /mackó|olaf|elsa|figur|kedvenc/i.test(text)) {
       return {
-        text: "Szuper választás a(z) " + this.memory.favoriteCharacter + "! Én is magasra tartom a füleimet tiszteletből. " + pick(JOKES),
+        text: "Szuper választás a(z) " + this.memory.favoriteCharacter + "! Én is magasra tartom a farkamat tiszteletből. " + pick(JOKES),
         emotion: "laugh",
       };
     }
@@ -1028,7 +1053,7 @@ body {
       "Szuper válasz, bajnok!",
       "Ezt felírom a poén-naplómba!",
       "Úúú, érdekes!",
-      "Ettől kacsint a narancssárga bundám!",
+      "Ettől kacsint a vörös bundám!",
     ];
     let reply = pick(acks);
 
@@ -1069,7 +1094,7 @@ body {
   Brain.prototype.greeting = function () {
     return {
       text:
-        "Szia! Én Divi vagyok, a dumás róka. Poénjaim vannak, füleim nagyok, és imádok veled beszélgetni! " +
+        "Szia! Én Divi vagyok, a dumás vörös panda. Poénjaim vannak, farkam csíkos, és imádok veled beszélgetni! " +
         pick(JOKES) +
         " " +
         this.nextQuestion(),
@@ -1102,7 +1127,7 @@ body {
 
   Brain.prototype.buildOpenAIMessages = function (userText) {
     const system =
-      "Te Divi vagy: vidám, poénos, beszélő animációs róka gyerekeknek (Talking Tom stílus). " +
+      "Te Divi vagy: vidám, poénos, beszélő animációs vörös panda gyerekeknek (Talking Tom stílus). " +
       "Magyarul beszélj, 1-3 rövid mondatban, sok kedves humorral. " +
       "HA A GYEREK TŐLED KÉRDEZ (pl. ki a kedvenc mesefigurád), ELŐSZÖR VÁLASZOLJ KONKRÉTAN, ne kerülgesd. " +
       "Utána kérdezhetsz vissza. Ne legyél ijesztő. Memória: " +
@@ -1172,7 +1197,7 @@ body {
 })(window);
 
 /**
- * Divi karakter — Gemini-szerű folyamatos lip-sync szájmozgással
+ * Divi karakter — vörös panda, Gemini-szerű folyamatos lip-sync
  */
 (function (global) {
   const STATES = ["idle", "listening", "thinking", "speaking", "react", "laugh"];
@@ -2080,7 +2105,7 @@ body {
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
-      const hi = "Szia! Én Divi vagyok — hallgatlak!";
+      const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);
     }

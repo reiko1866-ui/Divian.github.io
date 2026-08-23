@@ -1,5 +1,5 @@
 /**
- * Divi karakter — Gemini-szerű folyamatos lip-sync szájmozgással
+ * Divi karakter — vörös panda, Gemini-szerű folyamatos lip-sync
  */
 (function (global) {
   const STATES = ["idle", "listening", "thinking", "speaking", "react", "laugh"];

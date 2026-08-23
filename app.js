@@ -688,7 +688,7 @@
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
-      const hi = "Szia! Én Divi vagyok — hallgatlak!";
+      const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);
     }

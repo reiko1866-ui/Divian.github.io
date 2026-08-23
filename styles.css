@@ -311,9 +311,14 @@ body {
   animation: giggle 0.45s ease-in-out 3;
 }
 
-@keyframes breathe {
-  0%, 100% { transform: translateY(0) scale(1, 1); }
-  50% { transform: translateY(-4px) scale(1.02, 0.98); }
+.character.state-idle .tail {
+  transform-origin: 200px 250px;
+  animation: tail-sway 3.6s ease-in-out infinite;
+}
+
+@keyframes tail-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(6deg); }
 }
 
 @keyframes sway {

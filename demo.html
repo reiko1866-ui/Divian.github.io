@@ -776,8 +776,8 @@ body {
     let t = String(raw || "").trim();
     t = t.replace(/\s+/g, " ");
     const fixes = [
-      [/divi|divi|didi|didi|tiví|tivi|dévi/gi, "Divi"],
-      [/mesé?\s*figur[aáe]?d?/gi, "mesefigurád"],
+      [/divi|didi|tiví|tivi|dévi/gi, "Divi"],
+      [/mes[eé]\s*figur[aáe]?d?/gi, "mesefigurád"],
       [/kedvenc(e|ed)?\s+figur/gi, "kedvenc mesefigurád"],
       [/hány éves vagy\??/gi, "hány éves vagy"],
       [/mi a neved\??/gi, "mi a neved"],

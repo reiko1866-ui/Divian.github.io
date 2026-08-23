@@ -141,8 +141,12 @@ body {
   cursor: pointer;
 }
 
-.toggle-row input {
-  width: auto !important;
+.hint {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 600;
+  opacity: 0.8;
 }
 
 .primary-btn {
@@ -584,6 +588,12 @@ body {
         <input type="checkbox" id="auto-listen" checked />
         Válasz után újra hallgat
       </label>
+
+      <p class="hint" id="mic-help">
+        Mikrofon: Chrome vagy Edge ajánlott, HTTPS-en (GitHub Pages).
+        Ha az előnézetben (htmlpreview) nem megy, nyisd meg a saját Pages URL-t.
+        Engedély: címsor 🔒 → Mikrofon → Engedélyezés.
+      </p>
 
       <button type="button" id="btn-close-settings" class="primary-btn">Kész</button>
     </aside>
@@ -1084,6 +1094,9 @@ body {
   let activeAudioUrl = null;
   let cachedMaleVoice = null;
   let greetingDone = false;
+  let micPermission = "unknown"; // unknown | granted | denied
+  let micStream = null;
+  let startingMic = false;
 
   function isFemaleVoiceName(name) {
     return /női|noi|female|woman|rachel|sarah|zira|samantha|susan/i.test(name || "");
@@ -1172,11 +1185,99 @@ body {
   function stopListening() {
     listening = false;
     btnMic.classList.remove("listening");
+    btnMic.setAttribute("aria-pressed", "false");
     try {
-      if (recognition) recognition.stop();
+      if (recognition) recognition.abort();
     } catch (_) {
-      /* ignore */
+      try {
+        if (recognition) recognition.stop();
+      } catch (_) {
+        /* ignore */
+      }
     }
+  }
+
+  function isSecureEnough() {
+    if (window.isSecureContext) return true;
+    const host = location.hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  }
+
+  function isEmbeddedPreview() {
+    try {
+      return window.top !== window.self;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function micUnsupportedReason() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      return "Ez a böngésző nem támogatja a beszédfelismerést. Chrome / Edge ajánlott, vagy írj szöveggel.";
+    }
+    if (!isSecureEnough()) {
+      return "A mikrofonhoz HTTPS kell (GitHub Pages vagy localhost).";
+    }
+    if (isEmbeddedPreview()) {
+      return "Az előnézeti keretben (htmlpreview) a mikrofon gyakran tiltva van. Nyisd meg közvetlenül a GitHub Pages oldalt, vagy töltsd le / nyisd meg az index.html-t.";
+    }
+    return "";
+  }
+
+  async function ensureMicPermission() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Nincs mikrofon API ebben a böngészőben.");
+    }
+    // Permissions API (ha van) — gyors ellenőrzés
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const status = await navigator.permissions.query({ name: "microphone" });
+        if (status.state === "denied") {
+          micPermission = "denied";
+          throw new Error("denied");
+        }
+        if (status.state === "granted") micPermission = "granted";
+      }
+    } catch (err) {
+      if (err && err.message === "denied") throw err;
+      // Safari / Firefox: permissions.query microphone nem mindig megy
+    }
+
+    if (micPermission === "granted" && micStream) return true;
+
+    setStatus("Mikrofon engedély kérése… engedélyezd a böngészőben!");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
+    // A SpeechRecognition saját magának nyit hangot — a permission streamet elengedjük,
+    // de egy rövid aktív track segít, hogy a böngésző „engedélyezve” állapotba kerüljön.
+    micStream = stream;
+    micPermission = "granted";
+    stream.getTracks().forEach(function (t) {
+      t.stop();
+    });
+    micStream = null;
+    return true;
+  }
+
+  function recreateRecognition() {
+    if (recognition) {
+      try {
+        recognition.onstart = null;
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        recognition.abort();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    recognition = setupRecognition();
+    return recognition;
   }
 
   function speakNative(text, token) {
@@ -1284,70 +1385,148 @@ body {
     }
 
     busy = false;
-    if (autoListenInput.checked) {
-      setTimeout(startListening, 350);
+    if (autoListenInput.checked && micPermission !== "denied" && !micUnsupportedReason()) {
+      setTimeout(function () {
+        startListening();
+      }, 350);
     }
   }
 
   function setupRecognition() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      setStatus("A böngésződ nem támogatja a mikrofonos beszédfelismerést — írj helyette");
-      return null;
-    }
+    if (!SR) return null;
+
     const rec = new SR();
     rec.lang = "hu-HU";
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
     rec.continuous = false;
 
+    let finalTranscript = "";
+
     rec.onstart = function () {
       listening = true;
+      startingMic = false;
+      finalTranscript = "";
       btnMic.classList.add("listening");
+      btnMic.setAttribute("aria-pressed", "true");
       character.setState("listening");
       setStatus("Hallgatlak… beszélj bátran!");
     };
 
     rec.onresult = function (event) {
-      const said = event.results[0][0].transcript;
-      handleUserText(said);
+      let interim = "";
+      finalTranscript = "";
+      for (let i = 0; i < event.results.length; i += 1) {
+        const piece = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalTranscript += piece;
+        else interim += piece;
+      }
+      if (interim) setStatus("Hallom: " + interim);
+      if (finalTranscript.trim()) {
+        const said = finalTranscript.trim();
+        stopListening();
+        handleUserText(said);
+      }
     };
 
     rec.onerror = function (event) {
       listening = false;
+      startingMic = false;
       btnMic.classList.remove("listening");
+      btnMic.setAttribute("aria-pressed", "false");
       character.setState("idle");
-      if (event.error === "not-allowed") {
-        setStatus("Mikrofon engedély kell a böngészőben");
-      } else if (event.error !== "aborted") {
-        setStatus("Nem értettem — próbáld újra vagy írj");
+
+      const err = event.error || "";
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        micPermission = "denied";
+        setStatus("Mikrofon tiltva. A címsor 🔒 ikonnál engedd engedélyezni, majd nyomd újra a mikrofont.");
+      } else if (err === "no-speech") {
+        setStatus("Nem hallottam semmit — nyomd meg újra a mikrofont");
+      } else if (err === "audio-capture") {
+        setStatus("Nem találok mikrofont. Csatlakoztass egyet, vagy írj szöveggel.");
+      } else if (err === "network") {
+        setStatus("A beszédfelismeréshez net kell (Chrome felhőszolgáltatás).");
+      } else if (err !== "aborted") {
+        setStatus("Mikrofon hiba (" + err + "). Próbáld újra, vagy írj.");
       }
     };
 
     rec.onend = function () {
       listening = false;
+      startingMic = false;
       btnMic.classList.remove("listening");
+      btnMic.setAttribute("aria-pressed", "false");
       if (!busy && character.state === "listening") character.setState("idle");
     };
 
     return rec;
   }
 
-  function startListening() {
-    if (busy) return;
-    if (!recognition) recognition = setupRecognition();
-    if (!recognition) return;
-    stopSpeech();
+  async function startListening() {
+    if (listening || startingMic) return;
+
+    const blocked = micUnsupportedReason();
+    if (blocked) {
+      setStatus(blocked);
+      showBubble(blocked);
+      return;
+    }
+
+    // Ha Divi beszél / gondolkodik: szakítsuk meg, hogy a mic működjön
+    if (busy) {
+      stopSpeech();
+      busy = false;
+      character.setState("idle");
+    } else {
+      stopSpeech();
+    }
+
+    startingMic = true;
+    btnMic.classList.add("listening");
+    setStatus("Mikrofon indítása…");
+
     try {
-      recognition.start();
-    } catch (_) {
-      // already started
+      await ensureMicPermission();
+    } catch (err) {
+      startingMic = false;
+      btnMic.classList.remove("listening");
+      micPermission = "denied";
+      const msg =
+        "Nem kaptam mikrofon-engedélyt. A böngésző címsorában (🔒) engedd a mikrofont ehhez az oldalhoz, majd próbáld újra.";
+      setStatus(msg);
+      showBubble(msg);
+      return;
+    }
+
+    const rec = recreateRecognition();
+    if (!rec) {
+      startingMic = false;
+      btnMic.classList.remove("listening");
+      setStatus(micUnsupportedReason() || "Beszédfelismerés nem elérhető.");
+      return;
+    }
+
+    try {
+      rec.start();
+    } catch (err) {
+      // Már fut — próbáljuk új példánnyal
+      try {
+        const again = recreateRecognition();
+        if (again) again.start();
+      } catch (err2) {
+        startingMic = false;
+        btnMic.classList.remove("listening");
+        setStatus("Nem indult a mikrofon. Nyomd meg még egyszer.");
+        console.warn(err2);
+      }
     }
   }
 
   function toggleMic() {
-    if (listening) {
+    if (listening || startingMic) {
       stopListening();
+      startingMic = false;
       character.setState("idle");
       setStatus("Megállítottam a hallgatást");
       return;
@@ -1358,14 +1537,34 @@ body {
   async function bootGreeting() {
     if (greetingDone) return;
     greetingDone = true;
+    const warn = micUnsupportedReason();
+    if (warn) setStatus(warn);
     const g = brain.greeting();
     addChat("bot", g.text);
     await speak(g.text);
-    if (autoListenInput.checked) setTimeout(startListening, 400);
+    // Auto-listen csak ha nem iframe/preview és van esély a micre
+    if (autoListenInput.checked && !micUnsupportedReason() && micPermission !== "denied") {
+      setTimeout(function () {
+        startListening();
+      }, 400);
+    } else {
+      setStatus("Nyomd meg a 🎤 gombot a beszélgetéshez (vagy írj)");
+    }
   }
 
   // Events
-  btnMic.addEventListener("click", toggleMic);
+  btnMic.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!greetingDone) {
+      greetingDone = true;
+      armed = true;
+      const hi = "Szia! Én Divi vagyok — hallgatlak!";
+      addChat("bot", hi);
+      showBubble(hi);
+    }
+    toggleMic();
+  });
   chatForm.addEventListener("submit", function (e) {
     e.preventDefault();
     handleUserText(userInput.value);
@@ -1425,16 +1624,26 @@ body {
   }
 
   loadSettings();
-  recognition = setupRecognition();
-  // Első gesztus után köszön (böngésző hang policy)
+
   let armed = false;
-  function arm() {
+  function arm(e) {
     if (armed) return;
+    // A mikrofon saját magának kezdi a beszélgetést — ne ütközzön a köszönéssel
+    if (e.target && e.target.closest && e.target.closest("#btn-mic")) return;
     armed = true;
     bootGreeting();
   }
-  document.addEventListener("pointerdown", arm, { once: true });
-  setStatus("Koppints bárhova a kezdéshez");
+  document.addEventListener("pointerdown", arm);
+
+  const earlyWarn = micUnsupportedReason();
+  if (earlyWarn) {
+    setStatus(earlyWarn);
+  } else {
+    setStatus("Koppints bárhova a kezdéshez, vagy nyomd meg a 🎤 gombot");
+  }
+
+  btnMic.setAttribute("aria-pressed", "false");
+  btnMic.title = "Mikrofon bekapcsolása";
 })();
 
   </script>

@@ -130,8 +130,12 @@ body {
   cursor: pointer;
 }
 
-.toggle-row input {
-  width: auto !important;
+.hint {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 600;
+  opacity: 0.8;
 }
 
 .primary-btn {

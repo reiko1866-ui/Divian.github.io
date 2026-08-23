@@ -253,8 +253,15 @@ body {
 /* Character animation states */
 .character .body,
 .character .head {
-  transform-origin: 140px 230px;
-  transform-box: fill-box;
+  transform-box: view-box;
+}
+
+.character .body {
+  transform-origin: 155px 220px;
+}
+
+.character .head {
+  transform-origin: 155px 125px;
 }
 
 .character.state-idle .body {

@@ -45,6 +45,7 @@
   let micPermission = "unknown"; // unknown | granted | denied
   let micStream = null;
   let startingMic = false;
+  let audioCtx = null;
 
   function isFemaleVoiceName(name) {
     return /női|noi|female|woman|rachel|sarah|zira|samantha|susan/i.test(name || "");
@@ -119,6 +120,7 @@
 
   function stopSpeech() {
     speakToken += 1;
+    character.stopLipSync();
     if ("speechSynthesis" in window) speechSynthesis.cancel();
     if (currentAudio) {
       currentAudio.pause();
@@ -127,6 +129,191 @@
     if (activeAudioUrl) {
       URL.revokeObjectURL(activeAudioUrl);
       activeAudioUrl = null;
+    }
+  }
+
+  function splitSentences(text) {
+    const clean = String(text || "").trim();
+    if (!clean) return [];
+    const parts = clean.match(/[^.!?…]+(?:[.!?…]+|$)/g);
+    return (parts || [clean]).map(function (p) { return p.trim(); }).filter(Boolean);
+  }
+
+  function revealBubble(fullText, progress01) {
+    const chars = Array.from(fullText);
+    const n = Math.max(1, Math.floor(chars.length * Math.max(0, Math.min(1, progress01))));
+    showBubble(chars.slice(0, n).join("") + (progress01 < 0.98 ? "▍" : ""));
+  }
+
+  function speakNativeChunk(text, token) {
+    return new Promise(function (resolve) {
+      if (!("speechSynthesis" in window)) {
+        resolve();
+        return;
+      }
+      if (token !== speakToken) {
+        resolve();
+        return;
+      }
+
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "hu-HU";
+      u.rate = 0.92;
+      u.pitch = 1.08;
+      cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
+      if (cachedMaleVoice) u.voice = cachedMaleVoice;
+
+      character.startVisemeLipSync(text, { charsPerSecond: 11.2 * u.rate });
+
+      const started = performance.now();
+      const estMs = Math.max(500, (Array.from(text).length / (11.2 * u.rate)) * 1000);
+      let revealTimer = null;
+
+      const tickReveal = function () {
+        if (token !== speakToken) return;
+        const p = Math.min(1, (performance.now() - started) / estMs);
+        revealBubble(text, p);
+        if (p < 1) revealTimer = setTimeout(tickReveal, 40);
+      };
+      tickReveal();
+
+      u.onboundary = function (event) {
+        if (token !== speakToken) return;
+        if (typeof event.charIndex === "number" && text) {
+          const ch = text.charAt(event.charIndex) || " ";
+          character._mouthTarget = character.visemeForChar(ch);
+          const shown = Math.min(text.length, event.charIndex + (event.charLength || 1));
+          revealBubble(text, shown / Math.max(1, text.length));
+        }
+      };
+
+      u.onend = function () {
+        clearTimeout(revealTimer);
+        showBubble(text);
+        resolve();
+      };
+      u.onerror = function () {
+        clearTimeout(revealTimer);
+        resolve();
+      };
+
+      speechSynthesis.speak(u);
+    });
+  }
+
+  async function speakNative(text, token) {
+    const sentences = splitSentences(text);
+    if (!sentences.length) return;
+    for (let i = 0; i < sentences.length; i += 1) {
+      if (token !== speakToken) return;
+      await speakNativeChunk(sentences[i], token);
+      if (token !== speakToken) return;
+      if (i < sentences.length - 1) {
+        character._mouthTarget = 0.08;
+        await new Promise(function (r) { setTimeout(r, 220); });
+      }
+    }
+  }
+
+  function ensureAudioGraph(audioEl) {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    try {
+      const source = audioCtx.createMediaElementSource(audioEl);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.65;
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      return analyser;
+    } catch (err) {
+      console.warn("Audio graph:", err);
+      return null;
+    }
+  }
+
+  async function speakEleven(text, token) {
+    const apiKey = apiKeyInput.value.trim();
+    const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
+    if (!apiKey) {
+      await speakNative(text, token);
+      return;
+    }
+
+    const chunks = text.length > 280 ? splitSentences(text) : [text];
+    let spokenSoFar = "";
+
+    for (let c = 0; c < chunks.length; c += 1) {
+      if (token !== speakToken) return;
+      const piece = chunks[c];
+      setStatus("Hang készítése…");
+      const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId, {
+        method: "POST",
+        headers: {
+          Accept: "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          text: piece,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.55,
+            similarity_boost: 0.8,
+            style: 0.2,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("ElevenLabs " + res.status);
+      const blob = await res.blob();
+      if (token !== speakToken) return;
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = URL.createObjectURL(blob);
+
+      // Új Audio elem minden chunkhoz (MediaElementSource egyszer köthető)
+      currentAudio = new Audio(activeAudioUrl);
+      currentAudio.crossOrigin = "anonymous";
+
+      const analyser = ensureAudioGraph(currentAudio);
+      if (analyser) character.startAudioLipSync(analyser);
+      else character.startVisemeLipSync(piece, { charsPerSecond: 12 });
+
+      spokenSoFar = (spokenSoFar ? spokenSoFar + " " : "") + piece;
+      showBubble(spokenSoFar);
+      setStatus("Divi beszél…");
+
+      await new Promise(function (resolve, reject) {
+        currentAudio.onended = resolve;
+        currentAudio.onerror = reject;
+        currentAudio.play().catch(reject);
+      });
+    }
+  }
+
+  async function speak(text) {
+    const token = ++speakToken;
+    character.setState("speaking");
+    showBubble("");
+    setStatus("Divi beszél…");
+    try {
+      if (engineSelect.value === "elevenlabs") {
+        await speakEleven(text, token);
+      } else {
+        await speakNative(text, token);
+      }
+    } catch (err) {
+      console.warn(err);
+      await speakNative(text, token);
+    }
+    if (token === speakToken) {
+      character.stopLipSync();
+      character.setState("idle");
+      showBubble(text);
+      setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
     }
   }
 
@@ -177,7 +364,6 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("Nincs mikrofon API ebben a böngészőben.");
     }
-    // Permissions API (ha van) — gyors ellenőrzés
     try {
       if (navigator.permissions && navigator.permissions.query) {
         const status = await navigator.permissions.query({ name: "microphone" });
@@ -189,7 +375,6 @@
       }
     } catch (err) {
       if (err && err.message === "denied") throw err;
-      // Safari / Firefox: permissions.query microphone nem mindig megy
     }
 
     if (micPermission === "granted" && micStream) return true;
@@ -201,8 +386,6 @@
         noiseSuppression: true,
       },
     });
-    // A SpeechRecognition saját magának nyit hangot — a permission streamet elengedjük,
-    // de egy rövid aktív track segít, hogy a böngésző „engedélyezve” állapotba kerüljön.
     micStream = stream;
     micPermission = "granted";
     stream.getTracks().forEach(function (t) {
@@ -226,84 +409,6 @@
     }
     recognition = setupRecognition();
     return recognition;
-  }
-
-  function speakNative(text, token) {
-    return new Promise((resolve) => {
-      if (!("speechSynthesis" in window)) {
-        resolve();
-        return;
-      }
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "hu-HU";
-      u.rate = 1.02;
-      u.pitch = 1.15;
-      cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
-      // Divi: játékos, kissé magasabb pitch (karakterhang), ha van férfi alap
-      if (cachedMaleVoice) u.voice = cachedMaleVoice;
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
-      if (token !== speakToken) {
-        resolve();
-        return;
-      }
-      speechSynthesis.speak(u);
-    });
-  }
-
-  async function speakEleven(text, token) {
-    const apiKey = apiKeyInput.value.trim();
-    const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
-    if (!apiKey) {
-      await speakNative(text, token);
-      return;
-    }
-    const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId, {
-      method: "POST",
-      headers: {
-        Accept: "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.35 },
-      }),
-    });
-    if (!res.ok) throw new Error("ElevenLabs " + res.status);
-    const blob = await res.blob();
-    if (token !== speakToken) return;
-    if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
-    activeAudioUrl = URL.createObjectURL(blob);
-    currentAudio = new Audio(activeAudioUrl);
-    await new Promise((resolve, reject) => {
-      currentAudio.onended = resolve;
-      currentAudio.onerror = reject;
-      currentAudio.play().catch(reject);
-    });
-  }
-
-  async function speak(text) {
-    const token = ++speakToken;
-    character.setState("speaking");
-    showBubble(text);
-    try {
-      if (engineSelect.value === "elevenlabs") {
-        setStatus("Divi beszél…");
-        await speakEleven(text, token);
-      } else {
-        setStatus("Divi beszél…");
-        await speakNative(text, token);
-      }
-    } catch (err) {
-      console.warn(err);
-      await speakNative(text, token);
-    }
-    if (token === speakToken) {
-      character.setState("idle");
-      setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
-    }
   }
 
   async function handleUserText(raw) {

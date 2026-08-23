@@ -215,15 +215,24 @@ body {
 }
 
 .character {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.14));
+}
+
+.character-art {
   width: 100%;
   height: auto;
-  overflow: visible;
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.12));
+  display: block;
+  border-radius: 8px;
+  user-select: none;
+  pointer-events: none;
 }
 
 .tap-hint {
   display: block;
-  margin-top: -6px;
+  margin-top: 4px;
   font-family: var(--font-display);
   font-size: 0.9rem;
   opacity: 0.65;
@@ -239,143 +248,63 @@ body {
   min-height: 1.3em;
 }
 
-/* Character animation states */
-.character .body,
-.character .head {
-  transform-box: view-box;
+/* Character animation states — egész figura */
+.character.state-idle {
+  animation: breathe 3.4s ease-in-out infinite;
 }
 
-.character .body {
-  transform-origin: 155px 220px;
+.character.state-listening {
+  animation: listen-bob 1.4s ease-in-out infinite;
 }
 
-.character .head {
-  transform-origin: 155px 125px;
+.character.state-thinking {
+  animation: think-tilt 1.3s ease-in-out infinite;
 }
 
-.character.state-idle .body {
-  animation: breathe 3.2s ease-in-out infinite;
-}
-
-.character.state-idle .head {
-  animation: sway 4s ease-in-out infinite;
-}
-
-.character.state-idle .blink-lid {
-  animation: blink 4.8s infinite;
-}
-
-.character.state-listening .ear-left {
-  animation: ear-twitch 0.7s ease-in-out infinite;
-}
-
-.character.state-listening .ear-right {
-  animation: ear-twitch 0.7s ease-in-out infinite reverse;
-}
-
-.character.state-listening .pupil {
-  animation: look-around 2.4s ease-in-out infinite;
-}
-
-.character.state-thinking .head {
-  animation: think-tilt 1.2s ease-in-out infinite;
-}
-
-/* Szájat a JS lip-sync mozgatja — nincs mechanikus CSS nyit-csuk */
-.character.state-speaking .head {
+.character.state-speaking {
   animation: speak-nod 2.4s ease-in-out infinite;
 }
 
-.character.state-speaking .blink-lid {
-  animation: blink 5.5s infinite;
-}
-
-.character .mouth-open,
-.character .mouth-tongue,
-.character .mouth-closed {
-  transition: opacity 0.05s linear;
-}
-
-.character.state-react .body {
+.character.state-react {
   animation: bounce 0.55s ease;
 }
 
-.character.state-react .head {
-  animation: bounce-head 0.55s ease;
-}
-
-.character.state-laugh .mouth-closed {
-  opacity: 0;
-}
-
-.character.state-laugh .mouth-open,
-.character.state-laugh .mouth-tongue {
-  opacity: 1;
-}
-
-.character.state-laugh .body {
+.character.state-laugh {
   animation: giggle 0.45s ease-in-out 3;
 }
 
-.character.state-idle .tail {
-  transform-origin: 220px 220px;
-  animation: tail-sway 3.6s ease-in-out infinite;
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-5px) scale(1.012, 0.988); }
 }
 
-@keyframes tail-sway {
-  0%, 100% { transform: rotate(-4deg); }
-  50% { transform: rotate(6deg); }
-}
-
-@keyframes sway {
-  0%, 100% { transform: rotate(-1.5deg); }
-  50% { transform: rotate(1.5deg); }
-}
-
-@keyframes blink {
-  0%, 92%, 100% { opacity: 0; }
-  94%, 96% { opacity: 1; }
-}
-
-@keyframes ear-twitch {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-8deg); }
-}
-
-@keyframes look-around {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(3px, -1px); }
-  75% { transform: translate(-3px, 1px); }
+@keyframes listen-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-4px) rotate(0.8deg); }
 }
 
 @keyframes think-tilt {
-  0%, 100% { transform: rotate(-4deg) translateY(0); }
-  50% { transform: rotate(4deg) translateY(-3px); }
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(3deg) translateY(-3px); }
 }
 
 @keyframes speak-nod {
-  0%, 100% { transform: rotate(-0.8deg) translateY(0); }
-  40% { transform: rotate(1deg) translateY(-2px); }
-  70% { transform: rotate(-0.4deg) translateY(1px); }
+  0%, 100% { transform: rotate(-0.6deg) translateY(0); }
+  40% { transform: rotate(0.8deg) translateY(-2px); }
+  70% { transform: rotate(-0.3deg) translateY(1px); }
 }
 
 @keyframes bounce {
   0% { transform: translateY(0) scale(1); }
-  35% { transform: translateY(-28px) scale(1.04, 0.96); }
-  70% { transform: translateY(4px) scale(0.98, 1.03); }
+  35% { transform: translateY(-22px) scale(1.03, 0.97); }
+  70% { transform: translateY(4px) scale(0.99, 1.02); }
   100% { transform: translateY(0) scale(1); }
-}
-
-@keyframes bounce-head {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-10px) rotate(-4deg); }
-  100% { transform: translateY(0); }
 }
 
 @keyframes giggle {
   0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-3deg) scale(1.02); }
-  75% { transform: rotate(3deg) scale(1.02); }
+  25% { transform: rotate(-2.5deg) scale(1.015); }
+  75% { transform: rotate(2.5deg) scale(1.015); }
 }
 
 @keyframes bubble-in {

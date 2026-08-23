@@ -1,5 +1,5 @@
 /**
- * Divi karakter — vörös panda, Gemini-szerű folyamatos lip-sync
+ * Divi karakter — PNG állapotok (idle / talk / happy) + Talking Tom váltás
  */
 (function (global) {
   const STATES = ["idle", "listening", "thinking", "speaking", "react", "laugh"];
@@ -8,55 +8,81 @@
   const MID = /[eéií]/i;
   const ROUND = /[öőuúüű]/i;
 
-  function Character(svgEl) {
-    this.el = svgEl;
+  const POSES = {
+    idle: { webp: "assets/panda-idle.webp", jpg: "assets/panda-idle.jpg" },
+    talk: { webp: "assets/panda-talk.webp", jpg: "assets/panda-talk.jpg" },
+    happy: { webp: "assets/panda-happy.webp", jpg: "assets/panda-happy.jpg" },
+  };
+
+  function Character(rootEl) {
+    this.el = rootEl;
+    this.img = rootEl.querySelector("#character-img") || rootEl.querySelector(".character-art");
+    this.source = rootEl.querySelector("#character-source");
     this.state = "idle";
+    this.pose = "idle";
     this._reactTimer = null;
     this._lipRaf = null;
     this._lipActive = false;
     this._mouthOpen = 0;
     this._mouthTarget = 0;
-    this._closed = svgEl.querySelector(".mouth-closed");
-    this._open = svgEl.querySelector(".mouth-open");
-    this._tongue = svgEl.querySelector(".mouth-tongue");
-    this._openBaseCy = this._open ? parseFloat(this._open.getAttribute("cy") || "166") : 166;
-    this._tongueBaseCy = this._tongue ? parseFloat(this._tongue.getAttribute("cy") || "172") : 172;
-    this.setMouth(0);
+    this.setPose("idle");
+
+    // Előtöltés — ne villogjon váltáskor
+    Object.keys(POSES).forEach(function (key) {
+      const img = new Image();
+      img.src = POSES[key].jpg;
+      const w = new Image();
+      w.src = POSES[key].webp;
+    });
   }
+
+  Character.prototype.setPose = function (pose) {
+    if (!POSES[pose] || this.pose === pose) return;
+    this.pose = pose;
+    const asset = POSES[pose];
+    if (this.source) this.source.srcset = asset.webp;
+    if (this.img) this.img.src = asset.jpg;
+    this.el.setAttribute("data-pose", pose);
+  };
+
+  Character.prototype.poseForState = function (state) {
+    if (state === "speaking") return "talk";
+    if (state === "laugh" || state === "react") return "happy";
+    return "idle";
+  };
 
   Character.prototype.setState = function (state) {
     if (!STATES.includes(state)) state = "idle";
     this.state = state;
     STATES.forEach((s) => this.el.classList.remove("state-" + s));
     this.el.classList.add("state-" + state);
-    if (state !== "speaking" && state !== "laugh" && !this._lipActive) {
-      this.setMouth(state === "laugh" ? 0.7 : 0);
+
+    if (!this._lipActive) {
+      this.setPose(this.poseForState(state));
     }
   };
 
   Character.prototype.setMouth = function (amount) {
     const a = Math.max(0, Math.min(1, amount));
     this._mouthOpen = a;
-    if (!this._open || !this._closed) return;
 
-    // Folyamatos morph: csukott vonal ↔ nyitott száj
-    this._closed.style.opacity = String(Math.max(0, 1 - a * 3.2));
-    this._open.style.opacity = String(Math.min(1, a * 2.2));
-    this._open.setAttribute("rx", String(9 + a * 14));
-    this._open.setAttribute("ry", String(2.5 + a * 15));
-    this._open.setAttribute("cy", String(this._openBaseCy + a * 8));
-    if (this._tongue) {
-      this._tongue.style.opacity = String(a > 0.4 ? (a - 0.4) * 1.4 : 0);
-      this._tongue.setAttribute("cy", String(this._tongueBaseCy + a * 8));
+    // Beszéd közben: nyitott/csukott PNG váltás a hang / viseme alapján
+    if (this.state === "speaking" || this._lipActive) {
+      this.setPose(a >= 0.28 ? "talk" : "idle");
+      return;
     }
+    if (this.state === "laugh" || this.state === "react") {
+      this.setPose("happy");
+      return;
+    }
+    this.setPose("idle");
   };
 
   Character.prototype._tickSmooth = function () {
     if (!this._lipActive) return;
-    // Simítás: ne ugráljon frame-ről frame-re (Gemini-szerű)
-    const blend = 0.28;
+    const blend = 0.32;
     this._mouthOpen += (this._mouthTarget - this._mouthOpen) * blend;
-    if (Math.abs(this._mouthTarget - this._mouthOpen) < 0.01) {
+    if (Math.abs(this._mouthTarget - this._mouthOpen) < 0.02) {
       this._mouthOpen = this._mouthTarget;
     }
     this.setMouth(this._mouthOpen);
@@ -90,24 +116,9 @@
       clearTimeout(this._audioTimer);
       this._audioTimer = null;
     }
-    // Lágy zárás
-    const self = this;
-    let steps = 0;
-    const close = function () {
-      if (self._lipActive) return;
-      steps += 1;
-      self._mouthOpen *= 0.65;
-      self.setMouth(self._mouthOpen);
-      if (self._mouthOpen > 0.04 && steps < 20) {
-        requestAnimationFrame(close);
-      } else {
-        self.setMouth(0);
-      }
-    };
-    close();
+    this.setPose(this.poseForState(this.state === "speaking" ? "idle" : this.state));
   };
 
-  /** Viseme erő egy betűhöz */
   Character.prototype.visemeForChar = function (ch) {
     if (!ch || /\s/.test(ch)) return 0.05;
     if (/[.,!?;:]/.test(ch)) return 0.08;
@@ -198,23 +209,16 @@
     clearTimeout(this._reactTimer);
     this.stopLipSync();
     this.setState(kind === "laugh" ? "laugh" : "react");
-    if (kind === "laugh") this.setMouth(0.75);
+    this.setPose("happy");
     const self = this;
     this._reactTimer = setTimeout(function () {
       if (self.state === "react" || self.state === "laugh") {
-        self.setMouth(0);
         self.setState("idle");
       }
     }, kind === "laugh" ? 1200 : 600);
   };
 
-  Character.prototype.lookAt = function (xRatio) {
-    const pupils = this.el.querySelectorAll(".pupil");
-    const dx = Math.max(-4, Math.min(4, (xRatio - 0.5) * 10));
-    pupils.forEach(function (p) {
-      p.style.transform = "translate(" + dx + "px, 0)";
-    });
-  };
+  Character.prototype.lookAt = function () {};
 
   global.DiviCharacter = Character;
 })(window);

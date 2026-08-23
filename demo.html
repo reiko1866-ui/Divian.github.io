@@ -226,15 +226,24 @@ body {
 }
 
 .character {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.14));
+}
+
+.character-art {
   width: 100%;
   height: auto;
-  overflow: visible;
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.12));
+  display: block;
+  border-radius: 8px;
+  user-select: none;
+  pointer-events: none;
 }
 
 .tap-hint {
   display: block;
-  margin-top: -6px;
+  margin-top: 4px;
   font-family: var(--font-display);
   font-size: 0.9rem;
   opacity: 0.65;
@@ -250,143 +259,63 @@ body {
   min-height: 1.3em;
 }
 
-/* Character animation states */
-.character .body,
-.character .head {
-  transform-box: view-box;
+/* Character animation states — egész figura */
+.character.state-idle {
+  animation: breathe 3.4s ease-in-out infinite;
 }
 
-.character .body {
-  transform-origin: 155px 220px;
+.character.state-listening {
+  animation: listen-bob 1.4s ease-in-out infinite;
 }
 
-.character .head {
-  transform-origin: 155px 125px;
+.character.state-thinking {
+  animation: think-tilt 1.3s ease-in-out infinite;
 }
 
-.character.state-idle .body {
-  animation: breathe 3.2s ease-in-out infinite;
-}
-
-.character.state-idle .head {
-  animation: sway 4s ease-in-out infinite;
-}
-
-.character.state-idle .blink-lid {
-  animation: blink 4.8s infinite;
-}
-
-.character.state-listening .ear-left {
-  animation: ear-twitch 0.7s ease-in-out infinite;
-}
-
-.character.state-listening .ear-right {
-  animation: ear-twitch 0.7s ease-in-out infinite reverse;
-}
-
-.character.state-listening .pupil {
-  animation: look-around 2.4s ease-in-out infinite;
-}
-
-.character.state-thinking .head {
-  animation: think-tilt 1.2s ease-in-out infinite;
-}
-
-/* Szájat a JS lip-sync mozgatja — nincs mechanikus CSS nyit-csuk */
-.character.state-speaking .head {
+.character.state-speaking {
   animation: speak-nod 2.4s ease-in-out infinite;
 }
 
-.character.state-speaking .blink-lid {
-  animation: blink 5.5s infinite;
-}
-
-.character .mouth-open,
-.character .mouth-tongue,
-.character .mouth-closed {
-  transition: opacity 0.05s linear;
-}
-
-.character.state-react .body {
+.character.state-react {
   animation: bounce 0.55s ease;
 }
 
-.character.state-react .head {
-  animation: bounce-head 0.55s ease;
-}
-
-.character.state-laugh .mouth-closed {
-  opacity: 0;
-}
-
-.character.state-laugh .mouth-open,
-.character.state-laugh .mouth-tongue {
-  opacity: 1;
-}
-
-.character.state-laugh .body {
+.character.state-laugh {
   animation: giggle 0.45s ease-in-out 3;
 }
 
-.character.state-idle .tail {
-  transform-origin: 220px 220px;
-  animation: tail-sway 3.6s ease-in-out infinite;
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-5px) scale(1.012, 0.988); }
 }
 
-@keyframes tail-sway {
-  0%, 100% { transform: rotate(-4deg); }
-  50% { transform: rotate(6deg); }
-}
-
-@keyframes sway {
-  0%, 100% { transform: rotate(-1.5deg); }
-  50% { transform: rotate(1.5deg); }
-}
-
-@keyframes blink {
-  0%, 92%, 100% { opacity: 0; }
-  94%, 96% { opacity: 1; }
-}
-
-@keyframes ear-twitch {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-8deg); }
-}
-
-@keyframes look-around {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(3px, -1px); }
-  75% { transform: translate(-3px, 1px); }
+@keyframes listen-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-4px) rotate(0.8deg); }
 }
 
 @keyframes think-tilt {
-  0%, 100% { transform: rotate(-4deg) translateY(0); }
-  50% { transform: rotate(4deg) translateY(-3px); }
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(3deg) translateY(-3px); }
 }
 
 @keyframes speak-nod {
-  0%, 100% { transform: rotate(-0.8deg) translateY(0); }
-  40% { transform: rotate(1deg) translateY(-2px); }
-  70% { transform: rotate(-0.4deg) translateY(1px); }
+  0%, 100% { transform: rotate(-0.6deg) translateY(0); }
+  40% { transform: rotate(0.8deg) translateY(-2px); }
+  70% { transform: rotate(-0.3deg) translateY(1px); }
 }
 
 @keyframes bounce {
   0% { transform: translateY(0) scale(1); }
-  35% { transform: translateY(-28px) scale(1.04, 0.96); }
-  70% { transform: translateY(4px) scale(0.98, 1.03); }
+  35% { transform: translateY(-22px) scale(1.03, 0.97); }
+  70% { transform: translateY(4px) scale(0.99, 1.02); }
   100% { transform: translateY(0) scale(1); }
-}
-
-@keyframes bounce-head {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-10px) rotate(-4deg); }
-  100% { transform: translateY(0); }
 }
 
 @keyframes giggle {
   0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-3deg) scale(1.02); }
-  75% { transform: rotate(3deg) scale(1.02); }
+  25% { transform: rotate(-2.5deg) scale(1.015); }
+  75% { transform: rotate(2.5deg) scale(1.015); }
 }
 
 @keyframes bubble-in {
@@ -541,6 +470,9 @@ body {
 }
 
   </style>
+  <link rel="preload" as="image" href="assets/panda-idle.webp" type="image/webp" />
+  <link rel="preload" as="image" href="assets/panda-talk.webp" type="image/webp" />
+  <link rel="preload" as="image" href="assets/panda-happy.webp" type="image/webp" />
 </head>
 <body>
   <div class="app">
@@ -606,135 +538,12 @@ body {
       </div>
 
       <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
-        <svg id="character" class="character state-idle" viewBox="0 0 320 420" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="furRed" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f28b4b" />
-              <stop offset="50%" stop-color="#e06a2c" />
-              <stop offset="100%" stop-color="#c44d1c" />
-            </linearGradient>
-            <linearGradient id="furDark" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#4a3428" />
-              <stop offset="100%" stop-color="#2a1c16" />
-            </linearGradient>
-            <linearGradient id="bamboo" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#b8d96a" />
-              <stop offset="100%" stop-color="#7fad3a" />
-            </linearGradient>
-          </defs>
-
-          <!-- háttér bambuszok -->
-          <g class="scene-bg" opacity="0.95">
-            <rect x="28" y="20" width="18" height="280" rx="8" fill="url(#bamboo)" />
-            <rect x="28" y="70" width="18" height="6" fill="#6f9a32" opacity="0.5" />
-            <rect x="28" y="140" width="18" height="6" fill="#6f9a32" opacity="0.5" />
-            <rect x="28" y="210" width="18" height="6" fill="#6f9a32" opacity="0.5" />
-            <ellipse cx="37" cy="30" rx="22" ry="10" fill="#6f9a32" />
-            <ellipse cx="48" cy="18" rx="14" ry="7" fill="#8fbc4a" />
-
-            <rect x="270" y="40" width="16" height="260" rx="7" fill="url(#bamboo)" />
-            <rect x="270" y="90" width="16" height="5" fill="#6f9a32" opacity="0.5" />
-            <rect x="270" y="160" width="16" height="5" fill="#6f9a32" opacity="0.5" />
-            <ellipse cx="278" cy="48" rx="18" ry="8" fill="#6f9a32" />
-            <ellipse cx="288" cy="38" rx="12" ry="6" fill="#8fbc4a" />
-            <rect x="295" y="80" width="12" height="200" rx="6" fill="#9fc84e" opacity="0.7" />
-          </g>
-
-          <!-- talaj -->
-          <ellipse cx="160" cy="395" rx="120" ry="16" fill="rgba(40,30,20,0.12)" />
-          <ellipse cx="70" cy="385" rx="40" ry="18" fill="#7cb342" />
-          <ellipse cx="120" cy="390" rx="36" ry="14" fill="#8bc34a" />
-          <ellipse cx="230" cy="388" rx="44" ry="16" fill="#7cb342" />
-          <ellipse cx="280" cy="392" rx="28" ry="12" fill="#9ccc65" />
-          <ellipse cx="55" cy="392" rx="10" ry="7" fill="#9e9e9e" />
-          <ellipse cx="95" cy="396" rx="8" ry="5" fill="#bcaaa4" />
-          <ellipse cx="250" cy="396" rx="9" ry="6" fill="#a1887f" />
-
-          <!-- csíkos farok lefelé -->
-          <g class="tail">
-            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#e06a2c" stroke-width="36" stroke-linecap="round" />
-            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#f5b888" stroke-width="36" stroke-linecap="round" stroke-dasharray="0 22 16 22 16 22 16 22 16 300" />
-            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#c44d1c" stroke-width="36" stroke-linecap="round" stroke-dasharray="16 22 0 22 0 22 0 22 0 300" opacity="0.35" />
-          </g>
-
-          <!-- vízszintes bambusz ág -->
-          <g class="bamboo-branch">
-            <rect x="40" y="248" width="230" height="26" rx="13" fill="url(#bamboo)" />
-            <rect x="90" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
-            <rect x="150" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
-            <rect x="210" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
-            <ellipse cx="42" cy="261" rx="10" ry="13" fill="#8fbc4a" />
-            <ellipse cx="268" cy="261" rx="10" ry="13" fill="#8fbc4a" />
-          </g>
-
-          <!-- test: vörös váll + sötét mellény -->
-          <g class="body">
-            <ellipse cx="155" cy="200" rx="58" ry="52" fill="url(#furRed)" />
-            <ellipse cx="155" cy="215" rx="48" ry="55" fill="url(#furDark)" />
-            <g class="arm arm-left">
-              <ellipse cx="118" cy="250" rx="22" ry="16" fill="#2a1c16" />
-              <ellipse cx="110" cy="255" rx="10" ry="8" fill="#1a120e" />
-              <ellipse cx="124" cy="257" rx="9" ry="7" fill="#1a120e" />
-            </g>
-            <g class="arm arm-right">
-              <ellipse cx="192" cy="250" rx="22" ry="16" fill="#2a1c16" />
-              <ellipse cx="184" cy="257" rx="9" ry="7" fill="#1a120e" />
-              <ellipse cx="198" cy="255" rx="10" ry="8" fill="#1a120e" />
-            </g>
-            <ellipse cx="130" cy="255" rx="20" ry="14" fill="#c44d1c" opacity="0.9" />
-            <ellipse cx="180" cy="255" rx="20" ry="14" fill="#c44d1c" opacity="0.9" />
-          </g>
-
-          <!-- fej -->
-          <g class="head">
-            <ellipse cx="155" cy="125" rx="78" ry="72" fill="url(#furRed)" />
-
-            <g class="ear ear-left">
-              <ellipse cx="88" cy="62" rx="26" ry="24" fill="#3d291e" />
-              <ellipse cx="90" cy="64" rx="22" ry="20" fill="#e06a2c" />
-              <ellipse cx="92" cy="66" rx="12" ry="11" fill="#fff8f0" />
-            </g>
-            <g class="ear ear-right">
-              <ellipse cx="222" cy="62" rx="26" ry="24" fill="#3d291e" />
-              <ellipse cx="220" cy="64" rx="22" ry="20" fill="#e06a2c" />
-              <ellipse cx="218" cy="66" rx="12" ry="11" fill="#fff8f0" />
-            </g>
-
-            <!-- fehér orca + pofa -->
-            <ellipse cx="112" cy="135" rx="32" ry="36" fill="#fff8f0" />
-            <ellipse cx="198" cy="135" rx="32" ry="36" fill="#fff8f0" />
-            <ellipse cx="155" cy="145" rx="38" ry="34" fill="#fff8f0" />
-
-            <!-- fehér szemöldök-foltok -->
-            <circle cx="122" cy="95" r="10" fill="#fff8f0" />
-            <circle cx="188" cy="95" r="10" fill="#fff8f0" />
-
-            <ellipse class="nose" cx="155" cy="142" rx="10" ry="8" fill="#1a120e" />
-
-            <g class="eyes">
-              <g class="eye eye-left">
-                <ellipse cx="125" cy="118" rx="16" ry="17" fill="#1a120e" />
-                <circle class="pupil" cx="128" cy="120" r="5" fill="#3d291e" opacity="0.35" />
-                <circle cx="131" cy="112" r="4" fill="#fff" />
-                <circle cx="120" cy="122" r="2" fill="#fff" opacity="0.7" />
-              </g>
-              <g class="eye eye-right">
-                <ellipse cx="185" cy="118" rx="16" ry="17" fill="#1a120e" />
-                <circle class="pupil" cx="182" cy="120" r="5" fill="#3d291e" opacity="0.35" />
-                <circle cx="191" cy="112" r="4" fill="#fff" />
-                <circle cx="178" cy="122" r="2" fill="#fff" opacity="0.7" />
-              </g>
-              <ellipse class="blink-lid lid-left" cx="125" cy="118" rx="17" ry="18" fill="#e06a2c" opacity="0" />
-              <ellipse class="blink-lid lid-right" cx="185" cy="118" rx="17" ry="18" fill="#e06a2c" opacity="0" />
-            </g>
-
-            <g class="mouth">
-              <path class="mouth-closed" d="M138 160 Q155 172 172 160" fill="none" stroke="#1a120e" stroke-width="3.2" stroke-linecap="round" />
-              <ellipse class="mouth-open" cx="155" cy="166" rx="12" ry="3" fill="#1a120e" opacity="0" />
-              <ellipse class="mouth-tongue" cx="155" cy="172" rx="7" ry="4" fill="#e63946" opacity="0" />
-            </g>
-          </g>
-        </svg>
+        <div id="character" class="character state-idle" data-pose="idle">
+          <picture>
+            <source id="character-source" srcset="assets/panda-idle.webp" type="image/webp" />
+            <img id="character-img" class="character-art" src="assets/panda-idle.jpg" alt="Divi, a vörös panda" width="720" height="1080" draggable="false" />
+          </picture>
+        </div>
         <span class="tap-hint">Koppints rám!</span>
       </button>
 
@@ -1193,7 +1002,7 @@ body {
       contents.push({ role: "user", parts: [{ text: userText }] });
     }
 
-    const models = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const models = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.6-flash"];
     let lastErr = null;
 
     for (let m = 0; m < models.length; m += 1) {
@@ -1212,7 +1021,7 @@ body {
               contents: contents,
               generationConfig: {
                 temperature: 0.95,
-                maxOutputTokens: 220,
+                maxOutputTokens: 1024,
                 topP: 0.9,
               },
             }),
@@ -1275,7 +1084,7 @@ body {
 })(window);
 
 /**
- * Divi karakter — vörös panda, Gemini-szerű folyamatos lip-sync
+ * Divi karakter — PNG állapotok (idle / talk / happy) + Talking Tom váltás
  */
 (function (global) {
   const STATES = ["idle", "listening", "thinking", "speaking", "react", "laugh"];
@@ -1284,55 +1093,81 @@ body {
   const MID = /[eéií]/i;
   const ROUND = /[öőuúüű]/i;
 
-  function Character(svgEl) {
-    this.el = svgEl;
+  const POSES = {
+    idle: { webp: "assets/panda-idle.webp", jpg: "assets/panda-idle.jpg" },
+    talk: { webp: "assets/panda-talk.webp", jpg: "assets/panda-talk.jpg" },
+    happy: { webp: "assets/panda-happy.webp", jpg: "assets/panda-happy.jpg" },
+  };
+
+  function Character(rootEl) {
+    this.el = rootEl;
+    this.img = rootEl.querySelector("#character-img") || rootEl.querySelector(".character-art");
+    this.source = rootEl.querySelector("#character-source");
     this.state = "idle";
+    this.pose = "idle";
     this._reactTimer = null;
     this._lipRaf = null;
     this._lipActive = false;
     this._mouthOpen = 0;
     this._mouthTarget = 0;
-    this._closed = svgEl.querySelector(".mouth-closed");
-    this._open = svgEl.querySelector(".mouth-open");
-    this._tongue = svgEl.querySelector(".mouth-tongue");
-    this._openBaseCy = this._open ? parseFloat(this._open.getAttribute("cy") || "166") : 166;
-    this._tongueBaseCy = this._tongue ? parseFloat(this._tongue.getAttribute("cy") || "172") : 172;
-    this.setMouth(0);
+    this.setPose("idle");
+
+    // Előtöltés — ne villogjon váltáskor
+    Object.keys(POSES).forEach(function (key) {
+      const img = new Image();
+      img.src = POSES[key].jpg;
+      const w = new Image();
+      w.src = POSES[key].webp;
+    });
   }
+
+  Character.prototype.setPose = function (pose) {
+    if (!POSES[pose] || this.pose === pose) return;
+    this.pose = pose;
+    const asset = POSES[pose];
+    if (this.source) this.source.srcset = asset.webp;
+    if (this.img) this.img.src = asset.jpg;
+    this.el.setAttribute("data-pose", pose);
+  };
+
+  Character.prototype.poseForState = function (state) {
+    if (state === "speaking") return "talk";
+    if (state === "laugh" || state === "react") return "happy";
+    return "idle";
+  };
 
   Character.prototype.setState = function (state) {
     if (!STATES.includes(state)) state = "idle";
     this.state = state;
     STATES.forEach((s) => this.el.classList.remove("state-" + s));
     this.el.classList.add("state-" + state);
-    if (state !== "speaking" && state !== "laugh" && !this._lipActive) {
-      this.setMouth(state === "laugh" ? 0.7 : 0);
+
+    if (!this._lipActive) {
+      this.setPose(this.poseForState(state));
     }
   };
 
   Character.prototype.setMouth = function (amount) {
     const a = Math.max(0, Math.min(1, amount));
     this._mouthOpen = a;
-    if (!this._open || !this._closed) return;
 
-    // Folyamatos morph: csukott vonal ↔ nyitott száj
-    this._closed.style.opacity = String(Math.max(0, 1 - a * 3.2));
-    this._open.style.opacity = String(Math.min(1, a * 2.2));
-    this._open.setAttribute("rx", String(9 + a * 14));
-    this._open.setAttribute("ry", String(2.5 + a * 15));
-    this._open.setAttribute("cy", String(this._openBaseCy + a * 8));
-    if (this._tongue) {
-      this._tongue.style.opacity = String(a > 0.4 ? (a - 0.4) * 1.4 : 0);
-      this._tongue.setAttribute("cy", String(this._tongueBaseCy + a * 8));
+    // Beszéd közben: nyitott/csukott PNG váltás a hang / viseme alapján
+    if (this.state === "speaking" || this._lipActive) {
+      this.setPose(a >= 0.28 ? "talk" : "idle");
+      return;
     }
+    if (this.state === "laugh" || this.state === "react") {
+      this.setPose("happy");
+      return;
+    }
+    this.setPose("idle");
   };
 
   Character.prototype._tickSmooth = function () {
     if (!this._lipActive) return;
-    // Simítás: ne ugráljon frame-ről frame-re (Gemini-szerű)
-    const blend = 0.28;
+    const blend = 0.32;
     this._mouthOpen += (this._mouthTarget - this._mouthOpen) * blend;
-    if (Math.abs(this._mouthTarget - this._mouthOpen) < 0.01) {
+    if (Math.abs(this._mouthTarget - this._mouthOpen) < 0.02) {
       this._mouthOpen = this._mouthTarget;
     }
     this.setMouth(this._mouthOpen);
@@ -1366,24 +1201,9 @@ body {
       clearTimeout(this._audioTimer);
       this._audioTimer = null;
     }
-    // Lágy zárás
-    const self = this;
-    let steps = 0;
-    const close = function () {
-      if (self._lipActive) return;
-      steps += 1;
-      self._mouthOpen *= 0.65;
-      self.setMouth(self._mouthOpen);
-      if (self._mouthOpen > 0.04 && steps < 20) {
-        requestAnimationFrame(close);
-      } else {
-        self.setMouth(0);
-      }
-    };
-    close();
+    this.setPose(this.poseForState(this.state === "speaking" ? "idle" : this.state));
   };
 
-  /** Viseme erő egy betűhöz */
   Character.prototype.visemeForChar = function (ch) {
     if (!ch || /\s/.test(ch)) return 0.05;
     if (/[.,!?;:]/.test(ch)) return 0.08;
@@ -1474,23 +1294,16 @@ body {
     clearTimeout(this._reactTimer);
     this.stopLipSync();
     this.setState(kind === "laugh" ? "laugh" : "react");
-    if (kind === "laugh") this.setMouth(0.75);
+    this.setPose("happy");
     const self = this;
     this._reactTimer = setTimeout(function () {
       if (self.state === "react" || self.state === "laugh") {
-        self.setMouth(0);
         self.setState("idle");
       }
     }, kind === "laugh" ? 1200 : 600);
   };
 
-  Character.prototype.lookAt = function (xRatio) {
-    const pupils = this.el.querySelectorAll(".pupil");
-    const dx = Math.max(-4, Math.min(4, (xRatio - 0.5) * 10));
-    pupils.forEach(function (p) {
-      p.style.transform = "translate(" + dx + "px, 0)";
-    });
-  };
+  Character.prototype.lookAt = function () {};
 
   global.DiviCharacter = Character;
 })(window);

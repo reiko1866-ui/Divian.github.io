@@ -322,14 +322,6 @@ body {
   animation: tail-sway 3.6s ease-in-out infinite;
 }
 
-.character .body {
-  transform-origin: 155px 220px;
-}
-
-.character .head {
-  transform-origin: 155px 125px;
-}
-
 @keyframes tail-sway {
   0%, 100% { transform: rotate(-4deg); }
   50% { transform: rotate(6deg); }

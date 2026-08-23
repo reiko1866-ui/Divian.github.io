@@ -43,8 +43,9 @@
         </select>
       </div>
 
-      <label for="openai-key">OpenAI kulcs (opcionális, okosabb AI)</label>
-      <input type="password" id="openai-key" autocomplete="off" placeholder="sk-… üresen is megy" />
+      <label for="gemini-key">Gemini API kulcs (okosabb AI)</label>
+      <input type="password" id="gemini-key" autocomplete="off" placeholder="AIza… — Google AI Studio" />
+      <p class="hint">A kulcs csak a böngésződben (localStorage) marad, nem a szerveren. Állíts be HTTP-referrer korlátozást a Google AI Studio-ban.</p>
 
       <label class="toggle-row" for="echo-mode">
         <input type="checkbox" id="echo-mode" />

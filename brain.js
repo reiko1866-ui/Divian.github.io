@@ -400,44 +400,82 @@
     };
   };
 
-  Brain.prototype.buildOpenAIMessages = function (userText) {
-    const system =
+  Brain.prototype.buildSystemPrompt = function () {
+    return (
       "Te Divi vagy: vidám, poénos, beszélő animációs vörös panda gyerekeknek (Talking Tom stílus). " +
-      "Magyarul beszélj, 1-3 rövid mondatban, sok kedves humorral. " +
+      "Magyarul beszélj, 1-3 rövid mondatban, sok kedves humorral és poénnal. " +
       "HA A GYEREK TŐLED KÉRDEZ (pl. ki a kedvenc mesefigurád), ELŐSZÖR VÁLASZOLJ KONKRÉTAN, ne kerülgesd. " +
-      "Utána kérdezhetsz vissza. Ne legyél ijesztő. Memória: " +
-      JSON.stringify(this.memory);
-
-    const msgs = [{ role: "system", content: system }];
-    this.history.slice(-8).forEach((h) => msgs.push(h));
-    msgs.push({ role: "user", content: userText });
-    return msgs;
+      "Utána kérdezhetsz vissza. Ne legyél ijesztő vagy felnőttes. " +
+      "Memória (amit már tudsz a gyerekről): " +
+      JSON.stringify(this.memory)
+    );
   };
+
+  async function replyWithGemini(brain, userText, apiKey) {
+    const contents = [];
+    brain.history.slice(-10).forEach(function (h) {
+      contents.push({
+        role: h.role === "assistant" ? "model" : "user",
+        parts: [{ text: h.content }],
+      });
+    });
+    // Az utolsó user üzenet már a history-ban is lehet — ha az utolsó user, ne duplázzuk
+    const last = contents[contents.length - 1];
+    if (!last || last.role !== "user" || last.parts[0].text !== userText) {
+      contents.push({ role: "user", parts: [{ text: userText }] });
+    }
+    if (!contents.length) {
+      contents.push({ role: "user", parts: [{ text: userText }] });
+    }
+
+    const models = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.6-flash"];
+    let lastErr = null;
+
+    for (let m = 0; m < models.length; m += 1) {
+      const model = models[m];
+      try {
+        const res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/" +
+            model +
+            ":generateContent?key=" +
+            encodeURIComponent(apiKey),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: brain.buildSystemPrompt() }] },
+              contents: contents,
+              generationConfig: {
+                temperature: 0.95,
+                maxOutputTokens: 1024,
+                topP: 0.9,
+              },
+            }),
+          }
+        );
+        if (!res.ok) {
+          const errText = await res.text().catch(function () { return ""; });
+          lastErr = new Error("Gemini HTTP " + res.status + " (" + model + ") " + errText.slice(0, 120));
+          continue;
+        }
+        const data = await res.json();
+        const parts = ((((data.candidates || [])[0] || {}).content || {}).parts) || [];
+        const text = parts.map(function (p) { return p.text || ""; }).join("").trim();
+        if (text) {
+          return { text: text, emotion: /haha|hehe|vicc|poén|😄|😂/i.test(text) ? "laugh" : "speaking" };
+        }
+        lastErr = new Error("Üres Gemini válasz (" + model + ")");
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("Gemini nem elérhető");
+  }
 
   Brain.prototype.record = function (role, content) {
     this.history.push({ role: role, content: content });
     if (this.history.length > 20) this.history = this.history.slice(-20);
   };
-
-  async function replyWithOpenAI(brain, userText, apiKey) {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + apiKey,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.9,
-        max_tokens: 200,
-        messages: brain.buildOpenAIMessages(userText),
-      }),
-    });
-    if (!res.ok) throw new Error("OpenAI HTTP " + res.status);
-    const data = await res.json();
-    const text = (((data.choices || [])[0] || {}).message || {}).content || "";
-    return { text: text.trim() || "Hmm, elkalandoztam. Kérdezz rám bátran!", emotion: "speaking" };
-  }
 
   Brain.prototype.reply = async function (userText, opts) {
     opts = opts || {};
@@ -451,14 +489,14 @@
       return out;
     }
 
-    if (opts.openAiKey) {
+    if (opts.geminiKey) {
       try {
-        const out = await replyWithOpenAI(this, cleaned, opts.openAiKey);
+        const out = await replyWithGemini(this, cleaned, opts.geminiKey);
         this.memory.turns += 1;
         this.record("assistant", out.text);
         return out;
       } catch (err) {
-        console.warn("OpenAI fallback:", err);
+        console.warn("Gemini fallback helyi agyra:", err);
       }
     }
 

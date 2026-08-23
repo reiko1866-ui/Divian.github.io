@@ -17,7 +17,7 @@
   const elevenInputs = $("elevenlabs-inputs");
   const apiKeyInput = $("api-key");
   const voiceIdInput = $("voice-id");
-  const openAiKeyInput = $("openai-key");
+  const geminiKeyInput = $("gemini-key");
   const echoModeInput = $("echo-mode");
   const autoListenInput = $("auto-listen");
 
@@ -25,7 +25,7 @@
     engine: "divi-engine",
     elevenKey: "divi-eleven-key",
     voice: "divi-eleven-voice",
-    openai: "divi-openai-key",
+    gemini: "divi-gemini-key",
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
@@ -72,7 +72,7 @@
       engineSelect.value = localStorage.getItem(STORAGE.engine) || "native";
       apiKeyInput.value = localStorage.getItem(STORAGE.elevenKey) || "";
       voiceIdInput.value = localStorage.getItem(STORAGE.voice) || DEFAULT_VOICE;
-      openAiKeyInput.value = localStorage.getItem(STORAGE.openai) || "";
+      geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
       autoListenInput.checked = al === null ? true : al === "1";
@@ -87,7 +87,7 @@
       localStorage.setItem(STORAGE.engine, engineSelect.value);
       localStorage.setItem(STORAGE.elevenKey, apiKeyInput.value.trim());
       localStorage.setItem(STORAGE.voice, voiceIdInput.value.trim() || DEFAULT_VOICE);
-      localStorage.setItem(STORAGE.openai, openAiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
@@ -433,7 +433,7 @@
     try {
       const reply = await brain.reply(text, {
         echoMode: echoModeInput.checked,
-        openAiKey: openAiKeyInput.value.trim(),
+        geminiKey: geminiKeyInput.value.trim(),
       });
       addChat("bot", reply.text);
       if (reply.emotion === "laugh") character.react("laugh");
@@ -741,7 +741,7 @@
     settingsPanel.classList.add("hidden");
   });
   engineSelect.addEventListener("change", toggleEngine);
-  [apiKeyInput, voiceIdInput, openAiKeyInput, echoModeInput, autoListenInput].forEach(function (el) {
+  [apiKeyInput, voiceIdInput, geminiKeyInput, echoModeInput, autoListenInput].forEach(function (el) {
     el.addEventListener("change", saveSettings);
   });
 

@@ -1,316 +1,173 @@
 (function () {
   const $ = (id) => document.getElementById(id);
 
+  const characterEl = $("character");
+  const hitbox = $("character-hitbox");
+  const bubble = $("speech-bubble");
+  const bubbleText = $("bubble-text");
+  const statusLine = $("status-line");
+  const chatLog = $("chat-log");
+  const chatForm = $("chat-form");
+  const userInput = $("user-input");
+  const btnMic = $("btn-mic");
+  const btnSettings = $("btn-settings");
+  const btnCloseSettings = $("btn-close-settings");
+  const settingsPanel = $("settings-panel");
   const engineSelect = $("engine-select");
   const elevenInputs = $("elevenlabs-inputs");
   const apiKeyInput = $("api-key");
   const voiceIdInput = $("voice-id");
-  const autoSpeakInput = $("auto-speak");
-  const setupPanel = $("setup-panel");
-  const storyPanel = $("story-panel");
-  const wishInput = $("wish-input");
-  const disneySelect = $("disney-select");
-  const moodSelect = $("mood-select");
-  const heroNameInput = $("hero-name");
-  const filmBadge = $("film-badge");
-  const chapterLabel = $("chapter-label");
-  const storyTitle = $("story-title");
-  const storyText = $("story-text");
-  const speakStatus = $("speak-status");
-  const choicesContainer = $("choices-container");
-  const btnStart = $("btn-start");
-  const btnSurprise = $("btn-surprise");
-  const btnSpeak = $("btn-speak");
-  const btnStop = $("btn-stop");
-  const btnNew = $("btn-new");
-  const btnDownload = $("btn-download");
-  const btnFinish = $("btn-finish");
+  const openAiKeyInput = $("openai-key");
+  const echoModeInput = $("echo-mode");
+  const autoListenInput = $("auto-listen");
 
-  const STORAGE_ENGINE = "mesemondo-engine";
-  const STORAGE_KEY = "mesemondo-eleven-key";
-  const STORAGE_VOICE = "mesemondo-eleven-voice";
-  const STORAGE_AUTO = "mesemondo-auto-speak";
-  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam — férfi mesélő
-  const CHUNK_LIMIT = 900;
+  const STORAGE = {
+    engine: "divi-engine",
+    elevenKey: "divi-eleven-key",
+    voice: "divi-eleven-voice",
+    openai: "divi-openai-key",
+    echo: "divi-echo",
+    autoListen: "divi-auto-listen",
+  };
+  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB";
 
-  let story = null;
-  let currentAudioObject = null;
+  const character = new DiviCharacter(characterEl);
+  const brain = new DiviBrain();
+
+  let recognition = null;
+  let listening = false;
+  let busy = false;
+  let speakToken = 0;
+  let currentAudio = null;
   let activeAudioUrl = null;
   let cachedMaleVoice = null;
-  let speakToken = 0;
-  let isSpeaking = false;
+  let greetingDone = false;
 
   function isFemaleVoiceName(name) {
-    const n = (name || "").toLowerCase();
-    return /női|noi|female|woman|girl|noémi|noemi|szilvia|susan|zira|samantha|rachel|sarah|domi|bella|elli|emily|aria/.test(n);
+    return /női|noi|female|woman|rachel|sarah|zira|samantha|susan/i.test(name || "");
   }
 
   function isMaleVoiceName(name) {
-    const n = (name || "").toLowerCase();
-    return /férfi|ferfi|male|man|tamás|tamas|szabolcs|bálint|balint|istván|istvan|lászló|laszlo|adam|arnold|josh|antoni|daniel|david/.test(n);
+    return /férfi|ferfi|male|tamás|tamas|szabolcs|adam|arnold|josh|antoni|david|daniel/i.test(name || "");
   }
 
   function pickMaleHuVoice() {
     if (!("speechSynthesis" in window)) return null;
-    const voices = window.speechSynthesis.getVoices() || [];
+    const voices = speechSynthesis.getVoices() || [];
     const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
-    const maleHu = hu.filter((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name));
-    if (maleHu.length) return maleHu[0];
-    const named = hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name));
-    if (named) return named;
-    const nonFemale = hu.find((v) => !isFemaleVoiceName(v.name));
-    return nonFemale || null;
-  }
-
-  function setSpeakStatus(msg) {
-    if (!speakStatus) return;
-    if (!msg) {
-      speakStatus.classList.add("hidden");
-      speakStatus.textContent = "";
-      return;
-    }
-    speakStatus.classList.remove("hidden");
-    speakStatus.textContent = msg;
-  }
-
-  function setSpeakingUi(active) {
-    isSpeaking = active;
-    if (btnSpeak) btnSpeak.disabled = active && engineSelect.value === "elevenlabs";
+    return (
+      hu.find((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name)) ||
+      hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name)) ||
+      hu.find((v) => !isFemaleVoiceName(v.name)) ||
+      null
+    );
   }
 
   function loadSettings() {
     try {
-      engineSelect.value = localStorage.getItem(STORAGE_ENGINE) || "native";
-      apiKeyInput.value = localStorage.getItem(STORAGE_KEY) || "";
-      const savedVoice = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
-      const femaleIds = ["21m00Tcm4TlvDq8ikWAM", "EXAVITQu4vr4xnSDxMaL", "MF3mGyEYCl7XYWbV9V6O"];
-      voiceIdInput.value = femaleIds.includes(savedVoice) ? DEFAULT_VOICE : savedVoice;
-      const auto = localStorage.getItem(STORAGE_AUTO);
-      autoSpeakInput.checked = auto === null ? true : auto === "1";
+      engineSelect.value = localStorage.getItem(STORAGE.engine) || "native";
+      apiKeyInput.value = localStorage.getItem(STORAGE.elevenKey) || "";
+      voiceIdInput.value = localStorage.getItem(STORAGE.voice) || DEFAULT_VOICE;
+      openAiKeyInput.value = localStorage.getItem(STORAGE.openai) || "";
+      echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
+      const al = localStorage.getItem(STORAGE.autoListen);
+      autoListenInput.checked = al === null ? true : al === "1";
     } catch (_) {
-      voiceIdInput.value = DEFAULT_VOICE;
-      autoSpeakInput.checked = true;
+      /* ignore */
     }
-    toggleEngineSettings();
+    toggleEngine();
   }
 
   function saveSettings() {
     try {
-      localStorage.setItem(STORAGE_ENGINE, engineSelect.value);
-      localStorage.setItem(STORAGE_KEY, apiKeyInput.value.trim());
-      localStorage.setItem(STORAGE_VOICE, voiceIdInput.value.trim() || DEFAULT_VOICE);
-      localStorage.setItem(STORAGE_AUTO, autoSpeakInput.checked ? "1" : "0");
+      localStorage.setItem(STORAGE.engine, engineSelect.value);
+      localStorage.setItem(STORAGE.elevenKey, apiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.voice, voiceIdInput.value.trim() || DEFAULT_VOICE);
+      localStorage.setItem(STORAGE.openai, openAiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
+      localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
       /* ignore */
     }
   }
 
-  function toggleEngineSettings() {
-    if (engineSelect.value === "elevenlabs") {
-      elevenInputs.classList.remove("hidden");
-    } else {
-      elevenInputs.classList.add("hidden");
-    }
+  function toggleEngine() {
+    if (engineSelect.value === "elevenlabs") elevenInputs.classList.remove("hidden");
+    else elevenInputs.classList.add("hidden");
     saveSettings();
   }
 
-  function decadeLabel(year) {
-    if (!year) return "Egyéb";
-    const start = Math.floor(year / 10) * 10;
-    return start + "-as évek";
+  function setStatus(msg) {
+    statusLine.textContent = msg || "";
   }
 
-  function populateDisneySelect() {
-    if (!disneySelect || !MeseEngine.listDisneyFilms) return;
-    const films = MeseEngine.listDisneyFilms().slice().sort((a, b) => (a.year || 0) - (b.year || 0));
-    const groups = {};
-    films.forEach((film) => {
-      const key = decadeLabel(film.year);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(film);
-    });
-    Object.keys(groups).forEach((decade) => {
-      const og = document.createElement("optgroup");
-      og.label = decade;
-      groups[decade].forEach((film) => {
-        const opt = document.createElement("option");
-        opt.value = film.id;
-        opt.textContent = film.label;
-        og.appendChild(opt);
-      });
-      disneySelect.appendChild(og);
-    });
+  function showBubble(text) {
+    bubbleText.textContent = text;
+    bubble.classList.remove("hidden");
   }
 
-  function showSetup() {
-    stopAudio();
-    story = null;
-    setupPanel.classList.remove("hidden");
-    storyPanel.classList.add("hidden");
-    setSpeakStatus("");
+  function addChat(role, text) {
+    const div = document.createElement("div");
+    div.className = "chat-msg " + role;
+    div.textContent = (role === "bot" ? "Divi: " : "Te: ") + text;
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  function showStory() {
-    setupPanel.classList.add("hidden");
-    storyPanel.classList.remove("hidden");
-  }
-
-  function renderScene(opts) {
-    if (!story) return;
-    const autoSpeak = !opts || opts.autoSpeak !== false;
-    const scene = MeseEngine.getScene(story);
-    if (filmBadge) {
-      filmBadge.textContent = story.disneyTitle
-        ? "Disney: " + story.disneyTitle
-        : "";
+  function stopSpeech() {
+    speakToken += 1;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
     }
-    chapterLabel.textContent = scene.chapter;
-    storyTitle.textContent = story.title;
-    storyText.innerText = scene.text;
-
-    choicesContainer.innerHTML = "";
-
-    if (scene.ending || story.finished) {
-      const restart = document.createElement("button");
-      restart.className = "choice-btn";
-      restart.innerText = "🔄 Új mese";
-      restart.onclick = showSetup;
-      choicesContainer.appendChild(restart);
-
-      const cont = document.createElement("button");
-      cont.className = "choice-btn";
-      cont.innerText = "➡️ Mégis folytatom";
-      cont.onclick = () => {
-        story.finished = false;
-        MeseEngine.choose(story, "curious");
-        renderScene();
-      };
-      choicesContainer.appendChild(cont);
-    } else {
-      scene.choices.forEach((choice) => {
-        const btn = document.createElement("button");
-        btn.className = "choice-btn";
-        btn.innerText = choice.label;
-        btn.onclick = () => {
-          stopAudio();
-          MeseEngine.choose(story, choice.next);
-          renderScene();
-        };
-        choicesContainer.appendChild(btn);
-      });
-    }
-
-    if (autoSpeak && autoSpeakInput.checked) {
-      speakCurrentStory();
-    } else {
-      setSpeakStatus("");
+    if (activeAudioUrl) {
+      URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
     }
   }
 
-  function startStory(wish, disneyId) {
-    const selectedId = disneyId || (disneySelect && disneySelect.value) || "";
-    let cleaned = (wish || "").trim();
-    if (!cleaned && selectedId && MeseEngine.WORLDS[selectedId]) {
-      cleaned = MeseEngine.WORLDS[selectedId].disneyTitle + " stílusú kaland";
-    }
-    cleaned = cleaned || MeseEngine.randomWish();
-    wishInput.value = cleaned;
-    story = MeseEngine.buildStory({
-      wish: cleaned,
-      mood: moodSelect.value,
-      heroName: heroNameInput.value,
-      disneyId: selectedId || undefined,
-    });
-    showStory();
-    renderScene();
-  }
-
-  function chunkText(text, limit) {
-    const clean = String(text || "").trim();
-    if (clean.length <= limit) return [clean];
-    const parts = [];
-    let rest = clean;
-    while (rest.length > limit) {
-      let cut = rest.lastIndexOf(". ", limit);
-      if (cut < limit * 0.45) cut = rest.lastIndexOf(" ", limit);
-      if (cut < limit * 0.3) cut = limit;
-      parts.push(rest.slice(0, cut + 1).trim());
-      rest = rest.slice(cut + 1).trim();
-    }
-    if (rest) parts.push(rest);
-    return parts.filter(Boolean);
-  }
-
-  function speakCurrentStory() {
-    if (!story) return;
-    stopAudio();
-    const text = MeseEngine.getScene(story).text;
-    const engine = engineSelect.value;
-    const token = ++speakToken;
-
-    if (engine === "elevenlabs") {
-      const apiKey = apiKeyInput.value.trim();
-      const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
-      if (!apiKey || !voiceId) {
-        alert("Kérlek add meg az ElevenLabs API kulcsot és a Voice ID-t!");
-        return;
-      }
-      saveSettings();
-      speakElevenLabs(text, apiKey, voiceId, token);
-    } else {
-      speakNative(text, token);
+  function stopListening() {
+    listening = false;
+    btnMic.classList.remove("listening");
+    try {
+      if (recognition) recognition.stop();
+    } catch (_) {
+      /* ignore */
     }
   }
 
   function speakNative(text, token) {
-    if (!("speechSynthesis" in window)) return;
-    setSpeakingUi(true);
-    setSpeakStatus("Mesélő beszél…");
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "hu-HU";
-    utterance.rate = 0.88;
-    utterance.pitch = 0.9;
-
-    cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
-    if (cachedMaleVoice) {
-      utterance.voice = cachedMaleVoice;
-    } else {
-      utterance.pitch = 0.75;
-    }
-
-    utterance.onend = () => {
-      if (token !== speakToken) return;
-      setSpeakingUi(false);
-      setSpeakStatus("");
-    };
-    utterance.onerror = () => {
-      if (token !== speakToken) return;
-      setSpeakingUi(false);
-      setSpeakStatus("");
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }
-
-  function playBlob(blob, token) {
-    return new Promise((resolve, reject) => {
-      if (token !== speakToken) {
-        resolve(false);
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) {
+        resolve();
         return;
       }
-      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
-      const audioUrl = URL.createObjectURL(blob);
-      activeAudioUrl = audioUrl;
-      currentAudioObject = new Audio(audioUrl);
-      currentAudioObject.onended = () => resolve(true);
-      currentAudioObject.onerror = () => reject(new Error("Audio lejátszási hiba"));
-      currentAudioObject.play().catch(reject);
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "hu-HU";
+      u.rate = 1.02;
+      u.pitch = 1.15;
+      cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
+      // Divi: játékos, kissé magasabb pitch (karakterhang), ha van férfi alap
+      if (cachedMaleVoice) u.voice = cachedMaleVoice;
+      u.onend = () => resolve();
+      u.onerror = () => resolve();
+      if (token !== speakToken) {
+        resolve();
+        return;
+      }
+      speechSynthesis.speak(u);
     });
   }
 
-  async function fetchElevenChunk(text, apiKey, voiceId) {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+  async function speakEleven(text, token) {
+    const apiKey = apiKeyInput.value.trim();
+    const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
+    if (!apiKey) {
+      await speakNative(text, token);
+      return;
+    }
+    const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId, {
       method: "POST",
       headers: {
         Accept: "audio/mpeg",
@@ -320,116 +177,220 @@
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: 0.35,
-          similarity_boost: 0.8,
-          style: 0.15,
-        },
+        voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.35 },
       }),
     });
-    if (!response.ok) throw new Error(`HTTP hiba: ${response.status}`);
-    return response.blob();
-  }
-
-  async function speakElevenLabs(text, apiKey, voiceId, token) {
-    const chunks = chunkText(text, CHUNK_LIMIT);
-    setSpeakingUi(true);
-    try {
-      for (let i = 0; i < chunks.length; i += 1) {
-        if (token !== speakToken) return;
-        setSpeakStatus(
-          chunks.length > 1
-            ? `Hang készítése… (${i + 1}/${chunks.length})`
-            : "Hang készítése…"
-        );
-        const blob = await fetchElevenChunk(chunks[i], apiKey, voiceId);
-        if (token !== speakToken) return;
-        setSpeakStatus(
-          chunks.length > 1
-            ? `Mesélő beszél… (${i + 1}/${chunks.length})`
-            : "Mesélő beszél…"
-        );
-        await playBlob(blob, token);
-      }
-      if (token === speakToken) setSpeakStatus("");
-    } catch (err) {
-      console.error("ElevenLabs hiba, visszatérés a beépített hangra:", err);
-      if (token === speakToken) {
-        setSpeakStatus("ElevenLabs hiba — böngésző hangra váltok");
-        speakNative(text, token);
-        return;
-      }
-    } finally {
-      if (token === speakToken) setSpeakingUi(false);
-    }
-  }
-
-  function stopAudio() {
-    speakToken += 1;
-    setSpeakingUi(false);
-    setSpeakStatus("");
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    if (currentAudioObject) {
-      currentAudioObject.pause();
-      currentAudioObject = null;
-    }
-    if (activeAudioUrl) {
-      URL.revokeObjectURL(activeAudioUrl);
-      activeAudioUrl = null;
-    }
-  }
-
-  function downloadStory() {
-    if (!story) return;
-    const text = MeseEngine.fullTranscript(story);
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${story.title.replace(/\s+/g, "_")}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  engineSelect.addEventListener("change", toggleEngineSettings);
-  apiKeyInput.addEventListener("change", saveSettings);
-  voiceIdInput.addEventListener("change", saveSettings);
-  autoSpeakInput.addEventListener("change", saveSettings);
-
-  btnStart.addEventListener("click", () => startStory(wishInput.value));
-  btnSurprise.addEventListener("click", () => {
-    const films = MeseEngine.listDisneyFilms();
-    const film = films[Math.floor(Math.random() * films.length)];
-    if (disneySelect) disneySelect.value = film.id;
-    startStory(film.title + " stílusú kaland", film.id);
-  });
-  if (disneySelect) {
-    disneySelect.addEventListener("change", () => {
-      if (!disneySelect.value) return;
-      const world = MeseEngine.WORLDS[disneySelect.value];
-      if (world) wishInput.value = world.disneyTitle + " stílusú kaland";
+    if (!res.ok) throw new Error("ElevenLabs " + res.status);
+    const blob = await res.blob();
+    if (token !== speakToken) return;
+    if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = URL.createObjectURL(blob);
+    currentAudio = new Audio(activeAudioUrl);
+    await new Promise((resolve, reject) => {
+      currentAudio.onended = resolve;
+      currentAudio.onerror = reject;
+      currentAudio.play().catch(reject);
     });
   }
-  btnSpeak.addEventListener("click", speakCurrentStory);
-  btnStop.addEventListener("click", stopAudio);
-  btnNew.addEventListener("click", showSetup);
-  btnDownload.addEventListener("click", downloadStory);
-  btnFinish.addEventListener("click", () => {
-    if (!story || story.finished) return;
-    stopAudio();
-    MeseEngine.finishStory(story);
-    renderScene({ autoSpeak: autoSpeakInput.checked });
+
+  async function speak(text) {
+    const token = ++speakToken;
+    character.setState("speaking");
+    showBubble(text);
+    try {
+      if (engineSelect.value === "elevenlabs") {
+        setStatus("Divi beszél…");
+        await speakEleven(text, token);
+      } else {
+        setStatus("Divi beszél…");
+        await speakNative(text, token);
+      }
+    } catch (err) {
+      console.warn(err);
+      await speakNative(text, token);
+    }
+    if (token === speakToken) {
+      character.setState("idle");
+      setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+    }
+  }
+
+  async function handleUserText(raw) {
+    const text = (raw || "").trim();
+    if (!text || busy) return;
+    busy = true;
+    stopListening();
+    stopSpeech();
+    userInput.value = "";
+    addChat("user", text);
+    character.setState("thinking");
+    setStatus("Divi gondolkodik…");
+
+    try {
+      const reply = await brain.reply(text, {
+        echoMode: echoModeInput.checked,
+        openAiKey: openAiKeyInput.value.trim(),
+      });
+      addChat("bot", reply.text);
+      if (reply.emotion === "laugh") character.react("laugh");
+      await speak(reply.text);
+    } catch (err) {
+      console.error(err);
+      const fallback = "Hoppá, valami elakadt. Próbáld újra!";
+      addChat("bot", fallback);
+      await speak(fallback);
+    }
+
+    busy = false;
+    if (autoListenInput.checked) {
+      setTimeout(startListening, 350);
+    }
+  }
+
+  function setupRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setStatus("A böngésződ nem támogatja a mikrofonos beszédfelismerést — írj helyette");
+      return null;
+    }
+    const rec = new SR();
+    rec.lang = "hu-HU";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.continuous = false;
+
+    rec.onstart = function () {
+      listening = true;
+      btnMic.classList.add("listening");
+      character.setState("listening");
+      setStatus("Hallgatlak… beszélj bátran!");
+    };
+
+    rec.onresult = function (event) {
+      const said = event.results[0][0].transcript;
+      handleUserText(said);
+    };
+
+    rec.onerror = function (event) {
+      listening = false;
+      btnMic.classList.remove("listening");
+      character.setState("idle");
+      if (event.error === "not-allowed") {
+        setStatus("Mikrofon engedély kell a böngészőben");
+      } else if (event.error !== "aborted") {
+        setStatus("Nem értettem — próbáld újra vagy írj");
+      }
+    };
+
+    rec.onend = function () {
+      listening = false;
+      btnMic.classList.remove("listening");
+      if (!busy && character.state === "listening") character.setState("idle");
+    };
+
+    return rec;
+  }
+
+  function startListening() {
+    if (busy) return;
+    if (!recognition) recognition = setupRecognition();
+    if (!recognition) return;
+    stopSpeech();
+    try {
+      recognition.start();
+    } catch (_) {
+      // already started
+    }
+  }
+
+  function toggleMic() {
+    if (listening) {
+      stopListening();
+      character.setState("idle");
+      setStatus("Megállítottam a hallgatást");
+      return;
+    }
+    startListening();
+  }
+
+  async function bootGreeting() {
+    if (greetingDone) return;
+    greetingDone = true;
+    const g = brain.greeting();
+    addChat("bot", g.text);
+    await speak(g.text);
+    if (autoListenInput.checked) setTimeout(startListening, 400);
+  }
+
+  // Events
+  btnMic.addEventListener("click", toggleMic);
+  chatForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    handleUserText(userInput.value);
+  });
+
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      if (chip.dataset.action === "reset") {
+        stopListening();
+        stopSpeech();
+        brain.reset();
+        chatLog.innerHTML = "";
+        greetingDone = false;
+        bootGreeting();
+        return;
+      }
+      if (chip.dataset.prompt) handleUserText(chip.dataset.prompt);
+    });
+  });
+
+  hitbox.addEventListener("click", async function () {
+    if (busy) {
+      character.react("react");
+      return;
+    }
+    busy = true;
+    stopListening();
+    const line = brain.tapReaction();
+    character.react("laugh");
+    addChat("bot", line.text);
+    await speak(line.text);
+    busy = false;
+  });
+
+  hitbox.addEventListener("pointermove", function (e) {
+    const rect = hitbox.getBoundingClientRect();
+    character.lookAt((e.clientX - rect.left) / rect.width);
+  });
+
+  btnSettings.addEventListener("click", function () {
+    settingsPanel.classList.toggle("hidden");
+  });
+  btnCloseSettings.addEventListener("click", function () {
+    saveSettings();
+    settingsPanel.classList.add("hidden");
+  });
+  engineSelect.addEventListener("change", toggleEngine);
+  [apiKeyInput, voiceIdInput, openAiKeyInput, echoModeInput, autoListenInput].forEach(function (el) {
+    el.addEventListener("change", saveSettings);
   });
 
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
+    speechSynthesis.onvoiceschanged = function () {
       cachedMaleVoice = pickMaleHuVoice();
     };
     cachedMaleVoice = pickMaleHuVoice();
   }
+
   loadSettings();
-  populateDisneySelect();
-  showSetup();
+  recognition = setupRecognition();
+  // Első gesztus után köszön (böngésző hang policy)
+  let armed = false;
+  function arm() {
+    if (armed) return;
+    armed = true;
+    bootGreeting();
+  }
+  document.addEventListener("pointerdown", arm, { once: true });
+  setStatus("Koppints bárhova a kezdéshez");
 })();

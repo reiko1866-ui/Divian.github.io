@@ -1,11 +1,14 @@
-# Interaktív Mesemondó
+# Divi — Beszélő barát
 
-Választásos, korlátlan fejezetes meseprogram GitHub Pages-hez — Disney-filmek világaira építve.
+Talking Tom–stílusú interaktív animációs karakter GitHub Pages-hez.
 
-## Hang
-- **Böngésző hang** (ingyenes): `hu-HU`, rate 0.88, pitch ~0.9, férfi hang preferencia
-- **ElevenLabs** (prémium): `eleven_multilingual_v2`, hosszú szöveg darabolással
-- Automatikus felolvasás ki/be kapcsolható
+## Mit tud?
+- Animált róka (pislog, lélegzik, beszélő száj, koppintás-reakció)
+- **Kérdez–felel** beszélgetés (Divi kérdez, te válaszolsz)
+- Mikrofon (Web Speech API, `hu-HU`) vagy szövegbevitel
+- Böngésző hang / opcionális ElevenLabs
+- Opcionális OpenAI kulcs okosabb válaszokhoz
+- Vicces visszhang mód (Tom-stílusú utánzás)
 
 ## Futtatás
 Nyisd meg az `index.html` fájlt, vagy a GitHub Pages URL-t.

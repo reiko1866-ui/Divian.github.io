@@ -2,93 +2,176 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Interaktív Mesemondó — Disney-alapú választásos mese ElevenLabs vagy böngésző hanggal." />
-  <title>Interaktív Mesemondó</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Divi — interaktív beszélő animációs karakter. Kérdez, felel, játszik veled." />
+  <title>Divi — Beszélő barát</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>✨ Interaktív Mesemondó ✨</h1>
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🦊</span>
+        <div>
+          <h1>Divi</h1>
+          <p class="tagline">Beszélő barátod</p>
+        </div>
+      </div>
+      <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
+    </header>
 
-    <div class="settings-panel">
-      <label for="engine-select">Felolvasó motor:</label>
+    <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
+      <h2>Beállítások</h2>
+      <label for="engine-select">Hang motor</label>
       <select id="engine-select">
-        <option value="native">Böngésző beépített hangja (ingyenes)</option>
-        <option value="elevenlabs">ElevenLabs AI hang (prémium API)</option>
+        <option value="native">Böngésző hang (ingyenes)</option>
+        <option value="elevenlabs">ElevenLabs (API)</option>
       </select>
-
-      <label class="toggle-row" for="auto-speak">
-        <input type="checkbox" id="auto-speak" checked />
-        Automatikus felolvasás minden fejezetnél
-      </label>
 
       <div id="elevenlabs-inputs" class="hidden">
-        <input type="password" id="api-key" placeholder="ElevenLabs API kulcs" autocomplete="off" />
-        <label for="voice-id">Férfi mesélő Voice ID</label>
+        <label for="api-key">ElevenLabs API kulcs</label>
+        <input type="password" id="api-key" autocomplete="off" placeholder="sk-…" />
+        <label for="voice-id">Férfi Voice ID</label>
         <select id="voice-id">
-          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — mély férfi</option>
-          <option value="VR6AewLTigWG4xSOukaG">Arnold — erős férfi</option>
-          <option value="TxGEqnHWrfWFTfGW9XjX">Josh — fiatal férfi</option>
-          <option value="ErXwobaYiN019PkySvjV">Antoni — lágy férfi</option>
+          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam</option>
+          <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
+          <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
+          <option value="ErXwobaYiN019PkySvjV">Antoni</option>
         </select>
-        <p class="hint">Csak férfi hangok. Női Voice ID-t ne használj.</p>
-      </div>
-    </div>
-
-    <section id="setup-panel" class="setup-panel">
-      <label for="disney-select">Disney mese kiválasztása:</label>
-      <select id="disney-select">
-        <option value="">— Válassz Disney mesét (összes) —</option>
-      </select>
-
-      <label for="wish-input">Vagy írd le, mit szeretnél (opcionális):</label>
-      <textarea id="wish-input" rows="2" maxlength="400" placeholder="Pl. a báljelenet, a jégpalota, a kívánságok…"></textarea>
-
-      <div class="setup-row">
-        <label class="inline">
-          Hangulat
-          <select id="mood-select">
-            <option value="vidam">Vidám</option>
-            <option value="kalandos">Kalandos</option>
-            <option value="mesés" selected>Mesés</option>
-          </select>
-        </label>
-        <label class="inline">
-          Hős neve
-          <input type="text" id="hero-name" maxlength="40" placeholder="opcionális" />
-        </label>
       </div>
 
-      <div class="audio-controls">
-        <button type="button" id="btn-start">Induljon a mese</button>
-        <button type="button" id="btn-surprise" class="secondary-btn">Véletlen Disney mese</button>
+      <label for="openai-key">OpenAI kulcs (opcionális, okosabb AI)</label>
+      <input type="password" id="openai-key" autocomplete="off" placeholder="sk-… üresen is megy" />
+
+      <label class="toggle-row" for="echo-mode">
+        <input type="checkbox" id="echo-mode" />
+        Vicces visszhang mód (mint Talking Tom)
+      </label>
+
+      <label class="toggle-row" for="auto-listen">
+        <input type="checkbox" id="auto-listen" checked />
+        Válasz után újra hallgat
+      </label>
+
+      <button type="button" id="btn-close-settings" class="primary-btn">Kész</button>
+    </aside>
+
+    <main class="stage">
+      <div class="room" aria-hidden="true"></div>
+
+      <div id="speech-bubble" class="speech-bubble hidden" role="status" aria-live="polite">
+        <p id="bubble-text"></p>
       </div>
-    </section>
 
-    <section id="story-panel" class="hidden">
-      <p class="film-badge" id="film-badge"></p>
-      <p class="chapter-label" id="chapter-label">1. fejezet</p>
-      <h2 class="story-title" id="story-title">A te meséd</h2>
-      <div id="story-text" class="story-box">Töltés...</div>
-      <p id="speak-status" class="speak-status hidden" aria-live="polite"></p>
+      <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
+        <svg id="character" class="character state-idle" viewBox="0 0 280 340" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f4a261" />
+              <stop offset="100%" stop-color="#e76f51" />
+            </linearGradient>
+            <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fff3e0" />
+              <stop offset="100%" stop-color="#ffe0b2" />
+            </linearGradient>
+          </defs>
 
-      <div class="audio-controls">
-        <button type="button" id="btn-speak">🔊 Felolvasás</button>
-        <button type="button" id="btn-stop">⏹️ Leállítás</button>
-        <button type="button" id="btn-new" class="secondary-btn">Új mese</button>
-      </div>
+          <!-- shadow -->
+          <ellipse class="shadow" cx="140" cy="318" rx="70" ry="12" fill="rgba(40,30,20,0.18)" />
 
-      <div id="choices-container" class="choices"></div>
+          <!-- body -->
+          <g class="body">
+            <ellipse cx="140" cy="230" rx="78" ry="88" fill="url(#fur)" />
+            <ellipse cx="140" cy="238" rx="48" ry="58" fill="url(#belly)" />
 
-      <div class="footer-actions">
-        <button type="button" id="btn-download" class="secondary-btn">Mese mentése</button>
-        <button type="button" id="btn-finish" class="secondary-btn">Mesét lezárom mára</button>
+            <!-- arms -->
+            <g class="arm arm-left">
+              <ellipse cx="62" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(-18 62 220)" />
+              <circle cx="48" cy="248" r="16" fill="#ffcc80" />
+            </g>
+            <g class="arm arm-right">
+              <ellipse cx="218" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(18 218 220)" />
+              <circle cx="232" cy="248" r="16" fill="#ffcc80" />
+            </g>
+
+            <!-- legs -->
+            <ellipse cx="108" cy="300" rx="24" ry="18" fill="#d62828" />
+            <ellipse cx="172" cy="300" rx="24" ry="18" fill="#d62828" />
+          </g>
+
+          <!-- head -->
+          <g class="head">
+            <ellipse cx="140" cy="118" rx="86" ry="78" fill="url(#fur)" />
+            <!-- ears -->
+            <g class="ear ear-left">
+              <polygon points="70,70 52,18 98,52" fill="#e76f51" />
+              <polygon points="70,62 58,28 90,52" fill="#ffcc80" />
+            </g>
+            <g class="ear ear-right">
+              <polygon points="210,70 228,18 182,52" fill="#e76f51" />
+              <polygon points="210,62 222,28 190,52" fill="#ffcc80" />
+            </g>
+            <!-- muzzle -->
+            <ellipse cx="140" cy="142" rx="42" ry="32" fill="#fff3e0" />
+            <ellipse class="nose" cx="140" cy="132" rx="12" ry="9" fill="#2b2d42" />
+            <!-- eyes -->
+            <g class="eyes">
+              <g class="eye eye-left">
+                <ellipse cx="108" cy="108" rx="16" ry="18" fill="#fff" />
+                <circle class="pupil" cx="110" cy="110" r="8" fill="#1d3557" />
+                <circle cx="113" cy="106" r="3" fill="#fff" />
+              </g>
+              <g class="eye eye-right">
+                <ellipse cx="172" cy="108" rx="16" ry="18" fill="#fff" />
+                <circle class="pupil" cx="170" cy="110" r="8" fill="#1d3557" />
+                <circle cx="173" cy="106" r="3" fill="#fff" />
+              </g>
+              <rect class="blink-lid lid-left" x="92" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
+              <rect class="blink-lid lid-right" x="156" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
+            </g>
+            <!-- mouth -->
+            <g class="mouth">
+              <path class="mouth-closed" d="M120 158 Q140 168 160 158" fill="none" stroke="#2b2d42" stroke-width="4" stroke-linecap="round" />
+              <ellipse class="mouth-open" cx="140" cy="168" rx="18" ry="14" fill="#2b2d42" opacity="0" />
+              <ellipse class="mouth-tongue" cx="140" cy="174" rx="10" ry="6" fill="#e63946" opacity="0" />
+            </g>
+            <!-- cheeks -->
+            <circle cx="78" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
+            <circle cx="202" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
+          </g>
+        </svg>
+        <span class="tap-hint">Koppints rám!</span>
+      </button>
+
+      <p id="status-line" class="status-line">Nyomd meg a mikrofont, és beszélj Divihez</p>
+    </main>
+
+    <section class="chat-dock">
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <button type="button" id="btn-mic" class="mic-btn" aria-label="Beszélj">
+          <span class="mic-icon">🎤</span>
+          <span class="mic-wave" aria-hidden="true"></span>
+        </button>
+        <input id="user-input" type="text" maxlength="400" placeholder="Írd ide, vagy beszélj…" />
+        <button type="submit" id="btn-send" class="send-btn" aria-label="Küldés">➤</button>
+      </form>
+
+      <div class="quick-actions">
+        <button type="button" class="chip" data-prompt="Szia Divi!">Szia</button>
+        <button type="button" class="chip" data-prompt="Mesélj valamit!">Mesélj</button>
+        <button type="button" class="chip" data-prompt="Tegyél fel egy kérdést!">Kérdezz</button>
+        <button type="button" class="chip" data-action="reset">Új beszélgetés</button>
       </div>
     </section>
   </div>
 
-  <script src="story-engine.js"></script>
+  <script src="brain.js"></script>
+  <script src="character.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

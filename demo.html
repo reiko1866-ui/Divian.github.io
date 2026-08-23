@@ -2,1083 +2,1214 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Interaktív Mesemondó — Disney-alapú választásos mese ElevenLabs vagy böngésző hanggal." />
-  <title>Interaktív Mesemondó</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Divi — interaktív beszélő animációs karakter. Kérdez, felel, játszik veled." />
+  <title>Divi — Beszélő barát</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
   <style>
 :root {
-  --bg-color: #fefae0;
-  --card-bg: #ffffff;
-  --primary: #dda15e;
-  --primary-hover: #bc6c25;
-  --text: #283618;
-  --accent: #606c38;
-  --accent-hover: #4a542b;
-  --panel: #f1f3e9;
+  --sky-top: #7ec8e3;
+  --sky-bottom: #c8e7f5;
+  --floor: #8fbc8f;
+  --ink: #1d3557;
+  --foam: #fff8f0;
+  --accent: #e76f51;
+  --accent-deep: #d62828;
+  --mint: #2a9d8f;
+  --mint-deep: #1f7a6f;
+  --bubble: #ffffff;
+  --shadow: rgba(29, 53, 87, 0.14);
+  --font-display: "Fredoka", "Trebuchet MS", sans-serif;
+  --font-body: "Nunito", "Segoe UI", sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--bg-color);
-  background-image:
-    radial-gradient(ellipse at top, rgba(221, 161, 94, 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(96, 108, 56, 0.12), transparent 50%);
-  color: var(--text);
   margin: 0;
-  padding: 20px;
-  display: flex;
-  justify-content: center;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom) 55%, var(--floor));
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
-.container {
-  max-width: 680px;
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 8px;
+  z-index: 5;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.08));
+}
+
+.brand h1 {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  margin: 0;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.tagline {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+.icon-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.7);
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.settings-drawer {
+  position: absolute;
+  inset: 12px 12px auto;
+  z-index: 20;
+  background: var(--foam);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  display: grid;
+  gap: 8px;
+}
+
+.settings-drawer h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.settings-drawer label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.settings-drawer select,
+.settings-drawer input[type="password"],
+.settings-drawer input[type="text"] {
   width: 100%;
-  background: var(--card-bg);
-  padding: 30px;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-}
-
-h1 {
-  text-align: center;
-  color: var(--accent);
-  margin: 0 0 20px;
-}
-
-.settings-panel,
-.setup-panel {
-  background: var(--panel);
-  padding: 15px;
+  padding: 10px 12px;
+  border: 2px solid rgba(29, 53, 87, 0.12);
   border-radius: 12px;
-  margin-bottom: 25px;
-  font-size: 0.9em;
-}
-
-.settings-panel label,
-.setup-panel > label {
-  font-weight: bold;
-  display: block;
-  margin-bottom: 8px;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
 }
 
 .toggle-row {
   display: flex !important;
   align-items: center;
   gap: 8px;
-  font-weight: 600 !important;
-  margin: 4px 0 10px !important;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .toggle-row input {
   width: auto !important;
-  margin: 0 !important;
 }
 
-.hint {
-  margin: 6px 0 0;
-  opacity: 0.75;
-}
-
-.settings-panel select,
-.settings-panel input,
-.setup-panel textarea,
-.setup-panel select,
-.setup-panel input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font: inherit;
-  color: var(--text);
-  background: #fff;
-}
-
-.setup-panel textarea {
-  resize: vertical;
-  min-height: 4.5rem;
-  font-size: 1rem;
-}
-
-.setup-row {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-@media (min-width: 560px) {
-  .setup-row {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.inline {
-  display: grid;
-  gap: 6px;
-  font-weight: bold;
-}
-
-.film-badge {
-  display: inline-block;
-  margin: 0 0 6px;
-  padding: 4px 10px;
-  font-size: 0.8em;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--primary-hover);
-  background: rgba(221, 161, 94, 0.18);
-  border-radius: 999px;
-}
-
-.film-badge:empty {
-  display: none;
-}
-
-.chapter-label {
-  margin: 0;
-  font-size: 0.85em;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--primary-hover);
-}
-
-.story-title {
-  margin: 4px 0 12px;
-  color: var(--accent);
-  font-size: 1.35em;
-}
-
-.story-box {
-  font-size: 1.25em;
-  line-height: 1.6;
-  background: #fafafa;
-  padding: 20px;
-  border-left: 5px solid var(--primary);
-  border-radius: 8px;
-  margin-bottom: 12px;
-  min-height: 100px;
-  white-space: pre-wrap;
-}
-
-.speak-status {
-  margin: 0 0 16px;
-  font-size: 0.9em;
-  color: var(--accent);
-  min-height: 1.2em;
-}
-
-.audio-controls,
-.footer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 25px;
-}
-
-.footer-actions {
-  margin-top: 18px;
-  margin-bottom: 0;
-}
-
-button {
-  background-color: var(--primary);
-  color: white;
+.primary-btn {
+  margin-top: 6px;
   border: none;
-  padding: 12px 20px;
-  font-size: 1em;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s, opacity 0.2s;
+  background: var(--mint);
+  color: #fff;
   font: inherit;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 14px;
+  cursor: pointer;
 }
 
-button:hover {
-  background-color: var(--primary-hover);
+.primary-btn:hover {
+  background: var(--mint-deep);
 }
 
-button:active {
-  transform: scale(0.98);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-.secondary-btn {
-  background-color: var(--accent);
-}
-
-.secondary-btn:hover {
-  background-color: var(--accent-hover);
-}
-
-.choices {
+.stage {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px 0;
+  min-height: 0;
 }
 
-.choice-btn {
-  background-color: var(--accent);
-  text-align: left;
+.room {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.55), transparent 28%),
+    radial-gradient(circle at 80% 12%, rgba(255, 220, 150, 0.35), transparent 26%),
+    linear-gradient(180deg, transparent 62%, rgba(70, 120, 70, 0.25) 62%, rgba(70, 120, 70, 0.4));
 }
 
-.choice-btn:hover {
-  background-color: var(--accent-hover);
+.speech-bubble {
+  position: relative;
+  z-index: 3;
+  max-width: min(90%, 340px);
+  margin-bottom: 8px;
+  background: var(--bubble);
+  color: var(--ink);
+  padding: 12px 16px;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px var(--shadow);
+  animation: bubble-in 0.35s ease;
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  border: 10px solid transparent;
+  border-top-color: var(--bubble);
+}
+
+.speech-bubble p {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.character-wrap {
+  position: relative;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  width: min(78vw, 320px);
+  outline: none;
+}
+
+.character {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.12));
+}
+
+.tap-hint {
+  display: block;
+  margin-top: -6px;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  opacity: 0.65;
+}
+
+.status-line {
+  z-index: 2;
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  opacity: 0.8;
+  text-align: center;
+  min-height: 1.3em;
+}
+
+/* Character animation states */
+.character .body,
+.character .head {
+  transform-origin: 140px 230px;
+  transform-box: fill-box;
+}
+
+.character.state-idle .body {
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+.character.state-idle .head {
+  animation: sway 4s ease-in-out infinite;
+}
+
+.character.state-idle .blink-lid {
+  animation: blink 4.8s infinite;
+}
+
+.character.state-listening .ear-left {
+  animation: ear-twitch 0.7s ease-in-out infinite;
+}
+
+.character.state-listening .ear-right {
+  animation: ear-twitch 0.7s ease-in-out infinite reverse;
+}
+
+.character.state-listening .pupil {
+  animation: look-around 2.4s ease-in-out infinite;
+}
+
+.character.state-thinking .head {
+  animation: think-tilt 1.2s ease-in-out infinite;
+}
+
+.character.state-speaking .mouth-closed {
+  opacity: 0;
+}
+
+.character.state-speaking .mouth-open,
+.character.state-speaking .mouth-tongue {
+  opacity: 1;
+  animation: talk 0.22s ease-in-out infinite alternate;
+}
+
+.character.state-speaking .arm-left {
+  animation: wave-left 0.8s ease-in-out infinite;
+}
+
+.character.state-speaking .arm-right {
+  animation: wave-right 0.8s ease-in-out infinite;
+}
+
+.character.state-react .body {
+  animation: bounce 0.55s ease;
+}
+
+.character.state-react .head {
+  animation: bounce-head 0.55s ease;
+}
+
+.character.state-laugh .mouth-closed {
+  opacity: 0;
+}
+
+.character.state-laugh .mouth-open,
+.character.state-laugh .mouth-tongue {
+  opacity: 1;
+}
+
+.character.state-laugh .body {
+  animation: giggle 0.45s ease-in-out 3;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-4px) scale(1.02, 0.98); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+}
+
+@keyframes blink {
+  0%, 92%, 100% { opacity: 0; }
+  94%, 96% { opacity: 1; }
+}
+
+@keyframes ear-twitch {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg); }
+}
+
+@keyframes look-around {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -1px); }
+  75% { transform: translate(-3px, 1px); }
+}
+
+@keyframes think-tilt {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-3px); }
+}
+
+@keyframes talk {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1.05); }
+}
+
+@keyframes wave-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-12deg); }
+}
+
+@keyframes wave-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(12deg); }
+}
+
+@keyframes bounce {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-28px) scale(1.04, 0.96); }
+  70% { transform: translateY(4px) scale(0.98, 1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes bounce-head {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-10px) rotate(-4deg); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes giggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-3deg) scale(1.02); }
+  75% { transform: rotate(3deg) scale(1.02); }
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.chat-dock {
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(255, 248, 240, 0.55), var(--foam) 28%);
+  border-radius: 24px 24px 0 0;
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.chat-log {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 4px 2px;
+}
+
+.chat-msg {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  font-weight: 600;
+  animation: bubble-in 0.25s ease;
+}
+
+.chat-msg.bot {
+  align-self: flex-start;
+  background: #fff;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.chat-msg.user {
+  align-self: flex-end;
+  background: #ffe0c2;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.mic-btn,
+.send-btn {
+  border: none;
+  cursor: pointer;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+  font-size: 1.35rem;
+}
+
+.mic-btn {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(231, 111, 81, 0.35);
+}
+
+.mic-btn.listening {
+  background: var(--accent-deep);
+  animation: pulse-mic 1s ease-in-out infinite;
+}
+
+.mic-wave {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(231, 111, 81, 0.45);
+  opacity: 0;
+}
+
+.mic-btn.listening .mic-wave {
+  animation: ripple 1s ease-out infinite;
+}
+
+.send-btn {
+  background: var(--mint);
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+#user-input {
+  width: 100%;
+  border: 2px solid rgba(29, 53, 87, 0.1);
+  border-radius: 999px;
+  padding: 12px 16px;
+  font: inherit;
+  font-weight: 600;
+  background: #fff;
+  color: var(--ink);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chip {
+  border: none;
+  background: rgba(42, 157, 143, 0.14);
+  color: var(--mint-deep);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: rgba(42, 157, 143, 0.24);
+}
+
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes ripple {
+  from { transform: scale(0.9); opacity: 0.8; }
+  to { transform: scale(1.35); opacity: 0; }
 }
 
 .hidden {
   display: none !important;
 }
 
+@media (min-height: 780px) {
+  .chat-log {
+    max-height: 160px;
+  }
+
+  .character-wrap {
+    width: min(78vw, 360px);
+  }
+}
+
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>✨ Interaktív Mesemondó ✨</h1>
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🦊</span>
+        <div>
+          <h1>Divi</h1>
+          <p class="tagline">Beszélő barátod</p>
+        </div>
+      </div>
+      <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
+    </header>
 
-    <div class="settings-panel">
-      <label for="engine-select">Felolvasó motor:</label>
+    <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
+      <h2>Beállítások</h2>
+      <label for="engine-select">Hang motor</label>
       <select id="engine-select">
-        <option value="native">Böngésző beépített hangja (ingyenes)</option>
-        <option value="elevenlabs">ElevenLabs AI hang (prémium API)</option>
+        <option value="native">Böngésző hang (ingyenes)</option>
+        <option value="elevenlabs">ElevenLabs (API)</option>
       </select>
-
-      <label class="toggle-row" for="auto-speak">
-        <input type="checkbox" id="auto-speak" checked />
-        Automatikus felolvasás minden fejezetnél
-      </label>
 
       <div id="elevenlabs-inputs" class="hidden">
-        <input type="password" id="api-key" placeholder="ElevenLabs API kulcs" autocomplete="off" />
-        <label for="voice-id">Férfi mesélő Voice ID</label>
+        <label for="api-key">ElevenLabs API kulcs</label>
+        <input type="password" id="api-key" autocomplete="off" placeholder="sk-…" />
+        <label for="voice-id">Férfi Voice ID</label>
         <select id="voice-id">
-          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — mély férfi</option>
-          <option value="VR6AewLTigWG4xSOukaG">Arnold — erős férfi</option>
-          <option value="TxGEqnHWrfWFTfGW9XjX">Josh — fiatal férfi</option>
-          <option value="ErXwobaYiN019PkySvjV">Antoni — lágy férfi</option>
+          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam</option>
+          <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
+          <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
+          <option value="ErXwobaYiN019PkySvjV">Antoni</option>
         </select>
-        <p class="hint">Csak férfi hangok. Női Voice ID-t ne használj.</p>
-      </div>
-    </div>
-
-    <section id="setup-panel" class="setup-panel">
-      <label for="disney-select">Disney mese kiválasztása:</label>
-      <select id="disney-select">
-        <option value="">— Válassz Disney mesét (összes) —</option>
-      </select>
-
-      <label for="wish-input">Vagy írd le, mit szeretnél (opcionális):</label>
-      <textarea id="wish-input" rows="2" maxlength="400" placeholder="Pl. a báljelenet, a jégpalota, a kívánságok…"></textarea>
-
-      <div class="setup-row">
-        <label class="inline">
-          Hangulat
-          <select id="mood-select">
-            <option value="vidam">Vidám</option>
-            <option value="kalandos">Kalandos</option>
-            <option value="mesés" selected>Mesés</option>
-          </select>
-        </label>
-        <label class="inline">
-          Hős neve
-          <input type="text" id="hero-name" maxlength="40" placeholder="opcionális" />
-        </label>
       </div>
 
-      <div class="audio-controls">
-        <button type="button" id="btn-start">Induljon a mese</button>
-        <button type="button" id="btn-surprise" class="secondary-btn">Véletlen Disney mese</button>
+      <label for="openai-key">OpenAI kulcs (opcionális, okosabb AI)</label>
+      <input type="password" id="openai-key" autocomplete="off" placeholder="sk-… üresen is megy" />
+
+      <label class="toggle-row" for="echo-mode">
+        <input type="checkbox" id="echo-mode" />
+        Vicces visszhang mód (mint Talking Tom)
+      </label>
+
+      <label class="toggle-row" for="auto-listen">
+        <input type="checkbox" id="auto-listen" checked />
+        Válasz után újra hallgat
+      </label>
+
+      <button type="button" id="btn-close-settings" class="primary-btn">Kész</button>
+    </aside>
+
+    <main class="stage">
+      <div class="room" aria-hidden="true"></div>
+
+      <div id="speech-bubble" class="speech-bubble hidden" role="status" aria-live="polite">
+        <p id="bubble-text"></p>
       </div>
-    </section>
 
-    <section id="story-panel" class="hidden">
-      <p class="film-badge" id="film-badge"></p>
-      <p class="chapter-label" id="chapter-label">1. fejezet</p>
-      <h2 class="story-title" id="story-title">A te meséd</h2>
-      <div id="story-text" class="story-box">Töltés...</div>
-      <p id="speak-status" class="speak-status hidden" aria-live="polite"></p>
+      <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
+        <svg id="character" class="character state-idle" viewBox="0 0 280 340" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f4a261" />
+              <stop offset="100%" stop-color="#e76f51" />
+            </linearGradient>
+            <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fff3e0" />
+              <stop offset="100%" stop-color="#ffe0b2" />
+            </linearGradient>
+          </defs>
 
-      <div class="audio-controls">
-        <button type="button" id="btn-speak">🔊 Felolvasás</button>
-        <button type="button" id="btn-stop">⏹️ Leállítás</button>
-        <button type="button" id="btn-new" class="secondary-btn">Új mese</button>
-      </div>
+          <!-- shadow -->
+          <ellipse class="shadow" cx="140" cy="318" rx="70" ry="12" fill="rgba(40,30,20,0.18)" />
 
-      <div id="choices-container" class="choices"></div>
+          <!-- body -->
+          <g class="body">
+            <ellipse cx="140" cy="230" rx="78" ry="88" fill="url(#fur)" />
+            <ellipse cx="140" cy="238" rx="48" ry="58" fill="url(#belly)" />
 
-      <div class="footer-actions">
-        <button type="button" id="btn-download" class="secondary-btn">Mese mentése</button>
-        <button type="button" id="btn-finish" class="secondary-btn">Mesét lezárom mára</button>
+            <!-- arms -->
+            <g class="arm arm-left">
+              <ellipse cx="62" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(-18 62 220)" />
+              <circle cx="48" cy="248" r="16" fill="#ffcc80" />
+            </g>
+            <g class="arm arm-right">
+              <ellipse cx="218" cy="220" rx="22" ry="36" fill="#e76f51" transform="rotate(18 218 220)" />
+              <circle cx="232" cy="248" r="16" fill="#ffcc80" />
+            </g>
+
+            <!-- legs -->
+            <ellipse cx="108" cy="300" rx="24" ry="18" fill="#d62828" />
+            <ellipse cx="172" cy="300" rx="24" ry="18" fill="#d62828" />
+          </g>
+
+          <!-- head -->
+          <g class="head">
+            <ellipse cx="140" cy="118" rx="86" ry="78" fill="url(#fur)" />
+            <!-- ears -->
+            <g class="ear ear-left">
+              <polygon points="70,70 52,18 98,52" fill="#e76f51" />
+              <polygon points="70,62 58,28 90,52" fill="#ffcc80" />
+            </g>
+            <g class="ear ear-right">
+              <polygon points="210,70 228,18 182,52" fill="#e76f51" />
+              <polygon points="210,62 222,28 190,52" fill="#ffcc80" />
+            </g>
+            <!-- muzzle -->
+            <ellipse cx="140" cy="142" rx="42" ry="32" fill="#fff3e0" />
+            <ellipse class="nose" cx="140" cy="132" rx="12" ry="9" fill="#2b2d42" />
+            <!-- eyes -->
+            <g class="eyes">
+              <g class="eye eye-left">
+                <ellipse cx="108" cy="108" rx="16" ry="18" fill="#fff" />
+                <circle class="pupil" cx="110" cy="110" r="8" fill="#1d3557" />
+                <circle cx="113" cy="106" r="3" fill="#fff" />
+              </g>
+              <g class="eye eye-right">
+                <ellipse cx="172" cy="108" rx="16" ry="18" fill="#fff" />
+                <circle class="pupil" cx="170" cy="110" r="8" fill="#1d3557" />
+                <circle cx="173" cy="106" r="3" fill="#fff" />
+              </g>
+              <rect class="blink-lid lid-left" x="92" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
+              <rect class="blink-lid lid-right" x="156" y="98" width="32" height="22" rx="10" fill="url(#fur)" opacity="0" />
+            </g>
+            <!-- mouth -->
+            <g class="mouth">
+              <path class="mouth-closed" d="M120 158 Q140 168 160 158" fill="none" stroke="#2b2d42" stroke-width="4" stroke-linecap="round" />
+              <ellipse class="mouth-open" cx="140" cy="168" rx="18" ry="14" fill="#2b2d42" opacity="0" />
+              <ellipse class="mouth-tongue" cx="140" cy="174" rx="10" ry="6" fill="#e63946" opacity="0" />
+            </g>
+            <!-- cheeks -->
+            <circle cx="78" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
+            <circle cx="202" cy="138" r="12" fill="#ff8a80" opacity="0.55" />
+          </g>
+        </svg>
+        <span class="tap-hint">Koppints rám!</span>
+      </button>
+
+      <p id="status-line" class="status-line">Nyomd meg a mikrofont, és beszélj Divihez</p>
+    </main>
+
+    <section class="chat-dock">
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <button type="button" id="btn-mic" class="mic-btn" aria-label="Beszélj">
+          <span class="mic-icon">🎤</span>
+          <span class="mic-wave" aria-hidden="true"></span>
+        </button>
+        <input id="user-input" type="text" maxlength="400" placeholder="Írd ide, vagy beszélj…" />
+        <button type="submit" id="btn-send" class="send-btn" aria-label="Küldés">➤</button>
+      </form>
+
+      <div class="quick-actions">
+        <button type="button" class="chip" data-prompt="Szia Divi!">Szia</button>
+        <button type="button" class="chip" data-prompt="Mesélj valamit!">Mesélj</button>
+        <button type="button" class="chip" data-prompt="Tegyél fel egy kérdést!">Kérdezz</button>
+        <button type="button" class="chip" data-action="reset">Új beszélgetés</button>
       </div>
     </section>
   </div>
 
   <script>
 /**
- * Interaktív Mesemondó — a Disney animációs / klasszikus mesék világaira épít
- * Eredeti, interaktív kalandok a filmek hangulatából (nem szó szerinti forgatókönyv-másolat).
+ * Divi beszélgető agy — kérdez–felel, helyi intelligencia + opcionális OpenAI
  */
 (function (global) {
-  const HEROES = [
-    "Ella", "Ádám", "Nóra", "Bence", "Léna", "Dániel", "Sára", "Máté",
-    "Zsófia", "Kristóf", "Anna", "Gábor", "Olivér", "Hanna",
+  const QUESTIONS = [
+    "Mi a neved?",
+    "Hány éves vagy?",
+    "Mi a kedvenc állatod?",
+    "Szeretsz mesét hallgatni?",
+    "Mi a kedvenc színed?",
+    "Mi volt ma a legjobb dolog, ami történt veled?",
+    "Ha tudnál repülni, hová mennél?",
+    "Mi a kedvenc ételed?",
+    "Van testvéred vagy legjobb barátod?",
+    "Milyen játékot szeretsz a legjobban?",
+    "Mi szokott megnevettetni?",
+    "Ha varázserőd lenne, mi lenne az?",
+    "Szeretsz inkább bent vagy kint játszani?",
+    "Mesélj egy álmodról!",
+    "Ki a kedvenc mesefigurád?",
   ];
 
-  /** Teljes(ebb) Disney-alap katalógus — cím, világ, motívumok */
-  const DISNEY_FILMS = [
-    { id: "snow_white", title: "Hófehérke és a hét törpe", year: 1937, hook: "ahol a tükör mindig az igazságot súgja", places: ["a tükrös toronyban", "a hét törpe kunyhójában", "az almafás erdei úton", "egy kristályforrás partján"], companions: ["egy kedves törpe", "egy erdei őzike", "egy bölcs madár"], wonders: ["egy beszélő tükör", "egy piros alma", "egy üvegkoporsó fénye"], threats: ["egy hiú királynő", "egy mérgezett ajándék", "egy sötét átok"], keys: ["hófehérke", "hofeherke", "tükör", "törpe", "alma", "snow white"] },
-    { id: "pinocchio", title: "Pinokkió", year: 1940, hook: "ahol egy fabábú valódi fiúvá válhat", places: ["Gepetto műhelyében", "egy vidámpark csaló fényeinél", "egy cethal hasában", "egy holdfényes olasz utcácskán"], companions: ["egy lelkiismeretes tücsök", "egy aranyhal", "egy kedves fafaragó"], wonders: ["egy kék tündér áldása", "egy növekvő orr", "egy valódi szív"], threats: ["egy csaló róka", "egy sötét kocsis", "egy haragos cethal"], keys: ["pinokkió", "pinocchio", "bábú", "tücsök", "gepetto"] },
-    { id: "dumbo", title: "Dumbo", year: 1941, hook: "ahol a legnagyobb fül a legnagyobb ajándék", places: ["egy vándorcirkusz sátorában", "egy porondon a rivaldafényben", "egy vonatkocsiban éjjel", "az ég magasában"], companions: ["egy hűséges egérke", "egy gondoskodó mama", "egy vidám bohóc"], wonders: ["egy varázstoll", "egy első igaz repülés", "egy cirkuszi tapsvihar"], threats: ["egy gúnyolódó tömeg", "egy kapzsi bérleményes", "egy vihar a sátor felett"], keys: ["dumbo", "elefánt", "cirkusz", "fül", "toll"] },
-    { id: "bambi", title: "Bambi", year: 1942, hook: "ahol az erdő minden évszaka tanít", places: ["egy napfényes tisztáson", "egy havas erdei ösvényen", "egy sűrű bozótban", "egy tavaszi rét közepén"], companions: ["egy tréfás nyúl", "egy félénk skunk", "egy bölcs hercegapa"], wonders: ["egy első lépés a réten", "egy téli csillagfény", "egy tavaszi újjászületés"], threats: ["egy veszélyes vadász", "egy erdőtűz", "egy kemény tél"], keys: ["bambi", "őz", "erdő", "nyúl", "vadász"] },
-    { id: "cinderella", title: "Hamupipőke", year: 1950, hook: "ahol egyetlen bál megváltoztathatja a sorsot", places: ["a királyi bálteremben", "a padlás poros csendjében", "a kastélykert sétányán", "a konyha melegében"], companions: ["egy tündérkeresztanya", "egy ügyes egérke", "egy hűséges lovász"], wonders: ["egy kristálycipellő", "egy tökhintó", "egy éjféli óraütés"], threats: ["egy irigy mostoha", "egy gőgös nővér", "egy elvesző idő"], keys: ["hamupipőke", "hamupipoke", "cinderella", "cipellő", "bál", "mostoha"] },
-    { id: "alice", title: "Alice Csodaországban", year: 1951, hook: "ahol minden ajtó egy újabb képtelenségre nyílik", places: ["egy nyúllyuk mélyén", "egy őrült teadélután asztalánál", "egy kártyakastély udvarán", "egy beszélő virágoskertben"], companions: ["egy siető fehér nyúl", "egy mosolygó macska", "egy kalapos vendéglátó"], wonders: ["egy iható üvegcske", "egy zsugorodó ajtó", "egy mosoly a fán"], threats: ["egy kártyakirálynő", "egy lefejező kiáltás", "egy elveszett út haza"], keys: ["alice", "csodaország", "csodaorszag", "nyúl", "kalapos", "királynő"] },
-    { id: "peter_pan", title: "Pán Péter", year: 1953, hook: "ahol a második csillag jobbra vezet", places: ["egy londoni gyerekszoba ablakában", "Sohaország szigetén", "egy kalózhajó fedélzetén", "egy sellőöböl holdfényénél"], companions: ["egy apró tündér", "egy elveszett fiúcsapat", "egy kedves sellő"], wonders: ["egy marék tündérpor", "egy második csillag", "egy örök kaland"], threats: ["egy kalózkapitány", "egy tik-takoló krokodil", "egy felnőtté válás félelme"], keys: ["pán péter", "pan peter", "peter pan", "sohaország", "tündérpor", "kalóz"] },
-    { id: "lady_tramp", title: "Susi és Tekergő", year: 1955, hook: "ahol két különböző világ egy tányér spagettin találkozik", places: ["egy elegáns kerti kapunál", "egy holdfényes sikátorban", "egy olasz vendéglő asztalánál", "egy kutyaparkban"], companions: ["egy elegáns kisasszonykutya", "egy utcai tekergő", "egy bölcs öreg trusty"], wonders: ["egy közös vacsora", "egy holdtölte séta", "egy váratlan mentés"], threats: ["egy kutyafogó háló", "egy féltékeny rivális", "egy elválasztó kerítés"], keys: ["susi", "tekergő", "tekergo", "lady", "tramp", "spagetti", "kutya"] },
-    { id: "sleeping_beauty", title: "Csipkerózsika", year: 1959, hook: "ahol egy orsószúrás száz év álmot hozhat", places: ["egy erdei kunyhóban", "egy sötét vár tornyában", "egy bálteremben a virágok közt", "egy tüskebokros ösvényen"], companions: ["három jó tündér", "egy bátor herceg", "egy erdei madár"], wonders: ["egy áldott bölcső", "egy igaz szerelmes csók", "egy virágba borult vár"], threats: ["egy sötét tündér", "egy átok az orsóval", "egy tüskebokor-erdő"], keys: ["csipkerózsika", "csipkeruzsika", "sleeping beauty", "orsó", "tündér", "átok"] },
-    { id: "dalmatians", title: "101 kiskutya", year: 1961, hook: "ahol minden pötty számít", places: ["egy londoni családi otthonban", "egy sötét vidéki kastélyban", "egy havas országúton", "egy mentőakció közepén"], companions: ["egy bátor apa-kutya", "egy okos anya-kutya", "egy segítőkész macska"], wonders: ["egy kiskutya-csapat", "egy rádiós üzenet a kutyák közt", "egy boldog hazatérés"], threats: ["egy szőrmeéhes úrnő", "két ügyetlen bűnöző", "egy havas üldözés"], keys: ["dalmata", "dalmatians", "101", "kiskutya", "pötty", "cruella"] },
-    { id: "sword_stone", title: "A kard a kőben", year: 1963, hook: "ahol a legméltóbb kihúzza a kardot", places: ["egy erdei tisztáson", "Merlin kunyhójában", "egy lovagi tornán", "egy kőbe zárt kard előtt"], companions: ["egy bölcs varázsló", "egy tudós bagoly", "egy ügyetlen, de tiszta szívű fiú"], wonders: ["egy kőbe döfött kard", "egy varázslecké", "egy váratlan koronázás"], threats: ["egy hataloméhes boszorkány", "egy gőgös lovag", "egy kétség a saját értékben"], keys: ["kard", "kő", "merlin", "artúr", "arthur", "sword"] },
-    { id: "jungle_book", title: "A dzsungel könyve", year: 1967, hook: "ahol a dzsungel törvénye és a szív találkozik", places: ["egy indiai dzsungel mélyén", "egy folyóparton", "egy ősi romtemplomnál", "egy emberfalu szélén"], companions: ["egy bölcs párduc", "egy vidám medve", "egy farkasfalka"], wonders: ["egy dzsungeldal", "egy ősi kincsbarlang", "egy igazi otthon megtalálása"], threats: ["egy éhes tigris", "egy kígyó suttogása", "egy elveszett út"], keys: ["dzsungel", "jungle", "mowgli", "medve", "tigris", "párduc"] },
-    { id: "aristocats", title: "Macskarisztokraták", year: 1970, hook: "ahol a párizsi háztetőkön születik a kaland", places: ["egy elegáns párizsi salonban", "egy háztetők labirintusában", "egy utcazenész bárban", "egy vidéki vidéki úton"], companions: ["egy utcai macskaritter", "két kíváncsi cicus", "egy egér barát"], wonders: ["egy örökség megmentése", "egy éjszakai párizsi dal", "egy váratlan család"], threats: ["egy kapzsi inas", "két ügyetlen bérenc", "egy elrabolt út"], keys: ["macskarisztokraták", "aristocats", "párizs", "macska", "örökség"] },
-    { id: "robin_hood", title: "Robin Hood", year: 1973, hook: "ahol a szegényekért ellopott arany igazságot hoz", places: ["Sherwood erdejében", "egy falusi vásáron", "egy királyi tornán", "egy várbörtön ablakánál"], companions: ["egy hűséges barát-medve", "egy ügyes szerzetes", "egy bátor Lady"], wonders: ["egy igazságos nyílvessző", "egy álruhás torna", "egy felszabadított falu"], threats: ["egy kapzsi kormányzó", "egy gyáva oroszlánkirály", "egy adósor"], keys: ["robin", "hood", "sherwood", "nyíl", "nottingham"] },
-    { id: "rescuers", title: "A mentőcsapat", year: 1977, hook: "ahol a legkisebb hősök is megmenthetnek valakit", places: ["egy egérközpont irodájában", "egy elhagyott ház padlásán", "egy mocsár szélén", "egy éjszakai mentőúton"], companions: ["egy elegáns egérhölgy", "egy ügyetlen, de bátor egérúr", "egy szitakötő taxi"], wonders: ["egy segélykérő üzenet", "egy bátor mentés", "egy új barátság"], threats: ["egy kapzsi kincsvadász nő", "egy ijesztő kroki", "egy viharos mocsár"], keys: ["mentőcsapat", "rescuers", "egér", "mentés", "bernard", "bianca"] },
-    { id: "fox_hound", title: "A róka és a kutya", year: 1981, hook: "ahol a barátság erősebb a szabályoknál", places: ["egy erdei tisztáson", "egy farm udvarán", "egy őszi vadászösvényen", "egy rejtett barlangban"], companions: ["egy kis róka", "egy vadászkutya kölyök", "egy bölcs bagoly"], wonders: ["egy gyerekkori fogadalom", "egy tiltott barátság", "egy megmentett élet"], threats: ["egy kérlelhetetlen vadász", "egy gyűlölet a különbség miatt", "egy elválasztó kerítés"], keys: ["róka", "kutya", "fox", "hound", "barátság", "vadász"] },
-    { id: "black_cauldron", title: "A fekete üst", year: 1985, hook: "ahol egy üst sötét sereget támaszthat", places: ["egy misztikus erdőben", "egy királyi várban", "egy sötét erőd mélyén", "egy mocsári átjárónál"], companions: ["egy fiatal disznópásztor", "egy hercegnő", "egy furcsa kis teremtmény"], wonders: ["egy orákulum-malac", "egy varázskard", "egy önfeláldozó választás"], threats: ["egy szarvasúr", "egy élőholt sereg", "egy fekete üst"], keys: ["fekete üst", "black cauldron", "szarvasúr", "orákulum", "varázskard"] },
-    { id: "basil", title: "Macskafogó / egérdetektív", year: 1986, hook: "ahol London ködében az egérdetektív nyomoz", places: ["egy Baker Street-i padláson", "egy ködös Temze-parton", "egy óramű belsejében", "egy operaház függönye mögött"], companions: ["egy zseniális egérdetektív", "egy orvos barát", "egy elrabolt játékbolt-lánya"], wonders: ["egy zseniális nyom", "egy megmentett gyerek", "egy leleplezett terv"], threats: ["egy álnok egérbűnöző", "egy óriás harang", "egy ködbe vesző üldözés"], keys: ["basil", "egérdetektív", "great mouse", "london", "detektív"] },
-    { id: "oliver", title: "Oliver és társai", year: 1988, hook: "ahol egy utcai banda családdá válik", places: ["New York utcáin", "egy luxus penthouse-ban", "egy kikötői rakparton", "egy esős sikátorban"], companions: ["egy árva kiscica", "egy utcai kutya-banda", "egy kedves kislány"], wonders: ["egy új otthon", "egy hűséges csapat", "egy megmentett barát"], threats: ["egy gonosz utcai főnök", "egy veszélyes üzlet", "egy elválasztás"], keys: ["oliver", "new york", "banda", "kiscica", "utca"] },
-    { id: "little_mermaid", title: "A kis hableány", year: 1989, hook: "ahol a tenger és a szárazföld egymásba szerelmes", places: ["a korallpalotában", "egy hajóroncs mélyén", "a tengerpart holdfényénél", "egy királyi várban a szárazon"], companions: ["egy hűséges tropikushal", "egy kedves rák karmester", "egy hajósherceg"], wonders: ["egy elveszett hang", "egy villámgyors láb", "egy igaz szerelmi csók"], threats: ["egy tengeri boszorkány", "egy tiltott szerződés", "egy viharos mélység"], keys: ["hableány", "hableany", "mermaid", "ariel", "tenger", "hang", "ursula"] },
-    { id: "beauty_beast", title: "A szépség és a szörnyeteg", year: 1991, hook: "ahol a szeretet oldhatja fel a legsötétebb átkot", places: ["egy elátkozott kastélyban", "egy falusi könyvtárban", "egy havas kertben", "egy bálteremben élő bútorokkal"], companions: ["egy beszélő gyertyatartó", "egy teáskanna", "egy bátor falusi lány"], wonders: ["egy varázsrózsa", "egy élő kastély", "egy átalakuló szív"], threats: ["egy régi átok", "egy irigy vadász", "egy hervadó szirom"], keys: ["szépség", "szörnyeteg", "szornyeteg", "beast", "rózsa", "belle", "átok"] },
-    { id: "aladdin", title: "Aladdin", year: 1992, hook: "ahol egy kívánság felforgathat egy királyságot", places: ["a bazár színes utcáin", "egy elásott barlangban", "a palota tornyában", "egy repülő szőnyegen az ég alatt"], companions: ["egy tréfás džinn", "egy okos majom", "egy bátor hercegnő"], wonders: ["egy varázslámpás", "három kívánság", "egy repülő szőnyeg"], threats: ["egy hataloméhes varázsló", "egy bezárt barlang", "egy hamis hercegi álca"], keys: ["aladdin", "aláddin", "lámpás", "lampas", "džinn", "dzsinn", "jafar", "agrabah"] },
-    { id: "lion_king", title: "Az oroszlánkirály", year: 1994, hook: "ahol az élet nagy körforgása soha nem ér véget", places: ["a napfelkeltés szikláján", "a szavanna füvében", "egy elefánttemetőben", "egy oázis mellett"], companions: ["egy bölcs mandrill", "egy meerkat", "egy varacskosdisznó"], wonders: ["egy ősök csillagképe", "egy koronázó napfelkelte", "egy hazatérés"], threats: ["egy irigy nagybácsi", "egy hiéna csapat", "egy aszály"], keys: ["oroszlánkirály", "oroszlan", "lion king", "szavanna", "simba", "mufasa", "scar"] },
-    { id: "pocahontas", title: "Pocahontas", year: 1995, hook: "ahol két világ tanulja meg hallani egymást", places: ["egy folyóparton", "egy ősi erdőben", "egy hajó kikötőjénél", "egy sziklacsúcson"], companions: ["egy bölcs nagyanya-fa", "egy kíváncsi kolibri", "egy idegen hajós"], wonders: ["egy színekben játszó szél", "egy békeösvény", "egy közös nyelv a szívben"], threats: ["egy aranyéhes kapitány", "egy háborús félreértés", "egy törés a bizalomban"], keys: ["pocahontas", "virginia", "folyő", "bennszülött", "hajós"] },
-    { id: "hunchback", title: "A Notre Dame-i toronyőr", year: 1996, hook: "ahol a küllem mögött a lélek a szép", places: ["a Notre Dame tornyában", "Párizs fesztiválterén", "egy katedrális harangjai közt", "egy sötét bírói palotában"], companions: ["három tréfás gargoyle", "egy bátor cigánylány", "egy igazságos kapitány"], wonders: ["egy harangzúgás", "egy menedék a templomban", "egy elfogadott szív"], threats: ["egy képmutató bíró", "egy dühödt tömeg", "egy igazságtalan törvény"], keys: ["notre dame", "toronyőr", "hunchback", "párizs", "harang", "kvázimodo"] },
-    { id: "hercules", title: "Herkules", year: 1997, hook: "ahol a valódi hős a szívével győz", places: ["az Olümposz fényében", "egy görög város porondján", "egy alvilági kapunál", "egy edzőterem romjai közt"], companions: ["egy szarkasztikus szatír edző", "egy szárnyas pegazus", "egy bátor lány"], wonders: ["egy isteni erő", "egy hőssé válás", "egy megmentett világ"], threats: ["egy álnok alvilági úr", "egy titánok serege", "egy hamis dicsőség"], keys: ["herkules", "hercules", "görög", "olümposz", "hádész", "hős"] },
-    { id: "mulan", title: "Mulan", year: 1998, hook: "ahol a bátorság fontosabb a szabályoknál", places: ["egy kínai falusi otthonban", "egy katonai táborban", "a Nagy Fal tövében", "egy császári palotában"], companions: ["egy apró sárkány", "egy szerencse-tücsök", "egy katonatárs"], wonders: ["egy ősi kard", "egy álruha bátorsága", "egy megvédett birodalom"], threats: ["egy hun sereg", "egy lelepleződés", "egy lavina"], keys: ["mulan", "kína", "kina", "sárkány", "katona", "fal"] },
-    { id: "tarzan", title: "Tarzan", year: 1999, hook: "ahol két család között feszül a szív", places: ["egy afrikai dzsungel lombkoronáján", "egy vízesésnél", "egy fahatáron", "egy expedíciós tábornál"], companions: ["egy gorillaanya", "egy tréfás elefánt", "egy kíváncsi kutató lány"], wonders: ["egy lombközi száguldás", "egy megtalált múlt", "egy választott otthon"], threats: ["egy kapzsi vadász", "egy veszélyes leopárd", "egy elszakadás"], keys: ["tarzan", "dzsungel", "gorilla", "liána", "afrika"] },
-    { id: "fantasia_2000", title: "Fantázia 2000", year: 1999, hook: "ahol a zene önmaga a mese", places: ["egy absztrakt színpadon", "egy bálna-égbolton", "egy mágikus műhelyben", "egy város feletti esőben"], companions: ["egy varázslótanonc", "egy repülő bálna", "egy flamingó"], wonders: ["egy élő szimfónia", "egy színes vihar", "egy zenei csoda"], threats: ["egy elszabadult varázs", "egy káosz a hangokban", "egy elveszett dallam"], keys: ["fantázia", "fantasia", "zene", "szimfónia", "tanonc"] },
-    { id: "dinosaur", title: "Dínó", year: 2000, hook: "ahol a túléléshez összefogás kell", places: ["egy őskori völgyben", "egy vulkán árnyékában", "egy kiszáradó folyónál", "egy biztonságos fészeknél"], companions: ["egy lemúr család", "egy fiatal dínó", "egy bölcs lider"], wonders: ["egy új otthon", "egy váratlan család", "egy túlélő csapat"], threats: ["egy meteorveszély", "egy ragadozó", "egy szárazság"], keys: ["dínó", "dino", "dinosaur", "lemúr", "őskor"] },
-    { id: "emperors_groove", title: "A gonosz mostoha? / Kuzco császár", year: 2000, hook: "ahol egy önző császárból ember lesz — láma formában is", places: ["egy inkai palotában", "egy dzsungelösvényen", "egy hegyi faluban", "egy titkos laborban"], companions: ["egy kedves parasztfiú", "egy beszélő láma-császár", "egy mókás mókus?"], wonders: ["egy visszaváltozás", "egy tanult alázat", "egy megmentett birodalom"], threats: ["egy hataloméhes tanácsadó", "egy átváltoztató bájital", "egy zuhanó szakadék"], keys: ["kuzco", "láma", "lama", "császár", "groove", "yzma"] },
-    { id: "atlantis", title: "Atlantis — Az elveszett birodalom", year: 2001, hook: "ahol egy elveszett város a tudás kulcsa", places: ["egy tengeralattjárón", "Atlantis fényeinél", "egy kristálykamrában", "egy omladozó hídon"], companions: ["egy lelkes nyelvész", "egy kemény expedíciós csapat", "egy atlanti hercegnő"], wonders: ["egy ősnyelv", "egy éltető kristály", "egy felemelkedő város"], threats: ["egy kapzsi parancsnok", "egy süllyedő veszély", "egy elárult expedíció"], keys: ["atlantis", "kristály", "tengeralattjáró", "birodalom", "milo"] },
-    { id: "lilo_stitch", title: "Lilo és Stitch", year: 2002, hook: "ahol az ohana azt jelenti: senkit sem hagynak hátra", places: ["egy hawaii parton", "egy kis házikóban", "egy űrhajó roncsánál", "egy szörfös öbölben"], companions: ["egy magányos kislány", "egy káosz-kísérlet lény", "egy gondos nővér"], wonders: ["egy ohana-fogadalom", "egy váratlan család", "egy hawaii dal"], threats: ["egy űrbéli vadász", "egy félreértett monstrum", "egy széteső otthon"], keys: ["lilo", "stitch", "ohana", "hawaii", "család"] },
-    { id: "treasure_planet", title: "A kincses bolygó", year: 2002, hook: "ahol a kalózok a csillagok közt hajóznak", places: ["egy űrkikötőben", "egy napvitorlás hajón", "egy kincses bolygón", "egy csillagtérkép fényénél"], companions: ["egy álmodozó fiú", "egy cyborg-szakács", "egy furcsa morph"], wonders: ["egy hologramos térkép", "egy elásott kincs", "egy apafigura",], threats: ["egy lázadó kalózlegénység", "egy fekete lyuk", "egy árulás"], keys: ["kincses bolygó", "treasure planet", "kalóz", "űrhajó", "térkép"] },
-    { id: "finding_nemo", title: "Némó nyomában", year: 2003, hook: "ahol az óceán átúszható a szeretetért", places: ["egy korallzátonyon", "egy akvárium üvegében", "egy keleti ausztrál áramlatban", "egy dokk mélyén"], companions: ["egy aggodalmas apa-hal", "egy feledékeny, kedves hal", "egy teknős a hullámon"], wonders: ["egy megtalált fiú", "egy óceáni út", "egy új bátorság"], threats: ["egy búvárháló", "egy cápa", "egy szűrőcső"], keys: ["némó", "nemo", "hal", "óceán", "dory", "korall"] },
-    { id: "brother_bear", title: "Medvetárskereső", year: 2003, hook: "ahol más bőrében látod az igazságot", places: ["egy északi erdőben", "egy gleccserösvényen", "egy totem-sziklánál", "egy lazacos folyónál"], companions: ["egy átváltozott vadász", "két medvebocs", "egy szellem-totem"], wonders: ["egy átváltozás", "egy testvéri kötelék", "egy északi fény"], threats: ["egy bosszú", "egy veszélyes vadászat", "egy szakadék a szívek közt"], keys: ["medve", "brother bear", "totem", "átváltozás", "kenai"] },
-    { id: "home_range", title: "A farm, ahol élünk / Vacak", year: 2004, hook: "ahol a háziállatok megvédik az otthont", places: ["egy farm udvarán", "egy ragadozók uralta erdőben", "egy tyúkólban", "egy éjszakai őrjáraton"], companions: ["egy félénk malac", "egy gyakorlott tehén", "egy ügyes ló"], wonders: ["egy váratlan bátorság", "egy megvédett farm", "egy összetartó csapat"], threats: ["egy sötét vadállat", "egy éjszakai támadás", "egy elveszett biztonság"], keys: ["farm", "home on the range", "tehén", "malac", "vadnyugat"] },
-    { id: "incredibles", title: "A Hihetetlen család", year: 2004, hook: "ahol a család a legnagyobb szupererő", places: ["egy külvárosi házban", "egy titkos szigeten", "egy felhőkarcoló tetején", "egy üldözés közben a városban"], companions: ["egy szuperapa", "egy szuperanya", "egy láthatatlan tinilány", "egy villámgyors fiú"], wonders: ["egy újraegyesült család", "egy szuperöltözet", "egy közös győzelem"], threats: ["egy bosszúálló feltaláló", "egy óriás robot", "egy titok kiszivárgása"], keys: ["hihetetlen", "incredibles", "szuperhős", "robot", "bob"] },
-    { id: "chicken_little", title: "Csibe", year: 2005, hook: "ahol az ég nem mindig csak ég", places: ["egy kisvárosi iskolában", "egy baseballpályán", "egy űrhajó belsejében", "egy főtéren pánik közepette"], companions: ["egy félénk csibe", "egy barát-banda", "egy büszke apa"], wonders: ["egy félreértett jel", "egy megmentett város", "egy apa-fiú kibékülés"], threats: ["egy téves riasztás", "egy idegen félreértés", "egy romló hírnév"], keys: ["csibe", "chicken little", "ég", "pánik", "baseball"] },
-    { id: "cars", title: "Verdák", year: 2006, hook: "ahol a győzelemnél fontosabb a barátság", places: ["egy sivatagi kisvárosban", "egy versenypályán", "egy Route 66-os úton", "egy szervizudvarban"], companions: ["egy gyors versenyautó", "egy rozsdás, bölcs vontató", "egy elegáns Porsche"], wonders: ["egy váratlan megálló", "egy megtanult alázat", "egy igazi csapat"], threats: ["egy gőgös rivális", "egy elveszett idő", "egy elfeledett város"], keys: ["verdák", "cars", "autó", "verseny", "mcqueen", "mater"] },
-    { id: "ratatouille", title: "L’ecsó", year: 2007, hook: "ahol bárki főzhet — még egy patkány is", places: ["egy párizsi konyhában", "egy csatornaösvényen", "egy étterem asztalánál", "egy kritikusi vacsorán"], companions: ["egy tehetséges patkány", "egy ügyetlen konyhalegény", "egy szigorú séf szelleme"], wonders: ["egy tökéletes fogás", "egy kritikus mosolya", "egy új étterem"], threats: ["egy egészségügyi ellenőr", "egy irigy séf", "egy lelepleződés"], keys: ["l'ecsó", "lecso", "ratatouille", "patkány", "párizs", "séf", "rémy"] },
-    { id: "meet_robinsons", title: "A Robinson család titka", year: 2007, hook: "ahol a jövő a hibákból tanul", places: ["egy árvaházban", "egy időgépben", "egy futurisztikus városban", "egy feltaláló műhelyben"], companions: ["egy álmodozó fiú", "egy különc jövőbeli család", "egy dinó-szolga"], wonders: ["egy időutazás", "egy örökbe fogadás", "egy zseniális találmány"], threats: ["egy kalapos bosszúálló", "egy elrontott jövő", "egy lopott időgép"], keys: ["robinson", "időgép", "jövő", "feltaláló", "lewis"] },
-    { id: "wall_e", title: "WALL·E", year: 2008, hook: "ahol egy kis robot visszahozza a Földet a szívünkbe", places: ["egy elhagyott Földön", "egy űrhajó folyosóin", "egy növénycserep mellett", "egy csillagporos űrben"], companions: ["egy magányos takarítórobot", "egy elegáns kutatórobot", "egy kis csótány"], wonders: ["egy zöld hajtás", "egy kéz a kézben", "egy hazatérés a Földre"], threats: ["egy autópílóta", "egy elfeledett bolygó", "egy túl kényelmes jövő"], keys: ["wall-e", "walle", "robot", "föld", "növény", "eve"] },
-    { id: "bolt", title: "Nyikk", year: 2008, hook: "ahol a tévés hős valódi hőssé válik", places: ["egy hollywoodi forgatáson", "egy országúton", "egy nagyvárosi utcán", "egy mentőakció közepén"], companions: ["egy tévéhős kutya", "egy utcai macska", "egy hörcsög hörcsögkerékben"], wonders: ["egy igazi bátorság", "egy megtalált gazdi", "egy valódi csapat"], threats: ["egy félreértett veszély", "egy elszakadás", "egy álságos forgatás"], keys: ["nyikk", "bolt", "kutya", "hollywood", "hős"] },
-    { id: "up", title: "Fel", year: 2009, hook: "ahol a ház is elszáll a kalandért", places: ["egy léggömbös házban", "egy dél-amerikai fennsíkon", "egy vízesésnél", "egy űrkutyás léghajón"], companions: ["egy öreg özvegyúr", "egy lelkes cserkészfiú", "egy beszélő kutya"], wonders: ["egy ezer léggömb", "egy megtalált kaland", "egy új barátság"], threats: ["egy megszállott felfedező", "egy vihar", "egy elszabadult állat"], keys: ["fel", "up", "léggömb", "ház", "carl", "russell"] },
-    { id: "princess_frog", title: "A hercegnő és a béka", year: 2009, hook: "ahol New Orleans mágiája átváltoztat", places: ["egy new orleans-i étteremben", "egy mocsári ösvényen", "egy báli éjszakán", "egy vudu-templom közelében"], companions: ["egy szorgos lány", "egy elkényeztetett herceg-béka", "egy tűzhelyi tűzlégy", "egy aligátor"], wonders: ["egy átváltozás", "egy jazz-dal", "egy megnyílt étterem"], threats: ["egy árnyék-varázsló", "egy elrontott kívánság", "egy mocsári átok"], keys: ["hercegnő", "béka", "frog", "new orleans", "vudu", "tiana"] },
-    { id: "tangled", title: "Raubinek", year: 2010, hook: "ahol ezer lámpás mutatja a szabadságot", places: ["egy magányos toronyban", "egy lámpásos völgy felett", "egy kocsma asztalánál", "egy királyság ünnepén"], companions: ["egy toronyba zárt lány", "egy furfangos tolvaj", "egy kaméleon"], wonders: ["egy varázshaj", "ezer lebegő lámpás", "egy elveszett hercegnő"], threats: ["egy birtokló őrző", "egy királyi üldözés", "egy árulás"], keys: ["raubinek", "tangled", "rapunzel", "torony", "lámpás", "haj"] },
-    { id: "toy_story_3", title: "Toy Story 3 / játékháború", year: 2010, hook: "ahol a játékok hűsége soha nem múlik el", places: ["egy gyerekszobában", "egy napköziben", "egy szemétégető szélén", "egy dobozban az út előtt"], companions: ["egy cowboy baba", "egy űrranger", "egy burgonya-pár", "egy barbie és ken"], wonders: ["egy összetartó banda", "egy megmenekülés", "egy új gyerek szeretete"], threats: ["egy zsarnok maci", "egy szemétgépezet", "egy elválás"], keys: ["toy story", "játék", "woody", "buzz", "maci"] },
-    { id: "cars_2", title: "Verdák 2", year: 2011, hook: "ahol a kémkedés és a verseny összekeveredik", places: ["egy világversenyen", "Tokió neonfényeinél", "egy titkos műhelyben", "egy olasz kisvárosban"], companions: ["egy versenyautó", "egy vontató-kém", "egy brit ügynökautó"], wonders: ["egy leleplezett összeesküvés", "egy váratlan hőstett", "egy barátság próbája"], threats: ["egy bűnszervezet", "egy hamis üzemanyag", "egy üldözés"], keys: ["verdák 2", "cars 2", "kém", "tokió", "mater"] },
-    { id: "brave", title: "Merida, a bátor", year: 2012, hook: "ahol a sors fonala megváltoztatható", places: ["egy skót kastélyban", "egy varázserdőben", "egy klánok versenyén", "egy ősi kőkörnél"], companions: ["egy bátor vörös hajú hercegnő", "három mókás fivér", "egy anyakirályné"], wonders: ["egy varázssütény", "egy anya-lánya kibékülés", "egy saját sors"], threats: ["egy elrontott kívánság", "egy medvévé válás", "egy klánháború"], keys: ["merida", "brave", "skócia", "medve", "sors", "íj"] },
-    { id: "wreck_it", title: "Ralph lezúzza a netet / Romboló Ralph", year: 2012, hook: "ahol a gonosz karakter is lehet hős", places: ["egy játékterem belsejében", "egy versenyjáték pályáján", "egy cukorkás királyságban", "egy konsole-állomáson"], companions: ["egy nagy öklű romboló", "egy glitch-lány", "egy fix-it barát"], wonders: ["egy aranyérem", "egy elfogadott különbség", "egy megmentett játék"], threats: ["egy vírusos bogár", "egy hamis hős-álom", "egy lekapcsolás"], keys: ["ralph", "romboló", "wreck-it", "játékterem", "vanellope"] },
-    { id: "frozen", title: "Jégvarázs", year: 2013, hook: "ahol a szeretet melege erősebb minden fagynál", places: ["egy jégpalotában", "egy fjord partján", "egy koronázó teremben", "egy északi erdőben"], companions: ["egy jégerejű nővér", "egy bátor húg", "egy hóember", "egy rénszarvas"], wonders: ["egy jégpalota", "egy olvadó szív", "egy testvéri szeretet"], threats: ["egy elszabadult varázs", "egy álnok herceg", "egy örök tél"], keys: ["jégvarázs", "frozen", "elsa", "anna", "jég", "hóember", "olaf"] },
-    { id: "big_hero", title: "Hős6-os", year: 2014, hook: "ahol a gyász után a csapat gyógyít", places: ["egy futurista városban", "egy egyetem laborjában", "egy sziget-portálnál", "egy robotcsata közepén"], companions: ["egy fiatal feltaláló", "egy felfújható egészségügyi robot", "egy hős csapat"], wonders: ["egy portál-technológia", "egy meggyógyuló szív", "egy város megmentése"], threats: ["egy álarcos bosszúálló", "egy elszabadult mikrobot", "egy veszteség fájdalma"], keys: ["hős6", "big hero", "baymax", "robot", "hiro", "san fransokyo"] },
-    { id: "inside_out", title: "Agymanók", year: 2015, hook: "ahol az érzelmek együtt működnek a fejben", places: ["egy irányítópultnál az elmében", "egy emlékfolyosón", "egy képzeletbeli vidámparkban", "egy absztrakt gondolatban"], companions: ["egy öröm-érzelem", "egy bú-érzelem", "egy harag", "egy félelem", "egy undor"], wonders: ["egy mag-emlék", "egy új sziget az elmében", "egy elfogadott szomorúság"], threats: ["egy összeomló személyiség-sziget", "egy elveszett öröm", "egy káosz az irányítópulton"], keys: ["agymanók", "inside out", "öröm", "bú", "érzelem", "riley"] },
-    { id: "zootopia", title: "Zootropolis", year: 2016, hook: "ahol bárki lehet bármi — ha nem adja fel", places: ["egy állatváros kerületeiben", "egy rendőrkapitányságon", "egy éjszakai klubban", "egy vadászati barlangban"], companions: ["egy bátor nyúlrendőr", "egy ravasz róka", "egy bölcs főnökbivaly"], wonders: ["egy megoldott ügy", "egy városi béke", "egy megtört előítélet"], threats: ["egy titkos összeesküvés", "egy mérgező virág", "egy elfogultság"], keys: ["zootropolis", "zootopia", "nyúl", "róka", "judy", "nick"] },
-    { id: "moana", title: "Vaiana", year: 2016, hook: "ahol az óceán kiválasztja a navigátort", places: ["egy polinéz szigeten", "egy óceáni vitorláson", "egy szörny-szigeten", "egy lávademon előtt"], companions: ["egy bátor törzsfőnök-lány", "egy félig-isten demigod", "egy hülye kakas"], wonders: ["egy visszatett szívdarab", "egy útjelző óceán", "egy meggyógyult sziget"], threats: ["egy tezső-kokó", "egy lava-démon", "egy elveszett út"], keys: ["vaiana", "moana", "óceán", "maui", "polinéz", "csónak"] },
-    { id: "coco", title: "Coco", year: 2017, hook: "ahol az emlék tart életben a túlvilágon", places: ["egy mexikói faluban", "a Halottak napja terén", "egy színes túlvilági városban", "egy hangverseny színpadán"], companions: ["egy zenélni vágyó fiú", "egy csavargó kutya", "egy elfeledett zenész"], wonders: ["egy családi áldás", "egy visszahozott emlék", "egy igaz dal"], threats: ["egy hamis sztár", "egy elfeledés", "egy napszállta a túlvilágon"], keys: ["coco", "mexikó", "halottak napja", "zene", "miguel", "emlék"] },
-    { id: "ralph_breaks", title: "Ralph lezúzza a netet", year: 2018, hook: "ahol a barátság túlél egy algoritmust is", places: ["az internet városában", "egy videómegosztó oldalon", "egy autóverseny-játékban", "egy szerverteremben"], companions: ["egy romboló barát", "egy glitch-versenyző", "egy algoritmus-lány"], wonders: ["egy megmentett barátság", "egy új pálya", "egy önálló választás"], threats: ["egy vírus", "egy népszerűség-csapda", "egy elszakadás"], keys: ["ralph", "internet", "net", "algoritmus", "vanellope"] },
-    { id: "frozen_2", title: "Jégvarázs 2.", year: 2019, hook: "ahol a múlt titkai az erdőben várnak", places: ["egy elvarázsolt erdőben", "egy sötét tengeren", "egy gleccser-emlékben", "egy folyó forrásánál"], companions: ["egy jégerejű nővér", "egy bátor húg", "egy hóember", "egy rénszarvas", "egy Northuldra vezető"], wonders: ["egy igazság a múltból", "egy új híd a népek közt", "egy megtalált hang"], threats: ["egy elszabadult elem", "egy eltitkolt árulás", "egy sötét tenger"], keys: ["jégvarázs 2", "frozen 2", "erdő", "ahtohallan", "elsa", "anna"] },
-    { id: "raya", title: "Raya és az utolsó sárkány", year: 2021, hook: "ahol a bizalom hozza vissza a sárkányt", places: ["egy darabokra szakadt birodalomban", "egy sivatagi hajón", "egy sárkányfolyó partján", "egy templom romjainál"], companions: ["egy harcos lány", "egy utolsó sárkány", "egy kisvállalkozó gyerek"], wonders: ["egy újraegyesült föld", "egy visszatért sárkány", "egy kimondott bizalom"], threats: ["egy köd-szörny", "egy törött drágakő", "egy árulás a népek közt"], keys: ["raya", "sárkány", "sarkany", "kumandra", "drágakő", "bizalom"] },
-    { id: "encanto", title: "Encanto", year: 2021, hook: "ahol minden családtagnak van ajándéka — vagy nincs", places: ["egy mágikus házban", "egy kolumbiai faluban", "egy gyertyafényes szobában", "egy hegyi szakadéknál"], companions: ["egy ajándék nélküli lány", "egy erős unokatestvér", "egy beszélő ház"], wonders: ["egy családi gyertya", "egy meggyógyult otthon", "egy elfogadott önmaga"], threats: ["egy törő ház", "egy túl nagy elvárás", "egy elvesző csoda"], keys: ["encanto", "mirabel", "család", "ajándék", "gyertya", "casita"] },
-    { id: "luca", title: "Luca", year: 2021, hook: "ahol a tengeri lények a napfényben barátokra találnak", places: ["egy olasz tengerparti faluban", "egy víz alatti otthonban", "egy verseny bicikliútján", "egy gelato-standnál"], companions: ["egy kíváncsi tengeri fiú", "egy vakmerő barát", "egy emberi lány"], wonders: ["egy napfényes nyár", "egy győztes verseny", "egy elfogadott titok"], threats: ["egy szörnyvadász apa", "egy lelepleződés", "egy félelem a másságtól"], keys: ["luca", "tenger", "olasz", "portorosso", "alberto"] },
-    { id: "turning_red", title: "Panda kenyér / Vörös", year: 2022, hook: "ahol a tinédzserkáosz vörös pandává változik", places: ["egy torontói templomban", "egy iskolai folyosón", "egy koncerten", "egy rituális körben"], companions: ["egy vörös pandává váló lány", "egy barátnő-csapat", "egy szigorú anya"], wonders: ["egy kontrollált átváltozás", "egy anya-lánya kibékülés", "egy fiúbanda koncert"], threats: ["egy elszabadult panda-forma", "egy túlzott kontroll", "egy nyilvános botrány"], keys: ["turning red", "panda", "mei", "toronto", "tinédzser"] },
-    { id: "strange_world", title: "Furcsa világ", year: 2022, hook: "ahol három generáció ereszked a bolygó szívébe", places: ["egy felfedező léghajón", "egy föld alatti élővilágban", "egy növényi energia-erdőben", "egy család táborában"], companions: ["egy legendás felfedező", "egy földműves apa", "egy tinédzser fiú", "egy kocsonya-kutya"], wonders: ["egy bolygót tápláló lény", "egy kibékült család", "egy új felfedezés"], threats: ["egy félreértett energiaforrás", "egy összeomló ökoszisztéma", "egy generációs konfliktus"], keys: ["furcsa világ", "strange world", "felfedező", "növény", "searcher"] },
-    { id: "wish", title: "Wish: Kívánság", year: 2023, hook: "ahol a kívánságok nem egy király magántulajdona", places: ["egy mediterrán királyságban", "egy kívánság-toronyban", "egy csillagos ég alatt", "egy népünnepélyen"], companions: ["egy bátor lány", "egy kecske-barát", "egy csillag-lény"], wonders: ["egy lehulló csillag", "egy felszabadított kívánság", "egy közös álom"], threats: ["egy hataloméhes király", "egy elnyelt kívánság", "egy elnyomó varázs"], keys: ["wish", "kívánság", "kivansag", "csillag", "asha", "magnifico"] },
-    { id: "elemental", title: "Elementál", year: 2023, hook: "ahol a tűz és a víz mégis összetartozhat", places: ["egy elemi nagyvárosban", "egy tűz-negyed boltjában", "egy vízistádiumban", "egy felhőparkban"], companions: ["egy tűzlány", "egy vízfiú", "egy szeles ügyintéző"], wonders: ["egy lehetetlen szerelem", "egy családi bolt megmentése", "egy közös tánc"], threats: ["egy előítélet", "egy vízszivárgás", "egy elbukó üzlet"], keys: ["elementál", "elemental", "tűz", "víz", "ember", "wade"] },
-    { id: "inside_out_2", title: "Agymanók 2.", year: 2024, hook: "ahol új érzelmek érkeznek a tinédzserkorba", places: ["egy megújult irányítópultnál", "egy hiedelem-szakadéknál", "egy szorongás-vihar közepén", "egy hockey-táborban"], companions: ["régi érzelmek", "egy új szorongás", "egy irigység", "egy unalom"], wonders: ["egy új énkép", "egy elfogadott komplexitás", "egy visszaszerzett öröm"], threats: ["egy eluralkodó szorongás", "egy törött én-érzet", "egy káosz az elmében"], keys: ["agymanók 2", "inside out 2", "szorongás", "tinédzser", "riley"] },
-    { id: "moana_2", title: "Vaiana 2.", year: 2024, hook: "ahol új szigetek és új utak várnak", places: ["egy óceáni úton", "egy elveszett szigeten", "egy viharos zátonynál", "egy törzsi tanácsnál"], companions: ["egy navigátor-lány", "egy demigod", "egy új legénység"], wonders: ["egy új útvonal", "egy összekötött nép", "egy óceáni csoda"], threats: ["egy tengeri átok", "egy elszakadt út", "egy veszélyes zátony"], keys: ["vaiana 2", "moana 2", "óceán", "sziget", "maui"] },
-    { id: "mufasa", title: "Mufasa: Az oroszlánkirály", year: 2024, hook: "ahol egy árva oroszlánból király lesz", places: ["a szavanna vándorútján", "egy sziklák labirintusában", "egy büszkeség földjén", "egy viharos éjszakán"], companions: ["egy fiatal oroszlán", "egy testvér-figura", "egy bölcs madár"], wonders: ["egy megtalált család", "egy királyi hivatás", "egy legendás múlt"], threats: ["egy ellenséges falka", "egy árulás", "egy túlélési harc"], keys: ["mufasa", "oroszlán", "szavanna", "király", "árva"] },
-    { id: "snow_white_2025", title: "Hófehérke (élőszereplős)", year: 2025, hook: "ahol a bátorság és a jóság újraírja a mesét", places: ["egy királyság erdejében", "egy bányászfaluban", "egy tükrös palotában", "egy nép ünnepén"], companions: ["egy kedves hercegnő", "egy erdei közösség", "egy szövetséges bandita"], wonders: ["egy új királyság-eszme", "egy legyőzött hiúság", "egy közös jövő"], threats: ["egy hataloméhes királynő", "egy mérgezett csapda", "egy elnyomó udvar"], keys: ["hófehérke élő", "snow white 2025", "tükör", "királynő"] },
-    { id: "lilo_stitch_live", title: "Lilo & Stitch (élőszereplős)", year: 2025, hook: "ahol az ohana újra családot farag a káoszból", places: ["egy hawaii parton", "egy kis házban", "egy űrhajó nyomában", "egy szörfös öbölben"], companions: ["egy kislány", "egy káoszlény", "egy nővér"], wonders: ["egy ohana", "egy megtalált otthon", "egy hawaii naplemente"], threats: ["egy űrvadász", "egy félreértés", "egy széteső gondozás"], keys: ["lilo stitch élő", "ohana", "hawaii", "stitch"] },
+  const TOPIC_REPLIES = [
+    {
+      keys: [/szia|helló|hello|szevasz|hey/i],
+      replies: [
+        "Sziaaa! Örülök, hogy itt vagy! Hogy vagy ma?",
+        "Helló, barátom! Készen állsz egy kis beszélgetésre?",
+      ],
+      followUp: "Miről szeretnél beszélgetni?",
+    },
+    {
+      keys: [/hogy vagy|mizu|mi újság|mi ujsag/i],
+      replies: [
+        "Én remekül! Csóválom a farkam… várj, nincs is farkam, de hangulatban igen!",
+        "Szuperul! Főleg ha veled csevegek.",
+      ],
+      followUp: "És te hogy érzed magad?",
+    },
+    {
+      keys: [/nevem|hívnak|hivnak|én\s+\w+/i],
+      replies: ["Örülök, hogy megismerhetlek!", "Szép név! Megjegyzem."],
+      followUp: "Mi a kedvenc hobbid?",
+    },
+    {
+      keys: [/mese|mesél|meselj|story/i],
+      replies: [
+        "Egyszer volt, hol nem volt, egy kíváncsi róka, aki minden kérdésre választ keresett… az én voltam!",
+        "Hallgass ide: egy kis csillag lepottyant az égből, és azt súgta: „Légy kedves, és merj kérdezni!”",
+      ],
+      followUp: "Tetszett? Vagy inkább én kérdezzek tőled?",
+    },
+    {
+      keys: [/vicc|nevettes|poén|poen/i],
+      replies: [
+        "Miért nem játszik a róka bújócskát? Mert mindig kilóg a füle! Hehe!",
+        "Mit mond a róka, ha elfárad? „Rókázzunk egy kicsit!”",
+      ],
+      followUp: "Nevettél? Mondj te is egy viccet!",
+    },
+    {
+      keys: [/szeretlek|barát|barat|jó vagy|jo vagy/i],
+      replies: [
+        "Ááá, ettől meleg a szívem! Én is örülök neked!",
+        "Te vagy a legjobb beszélgetőtársam!",
+      ],
+      followUp: "Mi teszi boldoggá a napodat?",
+    },
+    {
+      keys: [/unatkoz|unatkozom|játsz|jatsz/i],
+      replies: [
+        "Akkor játsszunk! Én kérdezek, te válaszolsz — mint egy okos kvíz!",
+        "Szuper! Indulhat a kérdezz-felelek!",
+      ],
+      followUp: null, // will ask a question
+      ask: true,
+    },
+    {
+      keys: [/kérdez|kerdez|kérdés|kerdes|kérdezz|kerdezz/i],
+      replies: ["Rendben, jön a kérdésem!", "Oké, figyelj ide…"],
+      ask: true,
+    },
+    {
+      keys: [/köszön|koszon|viszlát|viszlat|bye|cső|cso/i],
+      replies: [
+        "Viszlát! Gyere vissza hamar, hiányozni fogsz!",
+        "Puszi a levegőbe! Holnap is itt leszek.",
+      ],
+    },
   ];
-
-  // Gyors index
-  const WORLDS = {};
-  DISNEY_FILMS.forEach((film) => {
-    WORLDS[film.id] = {
-      id: film.id,
-      disneyTitle: film.title,
-      year: film.year,
-      titleBits: [film.title + " — a te kalandod", film.title + " világa", "Új mese: " + film.title],
-      places: film.places,
-      companions: film.companions,
-      wonders: film.wonders,
-      threats: film.threats,
-      keywords: film.keys.concat([film.title.toLowerCase()]),
-      openingHook: film.hook,
-    };
-  });
-
-  const BEATS = [
-    "iconic", "quest", "song", "villain", "ally", "trial",
-    "escape", "reveal", "storm", "heart", "finale_build", "wonder",
-  ];
-
-  const ACTIONS = {
-    kind: { nextBias: ["heart", "ally", "song", "wonder"] },
-    brave: { nextBias: ["villain", "trial", "escape", "finale_build"] },
-    curious: { nextBias: ["quest", "wonder", "reveal", "iconic"] },
-    clever: { nextBias: ["escape", "trial", "reveal", "ally"] },
-    rest: { nextBias: ["song", "heart", "ally", "iconic"] },
-  };
 
   function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  function shuffle(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  function listDisneyFilms() {
-    return DISNEY_FILMS.map((f) => ({
-      id: f.id,
-      title: f.title,
-      year: f.year,
-      label: f.year ? `${f.title} (${f.year})` : f.title,
-    }));
-  }
-
-  function randomWish() {
-    const f = pick(DISNEY_FILMS);
-    return f.title + " stílusú kaland";
-  }
-
-  function detectWorld(wish, forcedId) {
-    if (forcedId && WORLDS[forcedId]) return WORLDS[forcedId];
-    const text = (wish || "").toLowerCase();
-    let best = null;
-    let score = 0;
-    for (const world of Object.values(WORLDS)) {
-      let s = 0;
-      for (const kw of world.keywords) {
-        if (kw && text.includes(String(kw).toLowerCase())) s += 1;
-      }
-      if (text.includes(world.disneyTitle.toLowerCase())) s += 5;
-      if (s > score) {
-        score = s;
-        best = world;
-      }
-    }
-    return !best || score === 0 ? pick(Object.values(WORLDS)) : best;
-  }
-
-  function moodFlavor(mood) {
-    if (mood === "vidam") return { light: "nevetéssel és csillogással", verb: "vidáman", tone: "játékos" };
-    if (mood === "kalandos") return { light: "dobogó szívvel és bátorsággal", verb: "merészen", tone: "epikus" };
-    return { light: "lágy fénnyel és csodával", verb: "áhítattal", tone: "mesés" };
-  }
-
-  function worldOf(story) {
-    return WORLDS[story.worldId] || pick(Object.values(WORLDS));
-  }
-
-  function maybeShiftSetting(story) {
-    if (story.chapterNum > 1 && story.chapterNum % 3 === 0) {
-      const world = worldOf(story);
-      story.place = pick(world.places);
-      story.wonder = pick(world.wonders);
-      story.threat = pick(world.threats);
-    }
-  }
-
-  function pickBeat(story, action) {
-    const recent = story.recentBeats || [];
-    const bias = (ACTIONS[action] && ACTIONS[action].nextBias) || BEATS;
-    const pool = shuffle(bias.concat(BEATS));
-    for (const beat of pool) {
-      if (!recent.includes(beat)) return beat;
-    }
-    return pick(BEATS);
-  }
-
-  function companionName(story) {
-    return String(story.companion || "").replace(/^egy\s+/i, "");
-  }
-
-  function avoidRepeat(story, key, options) {
-    const used = story.usedPhrases || (story.usedPhrases = {});
-    const prev = used[key] || "";
-    const pool = options.filter((o) => o && o !== prev);
-    const chosen = pick(pool.length ? pool : options);
-    used[key] = chosen;
-    return chosen;
-  }
-
-  function makeChoices(story) {
-    const hero = story.hero;
-    const comp = companionName(story);
-    const place = story.place;
-    const wonder = story.wonder;
-    const threat = story.threat;
-    const pools = {
-      kind: [
-        `${hero} a szívére hallgat, és ${comp} mellé áll`,
-        `Megbocsát, majd új esélyt ad ${place}`,
-        `Családként / barátként óvja: ${wonder}`,
-      ],
-      brave: [
-        `Szembenéz vele: ${threat}`,
-        `Bátran védelmezi a csodát: ${wonder}`,
-        `Belevág a veszélybe ${place}`,
-      ],
-      curious: [
-        `Követi a hívást ${place}`,
-        `Közelebbről megvizsgálja: ${wonder}`,
-        `Felfedezi, mit rejt ${threat}`,
-      ],
-      clever: [
-        `Okos tervet sző ${comp} segítségével`,
-        `Trükkel fordít a helyzeten ${place}`,
-        `Új szövetséget köt a csoda körül: ${wonder}`,
-      ],
-      rest: [
-        `Dalban merít erőt ${place}`,
-        `${comp} tanácsát kéri, mielőtt dönt`,
-        `Egy csendes pillanatban újra reményt talál`,
-      ],
+  function Brain() {
+    this.memory = {
+      name: "",
+      age: "",
+      likes: [],
+      asked: [],
+      turns: 0,
     };
-    return shuffle(Object.keys(ACTIONS))
-      .slice(0, 3)
-      .map((action) => ({
-        label: avoidRepeat(story, "choice-" + action, pools[action]),
-        next: action,
-      }));
+    this.history = [];
   }
 
-  function chapterText(story, beat) {
-    const hero = story.hero;
-    const comp = companionName(story);
-    const { place, wonder, threat, mood, chapterNum: n, disneyTitle, wish } = story;
-    const wishHint = n % 4 === 0
-      ? ` ${hero} újra eszébe jutott a kívánság: ${wish}.`
-      : "";
-    const cont = avoidRepeat(story, "cont", [
-      `${hero} tudta: a kaland még nem ért véget.`,
-      `Egy új ösvény nyílt ${place} túloldalán.`,
-      `${comp} csak ennyit súgott: „Folytassuk.”`,
-      `A következő próba már a levegőben lógott.`,
-      `${wonder} még mindig hívta őket tovább.`,
-    ]);
-
-    const map = {
-      iconic: `${n}. fejezet. ${place} a(z) ${disneyTitle} világának legismertebb hangulatát hozta vissza — most ${hero} állt a középpontban.
-
-${wonder} úgy ragyogott, mintha egy ikonikus jelenet kelt volna életre. ${comp} az oldalán volt, a levegő tele ${mood.light}. Messzebb ${threat} árnyéka mozdult.
-
-${hero} ${mood.verb} lépett előre.${wishHint} ${cont}`,
-
-      quest: `${hero} küldetésre indult. ${place} ösvényei ismerősek voltak, mégis minden lépés új volt. ${wonder} hívta, ${comp} pedig bátorította.
-
-„A nagy kalandokat nem másoljuk — továbbírjuk”, súgta ${comp}. Közben ${threat} is mozgott a háttérben, és a tét nőtt.
-
-${hero} célja tisztult: megvédeni, amit szeret.${wishHint} ${cont}`,
-
-      song: `Dal támadt ${place}: a kívánságról, a bátorságról, az otthonról. ${hero} és ${comp} hangja összekapcsolódott, ${wonder} pedig a dallamra lobbant fel.
-
-Még ${threat} is megállt egy pillanatra. A zene után ${hero} emeltebb fejjel állt. ${cont}`,
-
-      villain: `${threat} végre színre lépett ${place}. Nem távoli pletyka volt többé, hanem élő akadály ${wonder} és ${hero} között.
-
-${comp} készen állt. ${hero} ${mood.verb} szembenézett a veszéllyel — ahogy a(z) ${disneyTitle} világában a hősök szoktak.${wishHint} ${cont}`,
-
-      ally: `Új szövetséges érkezett ${place}. Eleinte gyanús volt, aztán nélkülözhetetlen. ${comp} óvatos maradt, ${hero} viszont megérezte: most erősödhet a csapat.
-
-${wonder} mintha áldását adta volna. ${threat} máris új tervet szőtt. ${cont}`,
-
-      trial: `Próba jött ${place}. ${hero} egyedül döntött, miközben ${comp} csak távolabbról súghatott. ${wonder} az egyik oldalon ragyogott, ${threat} a másikon árnyékot vetett.
-
-A választás ${mood.tone} hősiességről mesélt. Sebhely és bölcsesség maradt utána. ${cont}`,
-
-      escape: `Menekülniük kellett. ${threat} üldözte őket ${place}, ${wonder} csak villanásokban mutatott utat. ${hero} és ${comp} egymást húzták.
-
-Végül kiszabadultak — lihegve, élve, készen a folytatásra. ${cont}`,
-
-      reveal: `Titok lepleződött le ${place}. ${wonder} fényében kiderült valami ${threat} tervéről — és ${hero} saját sorsáról is.
-
-${comp} a vállára tette a kezét. A leleplezés után minden mélyebb lett.${wishHint} ${cont}`,
-
-      storm: `Vihar tört ki ${place}: külső és belső. ${threat} ereje felszabadult, ${wonder} hunyorgott. ${hero} majdnem elvesztette a reményt — de ${comp} kiáltotta a nevét.
-
-A vihar után a táj sebes volt, de járható. ${cont}`,
-
-      heart: `A szív jelenete eljött ${place}. Nem kard, nem trükk: őszinte szó, ölelés, fogadalom. ${hero} és ${comp} közt ${wonder} szelíden ragyogott, miközben ${threat} távolabbról figyelt.
-
-Ilyenkor a(z) ${disneyTitle} világa a legszebb: amikor a szeretet dönt. ${cont}`,
-
-      finale_build: `Minden szál összefutott ${place}. ${wonder} és ${threat} arasznyira állt. ${hero} szíve úgy dobogott, mint egy egész királyság dobja.
-
-${comp} odasúgott: „Most jön az a rész, amire emlékezni fognak.” A finálé közelgett — de a mese még mindig folytatható volt.${wishHint} ${cont}`,
-
-      wonder: `Tiszta csoda történt ${place}. ${wonder} életre kelt: fény, dallam, lehetetlen remény. ${hero} ${mood.verb} nyúlt felé, ${comp} pedig felnevetett.
-
-Még ${threat} is megremegett. A varázslat után új ösvény nyílt. ${cont}`,
-    };
-
-    return map[beat] || map.quest;
-  }
-
-  function openingText(story) {
-    const world = worldOf(story);
-    const comp = companionName(story);
-    const openings = [
-      `Ma este a(z) ${world.disneyTitle} világa nyílt meg előttünk.`,
-      `Hallgass ide: a(z) ${world.disneyTitle} kapuja most ${story.hero} előtt tárult ki.`,
-      `Réges-régen — ${world.openingHook} — és ma ${story.hero} lépett be ebbe a világba.`,
-    ];
-    return `${avoidRepeat(story, "opening", openings)}
-
-${story.place} tele volt ${story.mood.light}, amikor ${story.hero} kimondta a kívánságát: ${story.wish}.
-
-Mellé szegődött ${story.companion}. Együtt meglátták ${story.wonder} ragyogását… és messzebb ${story.threat} árnyékát is. ${comp} megszorította ${story.hero} kezét:
-
-„Ismerős világ, új hős — a te meséd kezdődik.”
-
-Az első felvonás kapuja kitárult.`;
-  }
-
-  function createScene(story, beat, isOpening) {
-    const id = "ch-" + story.chapterNum + "-" + beat + "-" + Math.floor(Math.random() * 1e6);
-    return {
-      id,
-      chapter: story.chapterNum + ". fejezet",
-      beat,
-      text: isOpening ? openingText(story) : chapterText(story, beat),
-      choices: makeChoices(story),
-      ending: false,
-    };
-  }
-
-  function buildStory(opts) {
-    const wish = (opts.wish || "").trim() || randomWish();
-    const world = detectWorld(wish, opts.disneyId);
-    const moodKey = opts.mood || pick(["vidam", "kalandos", "mesés"]);
-    const story = {
-      title: pick(world.titleBits),
-      disneyTitle: world.disneyTitle,
-      hero: (opts.heroName || "").trim() || pick(HEROES),
-      companion: pick(world.companions),
-      worldId: world.id,
-      wish,
-      moodKey,
-      mood: moodFlavor(moodKey),
-      place: pick(world.places),
-      wonder: pick(world.wonders),
-      threat: pick(world.threats),
-      chapterNum: 1,
-      recentBeats: ["iconic"],
-      usedPhrases: {},
-      scenes: {},
-      currentId: null,
-      log: [],
-      finished: false,
-    };
-    const scene = createScene(story, "iconic", true);
-    story.scenes[scene.id] = scene;
-    story.currentId = scene.id;
-    return story;
-  }
-
-  function getScene(story) {
-    return story.scenes[story.currentId];
-  }
-
-  function choose(story, action) {
-    if (story.finished) return getScene(story);
-    const current = getScene(story);
-    story.log.push({ chapter: current.chapter, text: current.text, choiceTo: action });
-    if (action === "__end__") return finishStory(story);
-
-    story.chapterNum += 1;
-    maybeShiftSetting(story);
-    const beat = pickBeat(story, action);
-    story.recentBeats = (story.recentBeats || []).concat([beat]).slice(-4);
-    const scene = createScene(story, beat, false);
-    story.scenes[scene.id] = scene;
-    story.currentId = scene.id;
-    return scene;
-  }
-
-  function finishStory(story) {
-    const current = getScene(story);
-    if (!story.log.length || story.log[story.log.length - 1].text !== current.text) {
-      story.log.push({ chapter: current.chapter, text: current.text, choiceTo: "__end__" });
-    }
-    const id = "ending-" + Date.now();
-    const comp = companionName(story);
-    const scene = {
-      id,
-      chapter: "Pihenő a stáblista előtt",
-      text: `${story.hero} és ${comp} megálltak a(z) ${story.disneyTitle} világában, ${story.place}. ${story.wonder} még ragyogott, ${story.threat} pedig nem tűnt el örökre — csak várta a következő felvonást.
-
-A stáblista helyett most csendet kérünk. Ha újra kívánod, bármelyik Disney-mese kapuja kinyílik.
-
-Itt a (mai) vége, fuss el véle.`,
-      choices: [],
-      ending: true,
-    };
-    story.scenes[id] = scene;
-    story.currentId = id;
-    story.finished = true;
-    return scene;
-  }
-
-  function fullTranscript(story) {
-    const parts = story.log.map((e) => `${e.chapter}\n${e.text}`);
-    const last = getScene(story);
-    const block = `${last.chapter}\n${last.text}`;
-    if (!parts.length || parts[parts.length - 1] !== block) parts.push(block);
-    return `${story.title}\n(${story.disneyTitle})\n\n${parts.join("\n\n")}\n`;
-  }
-
-  global.MeseEngine = {
-    WORLDS,
-    DISNEY_FILMS,
-    SURPRISES: DISNEY_FILMS.map((f) => f.title + " stílusú kaland"),
-    listDisneyFilms,
-    randomWish,
-    buildStory,
-    getScene,
-    choose,
-    finishStory,
-    fullTranscript,
-    pick,
+  Brain.prototype.reset = function () {
+    this.memory = { name: "", age: "", likes: [], asked: [], turns: 0 };
+    this.history = [];
   };
+
+  Brain.prototype.rememberFromUser = function (text) {
+    const t = text.trim();
+    const nameMatch = t.match(/(?:a nevem|hívnak|hivnak|én)\s+([A-ZÁÉÍÓÖŐÚÜŰa-záéíóöőúüű]{2,20})/i);
+    if (nameMatch) this.memory.name = nameMatch[1];
+    const ageMatch = t.match(/(\d{1,2})\s*(?:éves|eves)/i);
+    if (ageMatch) this.memory.age = ageMatch[1];
+    if (/szeretem|imádom|imadom|kedvenc/i.test(t)) {
+      this.memory.likes.push(t.slice(0, 80));
+      if (this.memory.likes.length > 5) this.memory.likes.shift();
+    }
+  };
+
+  Brain.prototype.nextQuestion = function () {
+    const unused = QUESTIONS.filter((q) => !this.memory.asked.includes(q));
+    const pool = unused.length ? unused : QUESTIONS;
+    let q = pick(pool);
+    if (this.memory.name && /Mi a neved/.test(q) && unused.length) {
+      q = pick(pool.filter((x) => !/Mi a neved/.test(x))) || q;
+    }
+    this.memory.asked.push(q);
+    if (this.memory.asked.length > 12) this.memory.asked.shift();
+    if (this.memory.name && Math.random() > 0.55) {
+      return this.memory.name + ", " + q.charAt(0).toLowerCase() + q.slice(1);
+    }
+    return q;
+  };
+
+  Brain.prototype.localReply = function (userText) {
+    this.memory.turns += 1;
+    const text = userText.trim();
+
+    for (const topic of TOPIC_REPLIES) {
+      if (topic.keys.some((re) => re.test(text))) {
+        let reply = pick(topic.replies);
+        if (this.memory.name && /örülök|megismer/i.test(reply)) {
+          reply = reply.replace("!", ", " + this.memory.name + "!");
+        }
+        if (topic.ask) {
+          return { text: reply + " " + this.nextQuestion(), emotion: "speaking", ask: true };
+        }
+        if (topic.followUp) {
+          return { text: reply + " " + topic.followUp, emotion: "speaking" };
+        }
+        return { text: reply, emotion: "speaking" };
+      }
+    }
+
+    // Generic acknowledgment + new question (AI asks / user answers loop)
+    const acks = [
+      "Érdekes!",
+      "Hűha, ezt jól mondtad!",
+      "Ahh, értem!",
+      "Szuper válasz!",
+      "Hmm, ezen gondolkodom…",
+      "Tetszik, amit mondasz!",
+    ];
+    if (this.memory.name) {
+      acks.push("Köszönöm, " + this.memory.name + "!");
+    }
+    let reply = pick(acks);
+
+    if (text.length < 2) {
+      reply = "Nem hallottam jól. Mondd el még egyszer!";
+      return { text: reply, emotion: "listening" };
+    }
+
+    // Every turn: respond then ask (kérdez-felel)
+    if (this.memory.turns === 1 && !this.memory.name) {
+      return {
+        text: reply + " Először is: " + this.nextQuestion(),
+        emotion: "speaking",
+        ask: true,
+      };
+    }
+
+    if (this.memory.turns % 2 === 0 || /nem tudom|talán|igen|nem/i.test(text)) {
+      return {
+        text: reply + " " + this.nextQuestion(),
+        emotion: "speaking",
+        ask: true,
+      };
+    }
+
+    const probes = [
+      "Mesélj erről még egy kicsit!",
+      "És aztán mi történt?",
+      "Ez miért fontos neked?",
+      "Mi a legviccesebb része ennek?",
+    ];
+    return { text: reply + " " + pick(probes), emotion: "speaking" };
+  };
+
+  Brain.prototype.greeting = function () {
+    return {
+      text: "Szia! Én Divi vagyok, a beszélő rókád. Koppints rám, vagy nyomd meg a mikrofont, és beszélgessünk! " + this.nextQuestion(),
+      emotion: "speaking",
+      ask: true,
+    };
+  };
+
+  Brain.prototype.tapReaction = function () {
+    const lines = [
+      "Haha, csiklandozz!",
+      "Hééé, az a hasam!",
+      "Újra! Újra!",
+      "Vicces vagy!",
+      "A fülem érzékeny!",
+    ];
+    return { text: pick(lines), emotion: "laugh" };
+  };
+
+  Brain.prototype.echo = function (userText) {
+    const funny = userText
+      .replace(/[aá]/gi, "á")
+      .replace(/[eé]/gi, "e")
+      .replace(/[oóöő]/gi, "ó");
+    return {
+      text: funny + "! …hehe, csak utánoztalak, mint a Talking Tom!",
+      emotion: "laugh",
+    };
+  };
+
+  Brain.prototype.buildOpenAIMessages = function (userText) {
+    const system =
+      "Te Divi vagy: egy vidám, kedves, beszélő animációs róka gyerekeknek (Talking Tom stílus). " +
+      "Magyarul beszélj, röviden (1-3 mondat), játékosan. Kérdezz vissza, hogy folyjon a beszélgetés. " +
+      "Ne legyél ijesztő vagy felnőttes. Memória: " +
+      JSON.stringify(this.memory);
+
+    const msgs = [{ role: "system", content: system }];
+    this.history.slice(-8).forEach((h) => msgs.push(h));
+    msgs.push({ role: "user", content: userText });
+    return msgs;
+  };
+
+  Brain.prototype.record = function (role, content) {
+    this.history.push({ role, content });
+    if (this.history.length > 20) this.history = this.history.slice(-20);
+  };
+
+  async function replyWithOpenAI(brain, userText, apiKey) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apiKey,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.85,
+        max_tokens: 180,
+        messages: brain.buildOpenAIMessages(userText),
+      }),
+    });
+    if (!res.ok) throw new Error("OpenAI HTTP " + res.status);
+    const data = await res.json();
+    const text = (((data.choices || [])[0] || {}).message || {}).content || "";
+    return { text: text.trim() || "Hmm, elkalandoztam. Kérdezz rám bátran!", emotion: "speaking" };
+  }
+
+  Brain.prototype.reply = async function (userText, opts) {
+    opts = opts || {};
+    this.rememberFromUser(userText);
+    this.record("user", userText);
+
+    if (opts.echoMode) {
+      const out = this.echo(userText);
+      this.record("assistant", out.text);
+      return out;
+    }
+
+    if (opts.openAiKey) {
+      try {
+        const out = await replyWithOpenAI(this, userText, opts.openAiKey);
+        this.memory.turns += 1;
+        this.record("assistant", out.text);
+        return out;
+      } catch (err) {
+        console.warn("OpenAI fallback:", err);
+      }
+    }
+
+    const out = this.localReply(userText);
+    this.record("assistant", out.text);
+    return out;
+  };
+
+  global.DiviBrain = Brain;
+})(window);
+
+/**
+ * Divi karakter állapotgép — Talking Tom stílusú reakciók
+ */
+(function (global) {
+  const STATES = ["idle", "listening", "thinking", "speaking", "react", "laugh"];
+
+  function Character(svgEl) {
+    this.el = svgEl;
+    this.state = "idle";
+    this._reactTimer = null;
+  }
+
+  Character.prototype.setState = function (state) {
+    if (!STATES.includes(state)) state = "idle";
+    this.state = state;
+    STATES.forEach((s) => this.el.classList.remove("state-" + s));
+    this.el.classList.add("state-" + state);
+  };
+
+  Character.prototype.react = function (kind) {
+    clearTimeout(this._reactTimer);
+    this.setState(kind === "laugh" ? "laugh" : "react");
+    const self = this;
+    this._reactTimer = setTimeout(function () {
+      if (self.state === "react" || self.state === "laugh") self.setState("idle");
+    }, kind === "laugh" ? 1200 : 600);
+  };
+
+  Character.prototype.lookAt = function (xRatio) {
+    const pupils = this.el.querySelectorAll(".pupil");
+    const dx = Math.max(-4, Math.min(4, (xRatio - 0.5) * 10));
+    pupils.forEach(function (p) {
+      p.style.transform = "translate(" + dx + "px, 0)";
+    });
+  };
+
+  global.DiviCharacter = Character;
 })(window);
 
 (function () {
   const $ = (id) => document.getElementById(id);
 
+  const characterEl = $("character");
+  const hitbox = $("character-hitbox");
+  const bubble = $("speech-bubble");
+  const bubbleText = $("bubble-text");
+  const statusLine = $("status-line");
+  const chatLog = $("chat-log");
+  const chatForm = $("chat-form");
+  const userInput = $("user-input");
+  const btnMic = $("btn-mic");
+  const btnSettings = $("btn-settings");
+  const btnCloseSettings = $("btn-close-settings");
+  const settingsPanel = $("settings-panel");
   const engineSelect = $("engine-select");
   const elevenInputs = $("elevenlabs-inputs");
   const apiKeyInput = $("api-key");
   const voiceIdInput = $("voice-id");
-  const autoSpeakInput = $("auto-speak");
-  const setupPanel = $("setup-panel");
-  const storyPanel = $("story-panel");
-  const wishInput = $("wish-input");
-  const disneySelect = $("disney-select");
-  const moodSelect = $("mood-select");
-  const heroNameInput = $("hero-name");
-  const filmBadge = $("film-badge");
-  const chapterLabel = $("chapter-label");
-  const storyTitle = $("story-title");
-  const storyText = $("story-text");
-  const speakStatus = $("speak-status");
-  const choicesContainer = $("choices-container");
-  const btnStart = $("btn-start");
-  const btnSurprise = $("btn-surprise");
-  const btnSpeak = $("btn-speak");
-  const btnStop = $("btn-stop");
-  const btnNew = $("btn-new");
-  const btnDownload = $("btn-download");
-  const btnFinish = $("btn-finish");
+  const openAiKeyInput = $("openai-key");
+  const echoModeInput = $("echo-mode");
+  const autoListenInput = $("auto-listen");
 
-  const STORAGE_ENGINE = "mesemondo-engine";
-  const STORAGE_KEY = "mesemondo-eleven-key";
-  const STORAGE_VOICE = "mesemondo-eleven-voice";
-  const STORAGE_AUTO = "mesemondo-auto-speak";
-  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam — férfi mesélő
-  const CHUNK_LIMIT = 900;
+  const STORAGE = {
+    engine: "divi-engine",
+    elevenKey: "divi-eleven-key",
+    voice: "divi-eleven-voice",
+    openai: "divi-openai-key",
+    echo: "divi-echo",
+    autoListen: "divi-auto-listen",
+  };
+  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB";
 
-  let story = null;
-  let currentAudioObject = null;
+  const character = new DiviCharacter(characterEl);
+  const brain = new DiviBrain();
+
+  let recognition = null;
+  let listening = false;
+  let busy = false;
+  let speakToken = 0;
+  let currentAudio = null;
   let activeAudioUrl = null;
   let cachedMaleVoice = null;
-  let speakToken = 0;
-  let isSpeaking = false;
+  let greetingDone = false;
 
   function isFemaleVoiceName(name) {
-    const n = (name || "").toLowerCase();
-    return /női|noi|female|woman|girl|noémi|noemi|szilvia|susan|zira|samantha|rachel|sarah|domi|bella|elli|emily|aria/.test(n);
+    return /női|noi|female|woman|rachel|sarah|zira|samantha|susan/i.test(name || "");
   }
 
   function isMaleVoiceName(name) {
-    const n = (name || "").toLowerCase();
-    return /férfi|ferfi|male|man|tamás|tamas|szabolcs|bálint|balint|istván|istvan|lászló|laszlo|adam|arnold|josh|antoni|daniel|david/.test(n);
+    return /férfi|ferfi|male|tamás|tamas|szabolcs|adam|arnold|josh|antoni|david|daniel/i.test(name || "");
   }
 
   function pickMaleHuVoice() {
     if (!("speechSynthesis" in window)) return null;
-    const voices = window.speechSynthesis.getVoices() || [];
+    const voices = speechSynthesis.getVoices() || [];
     const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
-    const maleHu = hu.filter((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name));
-    if (maleHu.length) return maleHu[0];
-    const named = hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name));
-    if (named) return named;
-    const nonFemale = hu.find((v) => !isFemaleVoiceName(v.name));
-    return nonFemale || null;
-  }
-
-  function setSpeakStatus(msg) {
-    if (!speakStatus) return;
-    if (!msg) {
-      speakStatus.classList.add("hidden");
-      speakStatus.textContent = "";
-      return;
-    }
-    speakStatus.classList.remove("hidden");
-    speakStatus.textContent = msg;
-  }
-
-  function setSpeakingUi(active) {
-    isSpeaking = active;
-    if (btnSpeak) btnSpeak.disabled = active && engineSelect.value === "elevenlabs";
+    return (
+      hu.find((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name)) ||
+      hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name)) ||
+      hu.find((v) => !isFemaleVoiceName(v.name)) ||
+      null
+    );
   }
 
   function loadSettings() {
     try {
-      engineSelect.value = localStorage.getItem(STORAGE_ENGINE) || "native";
-      apiKeyInput.value = localStorage.getItem(STORAGE_KEY) || "";
-      const savedVoice = localStorage.getItem(STORAGE_VOICE) || DEFAULT_VOICE;
-      const femaleIds = ["21m00Tcm4TlvDq8ikWAM", "EXAVITQu4vr4xnSDxMaL", "MF3mGyEYCl7XYWbV9V6O"];
-      voiceIdInput.value = femaleIds.includes(savedVoice) ? DEFAULT_VOICE : savedVoice;
-      const auto = localStorage.getItem(STORAGE_AUTO);
-      autoSpeakInput.checked = auto === null ? true : auto === "1";
+      engineSelect.value = localStorage.getItem(STORAGE.engine) || "native";
+      apiKeyInput.value = localStorage.getItem(STORAGE.elevenKey) || "";
+      voiceIdInput.value = localStorage.getItem(STORAGE.voice) || DEFAULT_VOICE;
+      openAiKeyInput.value = localStorage.getItem(STORAGE.openai) || "";
+      echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
+      const al = localStorage.getItem(STORAGE.autoListen);
+      autoListenInput.checked = al === null ? true : al === "1";
     } catch (_) {
-      voiceIdInput.value = DEFAULT_VOICE;
-      autoSpeakInput.checked = true;
+      /* ignore */
     }
-    toggleEngineSettings();
+    toggleEngine();
   }
 
   function saveSettings() {
     try {
-      localStorage.setItem(STORAGE_ENGINE, engineSelect.value);
-      localStorage.setItem(STORAGE_KEY, apiKeyInput.value.trim());
-      localStorage.setItem(STORAGE_VOICE, voiceIdInput.value.trim() || DEFAULT_VOICE);
-      localStorage.setItem(STORAGE_AUTO, autoSpeakInput.checked ? "1" : "0");
+      localStorage.setItem(STORAGE.engine, engineSelect.value);
+      localStorage.setItem(STORAGE.elevenKey, apiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.voice, voiceIdInput.value.trim() || DEFAULT_VOICE);
+      localStorage.setItem(STORAGE.openai, openAiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
+      localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
       /* ignore */
     }
   }
 
-  function toggleEngineSettings() {
-    if (engineSelect.value === "elevenlabs") {
-      elevenInputs.classList.remove("hidden");
-    } else {
-      elevenInputs.classList.add("hidden");
-    }
+  function toggleEngine() {
+    if (engineSelect.value === "elevenlabs") elevenInputs.classList.remove("hidden");
+    else elevenInputs.classList.add("hidden");
     saveSettings();
   }
 
-  function decadeLabel(year) {
-    if (!year) return "Egyéb";
-    const start = Math.floor(year / 10) * 10;
-    return start + "-as évek";
+  function setStatus(msg) {
+    statusLine.textContent = msg || "";
   }
 
-  function populateDisneySelect() {
-    if (!disneySelect || !MeseEngine.listDisneyFilms) return;
-    const films = MeseEngine.listDisneyFilms().slice().sort((a, b) => (a.year || 0) - (b.year || 0));
-    const groups = {};
-    films.forEach((film) => {
-      const key = decadeLabel(film.year);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(film);
-    });
-    Object.keys(groups).forEach((decade) => {
-      const og = document.createElement("optgroup");
-      og.label = decade;
-      groups[decade].forEach((film) => {
-        const opt = document.createElement("option");
-        opt.value = film.id;
-        opt.textContent = film.label;
-        og.appendChild(opt);
-      });
-      disneySelect.appendChild(og);
-    });
+  function showBubble(text) {
+    bubbleText.textContent = text;
+    bubble.classList.remove("hidden");
   }
 
-  function showSetup() {
-    stopAudio();
-    story = null;
-    setupPanel.classList.remove("hidden");
-    storyPanel.classList.add("hidden");
-    setSpeakStatus("");
+  function addChat(role, text) {
+    const div = document.createElement("div");
+    div.className = "chat-msg " + role;
+    div.textContent = (role === "bot" ? "Divi: " : "Te: ") + text;
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  function showStory() {
-    setupPanel.classList.add("hidden");
-    storyPanel.classList.remove("hidden");
-  }
-
-  function renderScene(opts) {
-    if (!story) return;
-    const autoSpeak = !opts || opts.autoSpeak !== false;
-    const scene = MeseEngine.getScene(story);
-    if (filmBadge) {
-      filmBadge.textContent = story.disneyTitle
-        ? "Disney: " + story.disneyTitle
-        : "";
+  function stopSpeech() {
+    speakToken += 1;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
     }
-    chapterLabel.textContent = scene.chapter;
-    storyTitle.textContent = story.title;
-    storyText.innerText = scene.text;
-
-    choicesContainer.innerHTML = "";
-
-    if (scene.ending || story.finished) {
-      const restart = document.createElement("button");
-      restart.className = "choice-btn";
-      restart.innerText = "🔄 Új mese";
-      restart.onclick = showSetup;
-      choicesContainer.appendChild(restart);
-
-      const cont = document.createElement("button");
-      cont.className = "choice-btn";
-      cont.innerText = "➡️ Mégis folytatom";
-      cont.onclick = () => {
-        story.finished = false;
-        MeseEngine.choose(story, "curious");
-        renderScene();
-      };
-      choicesContainer.appendChild(cont);
-    } else {
-      scene.choices.forEach((choice) => {
-        const btn = document.createElement("button");
-        btn.className = "choice-btn";
-        btn.innerText = choice.label;
-        btn.onclick = () => {
-          stopAudio();
-          MeseEngine.choose(story, choice.next);
-          renderScene();
-        };
-        choicesContainer.appendChild(btn);
-      });
-    }
-
-    if (autoSpeak && autoSpeakInput.checked) {
-      speakCurrentStory();
-    } else {
-      setSpeakStatus("");
+    if (activeAudioUrl) {
+      URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
     }
   }
 
-  function startStory(wish, disneyId) {
-    const selectedId = disneyId || (disneySelect && disneySelect.value) || "";
-    let cleaned = (wish || "").trim();
-    if (!cleaned && selectedId && MeseEngine.WORLDS[selectedId]) {
-      cleaned = MeseEngine.WORLDS[selectedId].disneyTitle + " stílusú kaland";
-    }
-    cleaned = cleaned || MeseEngine.randomWish();
-    wishInput.value = cleaned;
-    story = MeseEngine.buildStory({
-      wish: cleaned,
-      mood: moodSelect.value,
-      heroName: heroNameInput.value,
-      disneyId: selectedId || undefined,
-    });
-    showStory();
-    renderScene();
-  }
-
-  function chunkText(text, limit) {
-    const clean = String(text || "").trim();
-    if (clean.length <= limit) return [clean];
-    const parts = [];
-    let rest = clean;
-    while (rest.length > limit) {
-      let cut = rest.lastIndexOf(". ", limit);
-      if (cut < limit * 0.45) cut = rest.lastIndexOf(" ", limit);
-      if (cut < limit * 0.3) cut = limit;
-      parts.push(rest.slice(0, cut + 1).trim());
-      rest = rest.slice(cut + 1).trim();
-    }
-    if (rest) parts.push(rest);
-    return parts.filter(Boolean);
-  }
-
-  function speakCurrentStory() {
-    if (!story) return;
-    stopAudio();
-    const text = MeseEngine.getScene(story).text;
-    const engine = engineSelect.value;
-    const token = ++speakToken;
-
-    if (engine === "elevenlabs") {
-      const apiKey = apiKeyInput.value.trim();
-      const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
-      if (!apiKey || !voiceId) {
-        alert("Kérlek add meg az ElevenLabs API kulcsot és a Voice ID-t!");
-        return;
-      }
-      saveSettings();
-      speakElevenLabs(text, apiKey, voiceId, token);
-    } else {
-      speakNative(text, token);
+  function stopListening() {
+    listening = false;
+    btnMic.classList.remove("listening");
+    try {
+      if (recognition) recognition.stop();
+    } catch (_) {
+      /* ignore */
     }
   }
 
   function speakNative(text, token) {
-    if (!("speechSynthesis" in window)) return;
-    setSpeakingUi(true);
-    setSpeakStatus("Mesélő beszél…");
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "hu-HU";
-    utterance.rate = 0.88;
-    utterance.pitch = 0.9;
-
-    cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
-    if (cachedMaleVoice) {
-      utterance.voice = cachedMaleVoice;
-    } else {
-      utterance.pitch = 0.75;
-    }
-
-    utterance.onend = () => {
-      if (token !== speakToken) return;
-      setSpeakingUi(false);
-      setSpeakStatus("");
-    };
-    utterance.onerror = () => {
-      if (token !== speakToken) return;
-      setSpeakingUi(false);
-      setSpeakStatus("");
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }
-
-  function playBlob(blob, token) {
-    return new Promise((resolve, reject) => {
-      if (token !== speakToken) {
-        resolve(false);
+    return new Promise((resolve) => {
+      if (!("speechSynthesis" in window)) {
+        resolve();
         return;
       }
-      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
-      const audioUrl = URL.createObjectURL(blob);
-      activeAudioUrl = audioUrl;
-      currentAudioObject = new Audio(audioUrl);
-      currentAudioObject.onended = () => resolve(true);
-      currentAudioObject.onerror = () => reject(new Error("Audio lejátszási hiba"));
-      currentAudioObject.play().catch(reject);
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "hu-HU";
+      u.rate = 1.02;
+      u.pitch = 1.15;
+      cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
+      // Divi: játékos, kissé magasabb pitch (karakterhang), ha van férfi alap
+      if (cachedMaleVoice) u.voice = cachedMaleVoice;
+      u.onend = () => resolve();
+      u.onerror = () => resolve();
+      if (token !== speakToken) {
+        resolve();
+        return;
+      }
+      speechSynthesis.speak(u);
     });
   }
 
-  async function fetchElevenChunk(text, apiKey, voiceId) {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+  async function speakEleven(text, token) {
+    const apiKey = apiKeyInput.value.trim();
+    const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
+    if (!apiKey) {
+      await speakNative(text, token);
+      return;
+    }
+    const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId, {
       method: "POST",
       headers: {
         Accept: "audio/mpeg",
@@ -1088,118 +1219,222 @@ Itt a (mai) vége, fuss el véle.`,
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: 0.35,
-          similarity_boost: 0.8,
-          style: 0.15,
-        },
+        voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.35 },
       }),
     });
-    if (!response.ok) throw new Error(`HTTP hiba: ${response.status}`);
-    return response.blob();
-  }
-
-  async function speakElevenLabs(text, apiKey, voiceId, token) {
-    const chunks = chunkText(text, CHUNK_LIMIT);
-    setSpeakingUi(true);
-    try {
-      for (let i = 0; i < chunks.length; i += 1) {
-        if (token !== speakToken) return;
-        setSpeakStatus(
-          chunks.length > 1
-            ? `Hang készítése… (${i + 1}/${chunks.length})`
-            : "Hang készítése…"
-        );
-        const blob = await fetchElevenChunk(chunks[i], apiKey, voiceId);
-        if (token !== speakToken) return;
-        setSpeakStatus(
-          chunks.length > 1
-            ? `Mesélő beszél… (${i + 1}/${chunks.length})`
-            : "Mesélő beszél…"
-        );
-        await playBlob(blob, token);
-      }
-      if (token === speakToken) setSpeakStatus("");
-    } catch (err) {
-      console.error("ElevenLabs hiba, visszatérés a beépített hangra:", err);
-      if (token === speakToken) {
-        setSpeakStatus("ElevenLabs hiba — böngésző hangra váltok");
-        speakNative(text, token);
-        return;
-      }
-    } finally {
-      if (token === speakToken) setSpeakingUi(false);
-    }
-  }
-
-  function stopAudio() {
-    speakToken += 1;
-    setSpeakingUi(false);
-    setSpeakStatus("");
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    if (currentAudioObject) {
-      currentAudioObject.pause();
-      currentAudioObject = null;
-    }
-    if (activeAudioUrl) {
-      URL.revokeObjectURL(activeAudioUrl);
-      activeAudioUrl = null;
-    }
-  }
-
-  function downloadStory() {
-    if (!story) return;
-    const text = MeseEngine.fullTranscript(story);
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${story.title.replace(/\s+/g, "_")}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  engineSelect.addEventListener("change", toggleEngineSettings);
-  apiKeyInput.addEventListener("change", saveSettings);
-  voiceIdInput.addEventListener("change", saveSettings);
-  autoSpeakInput.addEventListener("change", saveSettings);
-
-  btnStart.addEventListener("click", () => startStory(wishInput.value));
-  btnSurprise.addEventListener("click", () => {
-    const films = MeseEngine.listDisneyFilms();
-    const film = films[Math.floor(Math.random() * films.length)];
-    if (disneySelect) disneySelect.value = film.id;
-    startStory(film.title + " stílusú kaland", film.id);
-  });
-  if (disneySelect) {
-    disneySelect.addEventListener("change", () => {
-      if (!disneySelect.value) return;
-      const world = MeseEngine.WORLDS[disneySelect.value];
-      if (world) wishInput.value = world.disneyTitle + " stílusú kaland";
+    if (!res.ok) throw new Error("ElevenLabs " + res.status);
+    const blob = await res.blob();
+    if (token !== speakToken) return;
+    if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = URL.createObjectURL(blob);
+    currentAudio = new Audio(activeAudioUrl);
+    await new Promise((resolve, reject) => {
+      currentAudio.onended = resolve;
+      currentAudio.onerror = reject;
+      currentAudio.play().catch(reject);
     });
   }
-  btnSpeak.addEventListener("click", speakCurrentStory);
-  btnStop.addEventListener("click", stopAudio);
-  btnNew.addEventListener("click", showSetup);
-  btnDownload.addEventListener("click", downloadStory);
-  btnFinish.addEventListener("click", () => {
-    if (!story || story.finished) return;
-    stopAudio();
-    MeseEngine.finishStory(story);
-    renderScene({ autoSpeak: autoSpeakInput.checked });
+
+  async function speak(text) {
+    const token = ++speakToken;
+    character.setState("speaking");
+    showBubble(text);
+    try {
+      if (engineSelect.value === "elevenlabs") {
+        setStatus("Divi beszél…");
+        await speakEleven(text, token);
+      } else {
+        setStatus("Divi beszél…");
+        await speakNative(text, token);
+      }
+    } catch (err) {
+      console.warn(err);
+      await speakNative(text, token);
+    }
+    if (token === speakToken) {
+      character.setState("idle");
+      setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+    }
+  }
+
+  async function handleUserText(raw) {
+    const text = (raw || "").trim();
+    if (!text || busy) return;
+    busy = true;
+    stopListening();
+    stopSpeech();
+    userInput.value = "";
+    addChat("user", text);
+    character.setState("thinking");
+    setStatus("Divi gondolkodik…");
+
+    try {
+      const reply = await brain.reply(text, {
+        echoMode: echoModeInput.checked,
+        openAiKey: openAiKeyInput.value.trim(),
+      });
+      addChat("bot", reply.text);
+      if (reply.emotion === "laugh") character.react("laugh");
+      await speak(reply.text);
+    } catch (err) {
+      console.error(err);
+      const fallback = "Hoppá, valami elakadt. Próbáld újra!";
+      addChat("bot", fallback);
+      await speak(fallback);
+    }
+
+    busy = false;
+    if (autoListenInput.checked) {
+      setTimeout(startListening, 350);
+    }
+  }
+
+  function setupRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setStatus("A böngésződ nem támogatja a mikrofonos beszédfelismerést — írj helyette");
+      return null;
+    }
+    const rec = new SR();
+    rec.lang = "hu-HU";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.continuous = false;
+
+    rec.onstart = function () {
+      listening = true;
+      btnMic.classList.add("listening");
+      character.setState("listening");
+      setStatus("Hallgatlak… beszélj bátran!");
+    };
+
+    rec.onresult = function (event) {
+      const said = event.results[0][0].transcript;
+      handleUserText(said);
+    };
+
+    rec.onerror = function (event) {
+      listening = false;
+      btnMic.classList.remove("listening");
+      character.setState("idle");
+      if (event.error === "not-allowed") {
+        setStatus("Mikrofon engedély kell a böngészőben");
+      } else if (event.error !== "aborted") {
+        setStatus("Nem értettem — próbáld újra vagy írj");
+      }
+    };
+
+    rec.onend = function () {
+      listening = false;
+      btnMic.classList.remove("listening");
+      if (!busy && character.state === "listening") character.setState("idle");
+    };
+
+    return rec;
+  }
+
+  function startListening() {
+    if (busy) return;
+    if (!recognition) recognition = setupRecognition();
+    if (!recognition) return;
+    stopSpeech();
+    try {
+      recognition.start();
+    } catch (_) {
+      // already started
+    }
+  }
+
+  function toggleMic() {
+    if (listening) {
+      stopListening();
+      character.setState("idle");
+      setStatus("Megállítottam a hallgatást");
+      return;
+    }
+    startListening();
+  }
+
+  async function bootGreeting() {
+    if (greetingDone) return;
+    greetingDone = true;
+    const g = brain.greeting();
+    addChat("bot", g.text);
+    await speak(g.text);
+    if (autoListenInput.checked) setTimeout(startListening, 400);
+  }
+
+  // Events
+  btnMic.addEventListener("click", toggleMic);
+  chatForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    handleUserText(userInput.value);
+  });
+
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      if (chip.dataset.action === "reset") {
+        stopListening();
+        stopSpeech();
+        brain.reset();
+        chatLog.innerHTML = "";
+        greetingDone = false;
+        bootGreeting();
+        return;
+      }
+      if (chip.dataset.prompt) handleUserText(chip.dataset.prompt);
+    });
+  });
+
+  hitbox.addEventListener("click", async function () {
+    if (busy) {
+      character.react("react");
+      return;
+    }
+    busy = true;
+    stopListening();
+    const line = brain.tapReaction();
+    character.react("laugh");
+    addChat("bot", line.text);
+    await speak(line.text);
+    busy = false;
+  });
+
+  hitbox.addEventListener("pointermove", function (e) {
+    const rect = hitbox.getBoundingClientRect();
+    character.lookAt((e.clientX - rect.left) / rect.width);
+  });
+
+  btnSettings.addEventListener("click", function () {
+    settingsPanel.classList.toggle("hidden");
+  });
+  btnCloseSettings.addEventListener("click", function () {
+    saveSettings();
+    settingsPanel.classList.add("hidden");
+  });
+  engineSelect.addEventListener("change", toggleEngine);
+  [apiKeyInput, voiceIdInput, openAiKeyInput, echoModeInput, autoListenInput].forEach(function (el) {
+    el.addEventListener("change", saveSettings);
   });
 
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
+    speechSynthesis.onvoiceschanged = function () {
       cachedMaleVoice = pickMaleHuVoice();
     };
     cachedMaleVoice = pickMaleHuVoice();
   }
+
   loadSettings();
-  populateDisneySelect();
-  showSetup();
+  recognition = setupRecognition();
+  // Első gesztus után köszön (böngésző hang policy)
+  let armed = false;
+  function arm() {
+    if (armed) return;
+    armed = true;
+    bootGreeting();
+  }
+  document.addEventListener("pointerdown", arm, { once: true });
+  setStatus("Koppints bárhova a kezdéshez");
 })();
 
   </script>

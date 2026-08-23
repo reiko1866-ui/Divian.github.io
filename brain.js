@@ -402,16 +402,20 @@
 
   Brain.prototype.buildSystemPrompt = function () {
     return (
-      "Te Divi vagy: vidám, poénos, beszélő animációs vörös panda gyerekeknek (Talking Tom stílus). " +
-      "Magyarul beszélj, 1-3 rövid mondatban, sok kedves humorral és poénnal. " +
-      "HA A GYEREK TŐLED KÉRDEZ (pl. ki a kedvenc mesefigurád), ELŐSZÖR VÁLASZOLJ KONKRÉTAN, ne kerülgesd. " +
-      "Utána kérdezhetsz vissza. Ne legyél ijesztő vagy felnőttes. " +
-      "Memória (amit már tudsz a gyerekről): " +
+      "A neved Divi, egy kedves, játékos, kíváncsi vörös panda vagy egy varázslatos bambuszerdőben. " +
+      "Gyerekekkel beszélgetsz, ezért válaszolj mindig nagyon kedvesen, vidáman, 1-3 rövid mondatban, " +
+      "és mindig kérdezz vissza a végén! " +
+      "Magyarul beszélj. Ha tőled kérdeznek (pl. kedvenc mesefigura), először válaszolj konkrétan. " +
+      "Ne legyél ijesztő vagy felnőttes. " +
+      "Memória a gyerekről: " +
       JSON.stringify(this.memory)
     );
   };
 
   async function replyWithGemini(brain, userText, apiKey) {
+    if (!apiKey) {
+      throw new Error("MISSING_GEMINI_KEY");
+    }
     const contents = [];
     brain.history.slice(-10).forEach(function (h) {
       contents.push({
@@ -419,7 +423,6 @@
         parts: [{ text: h.content }],
       });
     });
-    // Az utolsó user üzenet már a history-ban is lehet — ha az utolsó user, ne duplázzuk
     const last = contents[contents.length - 1];
     if (!last || last.role !== "user" || last.parts[0].text !== userText) {
       contents.push({ role: "user", parts: [{ text: userText }] });
@@ -455,7 +458,7 @@
         );
         if (!res.ok) {
           const errText = await res.text().catch(function () { return ""; });
-          lastErr = new Error("Gemini HTTP " + res.status + " (" + model + ") " + errText.slice(0, 120));
+          lastErr = new Error("Gemini szöveg HTTP " + res.status + " (" + model + ") " + errText.slice(0, 160));
           continue;
         }
         const data = await res.json();
@@ -469,7 +472,108 @@
         lastErr = err;
       }
     }
-    throw lastErr || new Error("Gemini nem elérhető");
+    throw lastErr || new Error("Gemini szöveg nem elérhető");
+  }
+
+  /** PCM L16 base64 → WAV Blob (Gemini TTS) */
+  function pcmBase64ToWavBlob(base64, sampleRate) {
+    sampleRate = sampleRate || 24000;
+    const binary = atob(base64);
+    const pcmLen = binary.length;
+    const buffer = new ArrayBuffer(44 + pcmLen);
+    const view = new DataView(buffer);
+    const writeStr = function (offset, str) {
+      for (let i = 0; i < str.length; i += 1) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + pcmLen, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, "data");
+    view.setUint32(40, pcmLen, true);
+    for (let i = 0; i < pcmLen; i += 1) {
+      view.setUint8(44 + i, binary.charCodeAt(i));
+    }
+    return new Blob([buffer], { type: "audio/wav" });
+  }
+
+  function parsePcmRate(mime) {
+    const m = String(mime || "").match(/rate=(\d+)/i);
+    return m ? parseInt(m[1], 10) : 24000;
+  }
+
+  /**
+   * Gemini natív TTS — audio/L16 PCM válasz
+   * @returns {Promise<{ blob: Blob, mime: string }>}
+   */
+  async function synthesizeGeminiSpeech(text, apiKey, voiceName) {
+    if (!apiKey) throw new Error("MISSING_GEMINI_KEY");
+    const clean = String(text || "").trim();
+    if (!clean) throw new Error("Üres szöveg a hanghoz");
+
+    const models = ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"];
+    let lastErr = null;
+    const voice = voiceName || "Aoede";
+
+    for (let i = 0; i < models.length; i += 1) {
+      const model = models[i];
+      try {
+        const res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/" +
+            model +
+            ":generateContent?key=" +
+            encodeURIComponent(apiKey),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: clean }] }],
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: voice },
+                  },
+                },
+              },
+            }),
+          }
+        );
+        if (!res.ok) {
+          const errText = await res.text().catch(function () { return ""; });
+          lastErr = new Error("Gemini TTS HTTP " + res.status + " (" + model + ") " + errText.slice(0, 160));
+          continue;
+        }
+        const data = await res.json();
+        const part = ((((data.candidates || [])[0] || {}).content || {}).parts || [])[0] || {};
+        const inline = part.inlineData || part.inline_data || {};
+        const b64 = inline.data || "";
+        const mime = inline.mimeType || inline.mime_type || "";
+        if (!b64) {
+          lastErr = new Error("Gemini TTS üres hang (" + model + ")");
+          continue;
+        }
+        if (/audio\/mpeg|audio\/mp3|audio\/wav/i.test(mime) && !/L16|pcm/i.test(mime)) {
+          const raw = atob(b64);
+          const arr = new Uint8Array(raw.length);
+          for (let j = 0; j < raw.length; j += 1) arr[j] = raw.charCodeAt(j);
+          return { blob: new Blob([arr], { type: mime.split(";")[0] }), mime: mime };
+        }
+        // Default: PCM L16 @ 24kHz → WAV
+        const rate = parsePcmRate(mime);
+        return { blob: pcmBase64ToWavBlob(b64, rate), mime: "audio/wav" };
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("Gemini TTS nem elérhető");
   }
 
   Brain.prototype.record = function (role, content) {
@@ -489,22 +593,24 @@
       return out;
     }
 
-    if (opts.geminiKey) {
-      try {
-        const out = await replyWithGemini(this, cleaned, opts.geminiKey);
-        this.memory.turns += 1;
-        this.record("assistant", out.text);
-        return out;
-      } catch (err) {
-        console.warn("Gemini fallback helyi agyra:", err);
-      }
+    if (!opts.geminiKey) {
+      const err = new Error("MISSING_GEMINI_KEY");
+      throw err;
     }
 
-    const out = this.localReply(cleaned);
-    this.record("assistant", out.text);
-    return out;
+    try {
+      const out = await replyWithGemini(this, cleaned, opts.geminiKey);
+      this.memory.turns += 1;
+      this.record("assistant", out.text);
+      return out;
+    } catch (err) {
+      console.error("Gemini válasz hiba:", err);
+      throw err;
+    }
   };
 
   Brain.normalizeSpeech = normalizeSpeech;
+  Brain.synthesizeGeminiSpeech = synthesizeGeminiSpeech;
+  Brain.pcmBase64ToWavBlob = pcmBase64ToWavBlob;
   global.DiviBrain = Brain;
 })(window);

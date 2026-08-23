@@ -1,4 +1,6 @@
 (function () {
+  "use strict";
+
   const $ = (id) => document.getElementById(id);
 
   const characterEl = $("character");
@@ -13,23 +15,17 @@
   const btnSettings = $("btn-settings");
   const btnCloseSettings = $("btn-close-settings");
   const settingsPanel = $("settings-panel");
-  const engineSelect = $("engine-select");
-  const elevenInputs = $("elevenlabs-inputs");
-  const apiKeyInput = $("api-key");
-  const voiceIdInput = $("voice-id");
   const geminiKeyInput = $("gemini-key");
+  const geminiVoiceSelect = $("gemini-voice");
   const echoModeInput = $("echo-mode");
   const autoListenInput = $("auto-listen");
 
   const STORAGE = {
-    engine: "divi-engine",
-    elevenKey: "divi-eleven-key",
-    voice: "divi-eleven-voice",
     gemini: "divi-gemini-key",
+    voice: "divi-gemini-voice",
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
-  const DEFAULT_VOICE = "pNInz6obpgDQGcFmaJgB";
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();
@@ -40,54 +36,29 @@
   let speakToken = 0;
   let currentAudio = null;
   let activeAudioUrl = null;
-  let cachedMaleVoice = null;
   let greetingDone = false;
-  let micPermission = "unknown"; // unknown | granted | denied
+  let micPermission = "unknown";
   let micStream = null;
   let startingMic = false;
   let audioCtx = null;
-
-  function isFemaleVoiceName(name) {
-    return /női|noi|female|woman|rachel|sarah|zira|samantha|susan/i.test(name || "");
-  }
-
-  function isMaleVoiceName(name) {
-    return /férfi|ferfi|male|tamás|tamas|szabolcs|adam|arnold|josh|antoni|david|daniel/i.test(name || "");
-  }
-
-  function pickMaleHuVoice() {
-    if (!("speechSynthesis" in window)) return null;
-    const voices = speechSynthesis.getVoices() || [];
-    const hu = voices.filter((v) => (v.lang || "").toLowerCase().startsWith("hu"));
-    return (
-      hu.find((v) => isMaleVoiceName(v.name) && !isFemaleVoiceName(v.name)) ||
-      hu.find((v) => /tamás|tamas|szabolcs/i.test(v.name)) ||
-      hu.find((v) => !isFemaleVoiceName(v.name)) ||
-      null
-    );
-  }
+  let armed = false;
 
   function loadSettings() {
     try {
-      engineSelect.value = localStorage.getItem(STORAGE.engine) || "native";
-      apiKeyInput.value = localStorage.getItem(STORAGE.elevenKey) || "";
-      voiceIdInput.value = localStorage.getItem(STORAGE.voice) || DEFAULT_VOICE;
       geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
+      geminiVoiceSelect.value = localStorage.getItem(STORAGE.voice) || "Aoede";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
       autoListenInput.checked = al === null ? true : al === "1";
     } catch (_) {
       /* ignore */
     }
-    toggleEngine();
   }
 
   function saveSettings() {
     try {
-      localStorage.setItem(STORAGE.engine, engineSelect.value);
-      localStorage.setItem(STORAGE.elevenKey, apiKeyInput.value.trim());
-      localStorage.setItem(STORAGE.voice, voiceIdInput.value.trim() || DEFAULT_VOICE);
       localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
+      localStorage.setItem(STORAGE.voice, geminiVoiceSelect.value || "Aoede");
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
@@ -95,10 +66,25 @@
     }
   }
 
-  function toggleEngine() {
-    if (engineSelect.value === "elevenlabs") elevenInputs.classList.remove("hidden");
-    else elevenInputs.classList.add("hidden");
-    saveSettings();
+  function getGeminiKey() {
+    return (geminiKeyInput && geminiKeyInput.value || "").trim();
+  }
+
+  function requireGeminiKey() {
+    const key = getGeminiKey();
+    if (key) return key;
+
+    const msg =
+      "Hiányzik a Gemini API kulcs. Nyisd a ⚙️ Beállításokat, illeszd be a kulcsot a „Gemini API kulcs” mezőbe, majd kattints Kész-re.";
+    console.error("[Divi]", msg);
+    console.error(
+      "[Divi] A kulcs a böngésző localStorage-ába kerül (divi-gemini-key) — ne commitold a forráskódba."
+    );
+    setStatus(msg);
+    showBubble("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban, hogy beszélhessek!");
+    settingsPanel.classList.remove("hidden");
+    geminiKeyInput.focus();
+    return "";
   }
 
   function setStatus(msg) {
@@ -106,24 +92,42 @@
   }
 
   function showBubble(text) {
-    bubbleText.textContent = text;
-    bubble.classList.remove("hidden");
+    bubbleText.textContent = text || "";
+    bubble.classList.toggle("hidden", !text);
   }
 
   function addChat(role, text) {
     const div = document.createElement("div");
-    div.className = "chat-msg " + role;
-    div.textContent = (role === "bot" ? "Divi: " : "Te: ") + text;
+    div.className = "chat-row " + role;
+    div.innerHTML =
+      "<strong>" +
+      (role === "user" ? "Te" : "Divi") +
+      ":</strong> " +
+      escapeHtml(text);
     chatLog.appendChild(div);
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function stopSpeech() {
     speakToken += 1;
+    characterEl.classList.remove("is-speaking-audio");
     character.stopLipSync();
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
     if (currentAudio) {
-      currentAudio.pause();
+      try {
+        currentAudio.pause();
+        currentAudio.removeAttribute("src");
+        currentAudio.load();
+      } catch (_) {
+        /* ignore */
+      }
       currentAudio = null;
     }
     if (activeAudioUrl) {
@@ -132,187 +136,99 @@
     }
   }
 
-  function splitSentences(text) {
-    const clean = String(text || "").trim();
-    if (!clean) return [];
-    const parts = clean.match(/[^.!?…]+(?:[.!?…]+|$)/g);
-    return (parts || [clean]).map(function (p) { return p.trim(); }).filter(Boolean);
-  }
-
-  function revealBubble(fullText, progress01) {
-    const chars = Array.from(fullText);
-    const n = Math.max(1, Math.floor(chars.length * Math.max(0, Math.min(1, progress01))));
-    showBubble(chars.slice(0, n).join("") + (progress01 < 0.98 ? "…" : ""));
-  }
-
-  function speakNativeChunk(text, token) {
-    return new Promise(function (resolve) {
-      if (!("speechSynthesis" in window)) {
-        resolve();
-        return;
-      }
-      if (token !== speakToken) {
-        resolve();
-        return;
-      }
-
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "hu-HU";
-      u.rate = 0.92;
-      u.pitch = 1.08;
-      cachedMaleVoice = pickMaleHuVoice() || cachedMaleVoice;
-      if (cachedMaleVoice) u.voice = cachedMaleVoice;
-
-      character.startVisemeLipSync(text, { charsPerSecond: 11.2 * u.rate });
-
-      const started = performance.now();
-      const estMs = Math.max(500, (Array.from(text).length / (11.2 * u.rate)) * 1000);
-      let revealTimer = null;
-
-      const tickReveal = function () {
-        if (token !== speakToken) return;
-        const p = Math.min(1, (performance.now() - started) / estMs);
-        revealBubble(text, p);
-        if (p < 1) revealTimer = setTimeout(tickReveal, 40);
-      };
-      tickReveal();
-
-      u.onboundary = function (event) {
-        if (token !== speakToken) return;
-        if (typeof event.charIndex === "number" && text) {
-          const ch = text.charAt(event.charIndex) || " ";
-          character._mouthTarget = character.visemeForChar(ch);
-          const shown = Math.min(text.length, event.charIndex + (event.charLength || 1));
-          revealBubble(text, shown / Math.max(1, text.length));
-        }
-      };
-
-      u.onend = function () {
-        clearTimeout(revealTimer);
-        showBubble(text);
-        resolve();
-      };
-      u.onerror = function () {
-        clearTimeout(revealTimer);
-        resolve();
-      };
-
-      speechSynthesis.speak(u);
-    });
-  }
-
-  async function speakNative(text, token) {
-    const sentences = splitSentences(text);
-    if (!sentences.length) return;
-    for (let i = 0; i < sentences.length; i += 1) {
-      if (token !== speakToken) return;
-      await speakNativeChunk(sentences[i], token);
-      if (token !== speakToken) return;
-      if (i < sentences.length - 1) {
-        character._mouthTarget = 0.08;
-        await new Promise(function (r) { setTimeout(r, 220); });
-      }
+  function ensureAudioContext() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(function () {});
     }
+    return audioCtx;
   }
 
   function ensureAudioGraph(audioEl) {
-    if (!audioCtx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return null;
-      audioCtx = new Ctx();
-    }
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    const ctx = ensureAudioContext();
+    if (!ctx) return null;
     try {
-      const source = audioCtx.createMediaElementSource(audioEl);
-      const analyser = audioCtx.createAnalyser();
+      const source = ctx.createMediaElementSource(audioEl);
+      const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.65;
       source.connect(analyser);
-      analyser.connect(audioCtx.destination);
+      analyser.connect(ctx.destination);
       return analyser;
     } catch (err) {
-      console.warn("Audio graph:", err);
+      console.warn("[Divi] Audio graph:", err);
       return null;
     }
   }
 
-  async function speakEleven(text, token) {
-    const apiKey = apiKeyInput.value.trim();
-    const voiceId = voiceIdInput.value.trim() || DEFAULT_VOICE;
-    if (!apiKey) {
-      await speakNative(text, token);
-      return;
-    }
+  /**
+   * Gemini TTS hang lejátszása — NEM window.speechSynthesis
+   */
+  async function speak(text) {
+    const token = ++speakToken;
+    const clean = String(text || "").trim();
+    if (!clean) return;
 
-    const chunks = text.length > 280 ? splitSentences(text) : [text];
-    let spokenSoFar = "";
+    const apiKey = requireGeminiKey();
+    if (!apiKey) return;
 
-    for (let c = 0; c < chunks.length; c += 1) {
+    character.setState("speaking");
+    characterEl.classList.add("is-speaking-audio");
+    showBubble(clean);
+    setStatus("Hang készül (Gemini)…");
+
+    try {
+      const voice = geminiVoiceSelect.value || "Aoede";
+      const result = await DiviBrain.synthesizeGeminiSpeech(clean, apiKey, voice);
       if (token !== speakToken) return;
-      const piece = chunks[c];
-      setStatus("Hang készítése…");
-      const res = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + voiceId, {
-        method: "POST",
-        headers: {
-          Accept: "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          text: piece,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.55,
-            similarity_boost: 0.8,
-            style: 0.2,
-          },
-        }),
-      });
-      if (!res.ok) throw new Error("ElevenLabs " + res.status);
-      const blob = await res.blob();
-      if (token !== speakToken) return;
+
+      const blob = result && result.blob;
+      if (!blob) throw new Error("Üres Gemini hangválasz");
+
       if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
       activeAudioUrl = URL.createObjectURL(blob);
 
-      // Új Audio elem minden chunkhoz (MediaElementSource egyszer köthető)
       currentAudio = new Audio(activeAudioUrl);
       currentAudio.crossOrigin = "anonymous";
 
       const analyser = ensureAudioGraph(currentAudio);
       if (analyser) character.startAudioLipSync(analyser);
-      else character.startVisemeLipSync(piece, { charsPerSecond: 12 });
+      else character.startVisemeLipSync(clean, { charsPerSecond: 12 });
 
-      spokenSoFar = (spokenSoFar ? spokenSoFar + " " : "") + piece;
-      showBubble(spokenSoFar);
       setStatus("Divi beszél…");
+      characterEl.classList.add("is-speaking-audio");
 
       await new Promise(function (resolve, reject) {
         currentAudio.onended = resolve;
-        currentAudio.onerror = reject;
+        currentAudio.onerror = function () {
+          reject(new Error("Hang lejátszási hiba"));
+        };
         currentAudio.play().catch(reject);
       });
-    }
-  }
-
-  async function speak(text) {
-    const token = ++speakToken;
-    character.setState("speaking");
-    showBubble("");
-    setStatus("Divi beszél…");
-    try {
-      if (engineSelect.value === "elevenlabs") {
-        await speakEleven(text, token);
-      } else {
-        await speakNative(text, token);
-      }
     } catch (err) {
-      console.warn(err);
-      await speakNative(text, token);
+      console.error("[Divi] Gemini hanghiba:", err);
+      if (token === speakToken) {
+        const hint =
+          err && err.message === "MISSING_GEMINI_KEY"
+            ? "Hiányzik a Gemini API kulcs a Beállításokban."
+            : "A hang most nem ment (" +
+              ((err && err.message) || "hiba") +
+              "), de a szöveg megvan.";
+        setStatus(hint);
+        showBubble(clean);
+        await new Promise(function (r) {
+          setTimeout(r, 2200);
+        });
+      }
     }
+
     if (token === speakToken) {
+      characterEl.classList.remove("is-speaking-audio");
       character.stopLipSync();
       character.setState("idle");
-      showBubble(text);
+      showBubble(clean);
       setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
     }
   }
@@ -360,7 +276,7 @@
       return "A mikrofonhoz HTTPS kell (GitHub Pages vagy localhost).";
     }
     if (isEmbeddedPreview()) {
-      return "Az előnézeti keretben (htmlpreview) a mikrofon gyakran tiltva van. Nyisd meg közvetlenül a GitHub Pages oldalt, vagy töltsd le / nyisd meg az index.html-t.";
+      return "Az előnézeti keretben a mikrofon gyakran tiltva van. Nyisd meg közvetlenül a GitHub Pages oldalt.";
     }
     return "";
   }
@@ -417,32 +333,44 @@
   }
 
   async function handleUserText(raw) {
-    const text = (typeof DiviBrain.normalizeSpeech === "function"
-      ? DiviBrain.normalizeSpeech(raw)
-      : String(raw || "")
+    const text = (
+      typeof DiviBrain.normalizeSpeech === "function"
+        ? DiviBrain.normalizeSpeech(raw)
+        : String(raw || "")
     ).trim();
     if (!text || busy) return;
+
+    if (!requireGeminiKey()) return;
+
     busy = true;
     stopListening();
     stopSpeech();
     userInput.value = "";
     addChat("user", text);
     character.setState("thinking");
-    setStatus("Divi gondolkodik…");
+    setStatus("Divi gondolkodik (Gemini)…");
 
     try {
       const reply = await brain.reply(text, {
         echoMode: echoModeInput.checked,
-        geminiKey: geminiKeyInput.value.trim(),
+        geminiKey: getGeminiKey(),
       });
       addChat("bot", reply.text);
       if (reply.emotion === "laugh") character.react("laugh");
       await speak(reply.text);
     } catch (err) {
-      console.error(err);
-      const fallback = "Hoppá, valami elakadt. Próbáld újra!";
-      addChat("bot", fallback);
-      await speak(fallback);
+      console.error("[Divi]", err);
+      let msg = "Hoppá, valami elakadt a Gemini API-nál. Próbáld újra!";
+      if (err && err.message === "MISSING_GEMINI_KEY") {
+        msg = "Hiányzik a Gemini API kulcs. Illeszd be a ⚙️ Beállításokban.";
+        settingsPanel.classList.remove("hidden");
+        geminiKeyInput.focus();
+      } else if (err && err.message) {
+        msg = err.message.slice(0, 220);
+      }
+      addChat("bot", msg);
+      showBubble(msg);
+      setStatus(msg);
     }
 
     busy = false;
@@ -461,7 +389,6 @@
     rec.lang = "hu-HU";
     rec.interimResults = true;
     rec.maxAlternatives = 3;
-    // continuous: hosszabb mondatokhoz; mi magunk zárjuk le csend után
     rec.continuous = true;
 
     let finalTranscript = "";
@@ -491,9 +418,10 @@
     function commitSpeech() {
       clearSilence();
       if (handled) return;
-      const said = (typeof DiviBrain.normalizeSpeech === "function"
-        ? DiviBrain.normalizeSpeech(finalTranscript)
-        : finalTranscript
+      const said = (
+        typeof DiviBrain.normalizeSpeech === "function"
+          ? DiviBrain.normalizeSpeech(finalTranscript)
+          : finalTranscript
       ).trim();
       if (!said) {
         setStatus("Nem értettem tisztán — próbáld újra, kicsit lassabban");
@@ -507,7 +435,6 @@
 
     function scheduleCommit() {
       clearSilence();
-      // Várj egy kis csendet — így a hosszabb kérdések is megmaradnak
       silenceTimer = setTimeout(commitSpeech, 1100);
     }
 
@@ -525,7 +452,6 @@
 
     rec.onresult = function (event) {
       let interim = "";
-      // Csak az új részeket adjuk hozzá a finalhoz
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
         const piece = pickBestAlternative(result).trim();
@@ -536,8 +462,9 @@
           scheduleCommit();
         } else {
           interim += (interim ? " " : "") + piece;
-          setStatus("Hallom: " + (finalTranscript ? finalTranscript + " " : "") + interim + "…");
-          // Ha van interim, toljuk a csend-órát
+          setStatus(
+            "Hallom: " + (finalTranscript ? finalTranscript + " " : "") + interim + "…"
+          );
           if (finalTranscript) scheduleCommit();
         }
       }
@@ -554,9 +481,10 @@
       const err = event.error || "";
       if (err === "not-allowed" || err === "service-not-allowed") {
         micPermission = "denied";
-        setStatus("Mikrofon tiltva. A címsor 🔒 ikonnál engedd engedélyezni, majd nyomd újra a mikrofont.");
+        setStatus(
+          "Mikrofon tiltva. A címsor 🔒 ikonnál engedd engedélyezni, majd nyomd újra a mikrofont."
+        );
       } else if (err === "no-speech") {
-        // Egy automatikus újrapróbálás
         if (!handled && micPermission === "granted") {
           setStatus("Nem hallottam — figyelek még egy kicsit…");
           setTimeout(function () {
@@ -576,7 +504,6 @@
 
     rec.onend = function () {
       clearSilence();
-      // Ha van félkész szöveg és még nem kezeltük — mentsük
       if (!handled && finalTranscript.trim() && !busy) {
         commitSpeech();
         return;
@@ -595,6 +522,8 @@
   async function startListening() {
     if (listening || startingMic) return;
 
+    if (!requireGeminiKey()) return;
+
     const blocked = micUnsupportedReason();
     if (blocked) {
       setStatus(blocked);
@@ -602,7 +531,6 @@
       return;
     }
 
-    // Ha Divi beszél / gondolkodik: szakítsuk meg, hogy a mic működjön
     if (busy) {
       stopSpeech();
       busy = false;
@@ -614,6 +542,7 @@
     startingMic = true;
     btnMic.classList.add("listening");
     setStatus("Mikrofon indítása…");
+    ensureAudioContext();
 
     try {
       await ensureMicPermission();
@@ -639,7 +568,6 @@
     try {
       rec.start();
     } catch (err) {
-      // Már fut — próbáljuk új példánnyal
       try {
         const again = recreateRecognition();
         if (again) again.start();
@@ -666,12 +594,22 @@
   async function bootGreeting() {
     if (greetingDone) return;
     greetingDone = true;
+
+    if (!requireGeminiKey()) {
+      setStatus(
+        "Illeszd be a Gemini API kulcsot a ⚙️ Beállításokban (szöveg + élethű hang)."
+      );
+      return;
+    }
+
     const warn = micUnsupportedReason();
     if (warn) setStatus(warn);
-    const g = brain.greeting();
-    addChat("bot", g.text);
-    await speak(g.text);
-    // Auto-listen csak ha nem iframe/preview és van esély a micre
+
+    const line =
+      "Szia! Divi vagyok, a kíváncsi vörös panda a bambuszerdőből! Miről meséljek neked ma?";
+    addChat("bot", line);
+    await speak(line);
+
     if (autoListenInput.checked && !micUnsupportedReason() && micPermission !== "denied") {
       setTimeout(function () {
         startListening();
@@ -681,21 +619,24 @@
     }
   }
 
-  // Events
   btnMic.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
+    ensureAudioContext();
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
+      if (!requireGeminiKey()) return;
       const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);
     }
     toggleMic();
   });
+
   chatForm.addEventListener("submit", function (e) {
     e.preventDefault();
+    ensureAudioContext();
     handleUserText(userInput.value);
   });
 
@@ -719,6 +660,7 @@
       character.react("react");
       return;
     }
+    if (!requireGeminiKey()) return;
     busy = true;
     stopListening();
     const line = brain.tapReaction();
@@ -736,39 +678,50 @@
   btnSettings.addEventListener("click", function () {
     settingsPanel.classList.toggle("hidden");
   });
+
   btnCloseSettings.addEventListener("click", function () {
     saveSettings();
     settingsPanel.classList.add("hidden");
+    if (getGeminiKey()) {
+      console.info(
+        "[Divi] Gemini kulcs mentve. Szöveg + hang: Gemini API. Hangszín:",
+        geminiVoiceSelect.value || "Aoede"
+      );
+      if (!greetingDone) bootGreeting();
+    } else {
+      console.error(
+        "[Divi] Gemini API kulcs még mindig hiányzik. Illeszd be a „Gemini API kulcs” mezőbe."
+      );
+      setStatus("Hiányzik a Gemini API kulcs — illeszd be a Beállításokban.");
+    }
   });
-  engineSelect.addEventListener("change", toggleEngine);
-  [apiKeyInput, voiceIdInput, geminiKeyInput, echoModeInput, autoListenInput].forEach(function (el) {
+
+  [geminiKeyInput, geminiVoiceSelect, echoModeInput, autoListenInput].forEach(function (el) {
     el.addEventListener("change", saveSettings);
   });
 
-  if ("speechSynthesis" in window) {
-    speechSynthesis.onvoiceschanged = function () {
-      cachedMaleVoice = pickMaleHuVoice();
-    };
-    cachedMaleVoice = pickMaleHuVoice();
-  }
-
   loadSettings();
 
-  let armed = false;
   function arm(e) {
     if (armed) return;
-    // A mikrofon saját magának kezdi a beszélgetést — ne ütközzön a köszönéssel
     if (e.target && e.target.closest && e.target.closest("#btn-mic")) return;
     armed = true;
+    ensureAudioContext();
     bootGreeting();
   }
   document.addEventListener("pointerdown", arm);
 
-  const earlyWarn = micUnsupportedReason();
-  if (earlyWarn) {
-    setStatus(earlyWarn);
+  if (!getGeminiKey()) {
+    console.error(
+      "[Divi] Gemini API kulcs hiányzik. Nyisd a ⚙️ Beállításokat, és illeszd be a kulcsot a „Gemini API kulcs” mezőbe (localStorage: divi-gemini-key)."
+    );
+    settingsPanel.classList.remove("hidden");
+    setStatus("Illeszd be a Gemini API kulcsot a Beállításokban (szöveg + hang).");
+    showBubble("Szia! Állítsd be a Gemini kulcsot a ⚙️ Beállításokban, és máris beszélgethetünk.");
   } else {
-    setStatus("Koppints bárhova a kezdéshez, vagy nyomd meg a 🎤 gombot");
+    const earlyWarn = micUnsupportedReason();
+    if (earlyWarn) setStatus(earlyWarn);
+    else setStatus("Koppints bárhova a kezdéshez, vagy nyomd meg a 🎤 gombot");
   }
 
   btnMic.setAttribute("aria-pressed", "false");

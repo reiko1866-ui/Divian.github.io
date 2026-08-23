@@ -9,14 +9,21 @@ Talking Tom–stílusú interaktív animációs karakter GitHub Pages-hez.
 
 ## Mit tud?
 - AI-generált vörös panda mascot
-- **Gemini AI** kérdez–felel (API kulcs a ⚙️ beállításokban)
+- **Gemini AI** szöveges válaszok (szigorú Divi system prompt)
+- **Gemini TTS** élethű hang (nem böngésző `speechSynthesis`)
 - Mikrofon (`hu-HU`) vagy szövegbevitel
-- Böngésző hang / opcionális ElevenLabs
+- Beszéd közben lágy pulzáló animáció a pandán
 
-## Gemini kulcs
-1. ⚙️ Beállítások → Gemini API kulcs
-2. A kulcs a böngésző `localStorage`-ában marad (ne commitold)
-3. Google AI Studio-ban állíts HTTP-referrer korlátozást
+## Hol add meg a Gemini API kulcsot?
+1. Nyisd meg az oldalt → kattints a **⚙️** ikonra
+2. Illeszd be a kulcsot a **„Gemini API kulcs”** mezőbe (`#gemini-key` az `index.html`-ben)
+3. Válassz hangszínt (Aoede / Kore / Puck / Charon)
+4. Kattints **Kész**-re
+
+A kulcs a böngésző `localStorage` kulcsába kerül: **`divi-gemini-key`**.
+**Ne commitold** a kulcsot a forráskódba. Ha hiányzik, a konzol és a felület is egyértelmű hibát jelez.
+
+Kulcs igénylése: [Google AI Studio](https://aistudio.google.com/apikey)
 
 ## Futtatás
 Nyisd meg az `index.html` fájlt, vagy a GitHub Pages URL-t.

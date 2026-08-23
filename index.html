@@ -28,27 +28,22 @@
 
     <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
       <h2>Beállítások</h2>
-      <label for="engine-select">Hang motor</label>
-      <select id="engine-select">
-        <option value="native">Böngésző hang (ingyenes)</option>
-        <option value="elevenlabs">ElevenLabs (API)</option>
+
+      <label for="gemini-key">Gemini API kulcs (kötelező — szöveg + hang)</label>
+      <input type="password" id="gemini-key" autocomplete="off" placeholder="Illeszd be ide: AIza…" />
+      <p class="hint">
+        Ide írd a Google AI Studio kulcsodat. A böngésző <code>localStorage</code>-ába mentjük
+        (<strong>divi-gemini-key</strong>), nem kerül a forráskódba.
+        Kulcs: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
+      </p>
+
+      <label for="gemini-voice">Gemini hangszín</label>
+      <select id="gemini-voice">
+        <option value="Aoede" selected>Aoede — lágy, barátságos</option>
+        <option value="Kore">Kore — tiszta, világos</option>
+        <option value="Puck">Puck — játékos</option>
+        <option value="Charon">Charon — mélyebb</option>
       </select>
-
-      <div id="elevenlabs-inputs" class="hidden">
-        <label for="api-key">ElevenLabs API kulcs</label>
-        <input type="password" id="api-key" autocomplete="off" placeholder="sk-…" />
-        <label for="voice-id">Férfi Voice ID</label>
-        <select id="voice-id">
-          <option value="pNInz6obpgDQGcFmaJgB" selected>Adam</option>
-          <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
-          <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
-          <option value="ErXwobaYiN019PkySvjV">Antoni</option>
-        </select>
-      </div>
-
-      <label for="gemini-key">Gemini API kulcs (okosabb AI)</label>
-      <input type="password" id="gemini-key" autocomplete="off" placeholder="AIza… — Google AI Studio" />
-      <p class="hint">A kulcs csak a böngésződben (localStorage) marad, nem a szerveren. Állíts be HTTP-referrer korlátozást a Google AI Studio-ban.</p>
 
       <label class="toggle-row" for="echo-mode">
         <input type="checkbox" id="echo-mode" />
@@ -61,8 +56,7 @@
       </label>
 
       <p class="hint" id="mic-help">
-        Mikrofon: Chrome vagy Edge ajánlott, HTTPS-en (GitHub Pages).
-        Ha az előnézetben (htmlpreview) nem megy, nyisd meg a saját Pages URL-t.
+        Mikrofon: Chrome vagy Edge, HTTPS / GitHub Pages.
         Engedély: címsor 🔒 → Mikrofon → Engedélyezés.
       </p>
 

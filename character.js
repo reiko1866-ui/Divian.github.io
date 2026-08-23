@@ -19,6 +19,8 @@
     this._closed = svgEl.querySelector(".mouth-closed");
     this._open = svgEl.querySelector(".mouth-open");
     this._tongue = svgEl.querySelector(".mouth-tongue");
+    this._openBaseCy = this._open ? parseFloat(this._open.getAttribute("cy") || "166") : 166;
+    this._tongueBaseCy = this._tongue ? parseFloat(this._tongue.getAttribute("cy") || "172") : 172;
     this.setMouth(0);
   }
 
@@ -42,10 +44,10 @@
     this._open.style.opacity = String(Math.min(1, a * 2.2));
     this._open.setAttribute("rx", String(9 + a * 14));
     this._open.setAttribute("ry", String(2.5 + a * 15));
-    this._open.setAttribute("cy", String(162 + a * 8));
+    this._open.setAttribute("cy", String(this._openBaseCy + a * 8));
     if (this._tongue) {
       this._tongue.style.opacity = String(a > 0.4 ? (a - 0.4) * 1.4 : 0);
-      this._tongue.setAttribute("cy", String(168 + a * 10));
+      this._tongue.setAttribute("cy", String(this._tongueBaseCy + a * 8));
     }
   };
 

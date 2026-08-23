@@ -38,7 +38,7 @@ body {
 body {
   font-family: var(--font-body);
   color: var(--ink);
-  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom) 55%, var(--floor));
+  background: linear-gradient(180deg, #f7fbff 0%, #e8f5e9 55%, #c8e6c9 100%);
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -180,9 +180,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.55), transparent 28%),
-    radial-gradient(circle at 80% 12%, rgba(255, 220, 150, 0.35), transparent 26%),
-    linear-gradient(180deg, transparent 62%, rgba(70, 120, 70, 0.25) 62%, rgba(70, 120, 70, 0.4));
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.9), transparent 45%),
+    linear-gradient(180deg, transparent 70%, rgba(120, 180, 90, 0.12) 100%);
 }
 
 .speech-bubble {
@@ -222,7 +221,7 @@ body {
   background: transparent;
   padding: 0;
   cursor: pointer;
-  width: min(78vw, 320px);
+  width: min(88vw, 380px);
   outline: none;
 }
 
@@ -323,8 +322,16 @@ body {
 }
 
 .character.state-idle .tail {
-  transform-origin: 200px 250px;
+  transform-origin: 220px 220px;
   animation: tail-sway 3.6s ease-in-out infinite;
+}
+
+.character .body {
+  transform-origin: 155px 220px;
+}
+
+.character .head {
+  transform-origin: 155px 125px;
 }
 
 @keyframes tail-sway {
@@ -599,99 +606,132 @@ body {
       </div>
 
       <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
-        <svg id="character" class="character state-idle" viewBox="0 0 280 360" xmlns="http://www.w3.org/2000/svg">
+        <svg id="character" class="character state-idle" viewBox="0 0 320 420" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f07a45" />
-              <stop offset="55%" stop-color="#e85d2c" />
-              <stop offset="100%" stop-color="#c43c1a" />
+            <linearGradient id="furRed" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f28b4b" />
+              <stop offset="50%" stop-color="#e06a2c" />
+              <stop offset="100%" stop-color="#c44d1c" />
             </linearGradient>
-            <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#fff8f0" />
-              <stop offset="100%" stop-color="#ffe8d2" />
+            <linearGradient id="furDark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4a3428" />
+              <stop offset="100%" stop-color="#2a1c16" />
             </linearGradient>
-            <linearGradient id="tailGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#c43c1a" />
-              <stop offset="100%" stop-color="#f07a45" />
+            <linearGradient id="bamboo" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#b8d96a" />
+              <stop offset="100%" stop-color="#7fad3a" />
             </linearGradient>
           </defs>
 
-          <!-- shadow -->
-          <ellipse class="shadow" cx="140" cy="340" rx="72" ry="12" fill="rgba(40,30,20,0.18)" />
+          <!-- háttér bambuszok -->
+          <g class="scene-bg" opacity="0.95">
+            <rect x="28" y="20" width="18" height="280" rx="8" fill="url(#bamboo)" />
+            <rect x="28" y="70" width="18" height="6" fill="#6f9a32" opacity="0.5" />
+            <rect x="28" y="140" width="18" height="6" fill="#6f9a32" opacity="0.5" />
+            <rect x="28" y="210" width="18" height="6" fill="#6f9a32" opacity="0.5" />
+            <ellipse cx="37" cy="30" rx="22" ry="10" fill="#6f9a32" />
+            <ellipse cx="48" cy="18" rx="14" ry="7" fill="#8fbc4a" />
 
-          <!-- ringed tail (red panda signature) -->
-          <g class="tail">
-            <path d="M200 250 Q250 220 255 160 Q258 120 240 95" fill="none" stroke="url(#tailGrad)" stroke-width="28" stroke-linecap="round" />
-            <path d="M200 250 Q250 220 255 160 Q258 120 240 95" fill="none" stroke="#fff3e0" stroke-width="28" stroke-linecap="round" stroke-dasharray="0 18 14 18 14 18 14 18 14 200" opacity="0.85" />
+            <rect x="270" y="40" width="16" height="260" rx="7" fill="url(#bamboo)" />
+            <rect x="270" y="90" width="16" height="5" fill="#6f9a32" opacity="0.5" />
+            <rect x="270" y="160" width="16" height="5" fill="#6f9a32" opacity="0.5" />
+            <ellipse cx="278" cy="48" rx="18" ry="8" fill="#6f9a32" />
+            <ellipse cx="288" cy="38" rx="12" ry="6" fill="#8fbc4a" />
+            <rect x="295" y="80" width="12" height="200" rx="6" fill="#9fc84e" opacity="0.7" />
           </g>
 
-          <!-- body -->
-          <g class="body">
-            <ellipse cx="140" cy="235" rx="72" ry="82" fill="url(#fur)" />
-            <ellipse cx="140" cy="245" rx="44" ry="52" fill="url(#belly)" />
+          <!-- talaj -->
+          <ellipse cx="160" cy="395" rx="120" ry="16" fill="rgba(40,30,20,0.12)" />
+          <ellipse cx="70" cy="385" rx="40" ry="18" fill="#7cb342" />
+          <ellipse cx="120" cy="390" rx="36" ry="14" fill="#8bc34a" />
+          <ellipse cx="230" cy="388" rx="44" ry="16" fill="#7cb342" />
+          <ellipse cx="280" cy="392" rx="28" ry="12" fill="#9ccc65" />
+          <ellipse cx="55" cy="392" rx="10" ry="7" fill="#9e9e9e" />
+          <ellipse cx="95" cy="396" rx="8" ry="5" fill="#bcaaa4" />
+          <ellipse cx="250" cy="396" rx="9" ry="6" fill="#a1887f" />
 
-            <!-- arms -->
+          <!-- csíkos farok lefelé -->
+          <g class="tail">
+            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#e06a2c" stroke-width="36" stroke-linecap="round" />
+            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#f5b888" stroke-width="36" stroke-linecap="round" stroke-dasharray="0 22 16 22 16 22 16 22 16 300" />
+            <path d="M210 210 Q268 230 275 300 Q278 350 270 385" fill="none" stroke="#c44d1c" stroke-width="36" stroke-linecap="round" stroke-dasharray="16 22 0 22 0 22 0 22 0 300" opacity="0.35" />
+          </g>
+
+          <!-- vízszintes bambusz ág -->
+          <g class="bamboo-branch">
+            <rect x="40" y="248" width="230" height="26" rx="13" fill="url(#bamboo)" />
+            <rect x="90" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
+            <rect x="150" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
+            <rect x="210" y="248" width="5" height="26" fill="#6f9a32" opacity="0.45" />
+            <ellipse cx="42" cy="261" rx="10" ry="13" fill="#8fbc4a" />
+            <ellipse cx="268" cy="261" rx="10" ry="13" fill="#8fbc4a" />
+          </g>
+
+          <!-- test: vörös váll + sötét mellény -->
+          <g class="body">
+            <ellipse cx="155" cy="200" rx="58" ry="52" fill="url(#furRed)" />
+            <ellipse cx="155" cy="215" rx="48" ry="55" fill="url(#furDark)" />
             <g class="arm arm-left">
-              <ellipse cx="68" cy="225" rx="20" ry="34" fill="#e85d2c" transform="rotate(-16 68 225)" />
-              <ellipse cx="54" cy="252" rx="15" ry="13" fill="#3d2b1f" />
+              <ellipse cx="118" cy="250" rx="22" ry="16" fill="#2a1c16" />
+              <ellipse cx="110" cy="255" rx="10" ry="8" fill="#1a120e" />
+              <ellipse cx="124" cy="257" rx="9" ry="7" fill="#1a120e" />
             </g>
             <g class="arm arm-right">
-              <ellipse cx="212" cy="225" rx="20" ry="34" fill="#e85d2c" transform="rotate(16 212 225)" />
-              <ellipse cx="226" cy="252" rx="15" ry="13" fill="#3d2b1f" />
+              <ellipse cx="192" cy="250" rx="22" ry="16" fill="#2a1c16" />
+              <ellipse cx="184" cy="257" rx="9" ry="7" fill="#1a120e" />
+              <ellipse cx="198" cy="255" rx="10" ry="8" fill="#1a120e" />
             </g>
-
-            <!-- legs / dark socks -->
-            <ellipse cx="112" cy="310" rx="22" ry="20" fill="#3d2b1f" />
-            <ellipse cx="168" cy="310" rx="22" ry="20" fill="#3d2b1f" />
-            <ellipse cx="112" cy="292" rx="18" ry="14" fill="#c43c1a" />
-            <ellipse cx="168" cy="292" rx="18" ry="14" fill="#c43c1a" />
+            <ellipse cx="130" cy="255" rx="20" ry="14" fill="#c44d1c" opacity="0.9" />
+            <ellipse cx="180" cy="255" rx="20" ry="14" fill="#c44d1c" opacity="0.9" />
           </g>
 
-          <!-- head -->
+          <!-- fej -->
           <g class="head">
-            <ellipse cx="140" cy="120" rx="84" ry="76" fill="url(#fur)" />
+            <ellipse cx="155" cy="125" rx="78" ry="72" fill="url(#furRed)" />
 
-            <!-- round ears -->
             <g class="ear ear-left">
-              <ellipse cx="68" cy="58" rx="28" ry="26" fill="#e85d2c" />
-              <ellipse cx="70" cy="60" rx="14" ry="13" fill="#fff3e0" />
+              <ellipse cx="88" cy="62" rx="26" ry="24" fill="#3d291e" />
+              <ellipse cx="90" cy="64" rx="22" ry="20" fill="#e06a2c" />
+              <ellipse cx="92" cy="66" rx="12" ry="11" fill="#fff8f0" />
             </g>
             <g class="ear ear-right">
-              <ellipse cx="212" cy="58" rx="28" ry="26" fill="#e85d2c" />
-              <ellipse cx="210" cy="60" rx="14" ry="13" fill="#fff3e0" />
+              <ellipse cx="222" cy="62" rx="26" ry="24" fill="#3d291e" />
+              <ellipse cx="220" cy="64" rx="22" ry="20" fill="#e06a2c" />
+              <ellipse cx="218" cy="66" rx="12" ry="11" fill="#fff8f0" />
             </g>
 
-            <!-- white face mask -->
-            <ellipse cx="140" cy="128" rx="58" ry="48" fill="#fff8f0" />
-            <!-- tear-drop cheek patches -->
-            <path d="M78 118 Q70 145 95 155 Q100 130 90 115 Z" fill="#e85d2c" opacity="0.95" />
-            <path d="M202 118 Q210 145 185 155 Q180 130 190 115 Z" fill="#e85d2c" opacity="0.95" />
+            <!-- fehér orca + pofa -->
+            <ellipse cx="112" cy="135" rx="32" ry="36" fill="#fff8f0" />
+            <ellipse cx="198" cy="135" rx="32" ry="36" fill="#fff8f0" />
+            <ellipse cx="155" cy="145" rx="38" ry="34" fill="#fff8f0" />
 
-            <!-- muzzle -->
-            <ellipse cx="140" cy="148" rx="28" ry="22" fill="#ffffff" />
-            <ellipse class="nose" cx="140" cy="138" rx="11" ry="8" fill="#2b2d42" />
+            <!-- fehér szemöldök-foltok -->
+            <circle cx="122" cy="95" r="10" fill="#fff8f0" />
+            <circle cx="188" cy="95" r="10" fill="#fff8f0" />
 
-            <!-- eyes -->
+            <ellipse class="nose" cx="155" cy="142" rx="10" ry="8" fill="#1a120e" />
+
             <g class="eyes">
               <g class="eye eye-left">
-                <ellipse cx="112" cy="112" rx="15" ry="17" fill="#fff" />
-                <circle class="pupil" cx="114" cy="114" r="7.5" fill="#1d3557" />
-                <circle cx="117" cy="110" r="2.5" fill="#fff" />
+                <ellipse cx="125" cy="118" rx="16" ry="17" fill="#1a120e" />
+                <circle class="pupil" cx="128" cy="120" r="5" fill="#3d291e" opacity="0.35" />
+                <circle cx="131" cy="112" r="4" fill="#fff" />
+                <circle cx="120" cy="122" r="2" fill="#fff" opacity="0.7" />
               </g>
               <g class="eye eye-right">
-                <ellipse cx="168" cy="112" rx="15" ry="17" fill="#fff" />
-                <circle class="pupil" cx="166" cy="114" r="7.5" fill="#1d3557" />
-                <circle cx="169" cy="110" r="2.5" fill="#fff" />
+                <ellipse cx="185" cy="118" rx="16" ry="17" fill="#1a120e" />
+                <circle class="pupil" cx="182" cy="120" r="5" fill="#3d291e" opacity="0.35" />
+                <circle cx="191" cy="112" r="4" fill="#fff" />
+                <circle cx="178" cy="122" r="2" fill="#fff" opacity="0.7" />
               </g>
-              <rect class="blink-lid lid-left" x="97" y="102" width="30" height="20" rx="10" fill="url(#fur)" opacity="0" />
-              <rect class="blink-lid lid-right" x="153" y="102" width="30" height="20" rx="10" fill="url(#fur)" opacity="0" />
+              <ellipse class="blink-lid lid-left" cx="125" cy="118" rx="17" ry="18" fill="#e06a2c" opacity="0" />
+              <ellipse class="blink-lid lid-right" cx="185" cy="118" rx="17" ry="18" fill="#e06a2c" opacity="0" />
             </g>
 
-            <!-- mouth — JS lip-sync morph -->
             <g class="mouth">
-              <path class="mouth-closed" d="M124 162 Q140 170 156 162" fill="none" stroke="#2b2d42" stroke-width="3.5" stroke-linecap="round" />
-              <ellipse class="mouth-open" cx="140" cy="168" rx="10" ry="3" fill="#2b2d42" opacity="0" />
-              <ellipse class="mouth-tongue" cx="140" cy="174" rx="7" ry="4" fill="#e63946" opacity="0" />
+              <path class="mouth-closed" d="M138 160 Q155 172 172 160" fill="none" stroke="#1a120e" stroke-width="3.2" stroke-linecap="round" />
+              <ellipse class="mouth-open" cx="155" cy="166" rx="12" ry="3" fill="#1a120e" opacity="0" />
+              <ellipse class="mouth-tongue" cx="155" cy="172" rx="7" ry="4" fill="#e63946" opacity="0" />
             </g>
           </g>
         </svg>
@@ -1217,6 +1257,8 @@ body {
     this._closed = svgEl.querySelector(".mouth-closed");
     this._open = svgEl.querySelector(".mouth-open");
     this._tongue = svgEl.querySelector(".mouth-tongue");
+    this._openBaseCy = this._open ? parseFloat(this._open.getAttribute("cy") || "166") : 166;
+    this._tongueBaseCy = this._tongue ? parseFloat(this._tongue.getAttribute("cy") || "172") : 172;
     this.setMouth(0);
   }
 
@@ -1240,10 +1282,10 @@ body {
     this._open.style.opacity = String(Math.min(1, a * 2.2));
     this._open.setAttribute("rx", String(9 + a * 14));
     this._open.setAttribute("ry", String(2.5 + a * 15));
-    this._open.setAttribute("cy", String(162 + a * 8));
+    this._open.setAttribute("cy", String(this._openBaseCy + a * 8));
     if (this._tongue) {
       this._tongue.style.opacity = String(a > 0.4 ? (a - 0.4) * 1.4 : 0);
-      this._tongue.setAttribute("cy", String(168 + a * 10));
+      this._tongue.setAttribute("cy", String(this._tongueBaseCy + a * 8));
     }
   };
 

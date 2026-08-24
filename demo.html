@@ -1785,7 +1785,8 @@ body {
     try {
       geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
       elevenKeyInput.value = localStorage.getItem(STORAGE.eleven) || "";
-      elevenVoiceSelect.value = localStorage.getItem(STORAGE.elevenVoice) || "";
+      elevenVoiceSelect.value =
+        localStorage.getItem(STORAGE.elevenVoice) || DEFAULT_ELEVEN_VOICE;
       elevenVoiceCustom.value = localStorage.getItem(STORAGE.elevenVoiceCustom) || "";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
@@ -1799,7 +1800,10 @@ body {
     try {
       localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
       localStorage.setItem(STORAGE.eleven, elevenKeyInput.value.trim());
-      localStorage.setItem(STORAGE.elevenVoice, elevenVoiceSelect.value || "");
+      localStorage.setItem(
+        STORAGE.elevenVoice,
+        elevenVoiceSelect.value || DEFAULT_ELEVEN_VOICE
+      );
       localStorage.setItem(STORAGE.elevenVoiceCustom, elevenVoiceCustom.value.trim());
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
@@ -1821,7 +1825,7 @@ body {
     if (custom) return custom;
     const selected = ((elevenVoiceSelect && elevenVoiceSelect.value) || "").trim();
     if (selected) return selected;
-    return "";
+    return DEFAULT_ELEVEN_VOICE;
   }
 
   function isValidVoiceId(id) {

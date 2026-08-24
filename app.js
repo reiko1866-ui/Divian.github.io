@@ -314,13 +314,13 @@
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    character.startVisemeLipSync(clean, { charsPerSecond: 11 });
+    character.startVisemeLipSync(clean, { charsPerSecond: 13 });
     setStatus("Hang készül (ElevenLabs)…");
 
     const voiceId = getElevenVoiceId();
-    // Egyben beszélünk, ha nem túl hosszú — természetesebb ritmus
+    // Rövid szöveg egyben; csak hosszúnál chunk
     const chunks =
-      clean.length > 320 && typeof DiviBrain.splitSpeechChunks === "function"
+      clean.length > 280 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
         : [clean];
 
@@ -341,10 +341,9 @@
         setStatus("Divi beszél…");
         characterEl.classList.add("is-speaking-audio");
         await playResult(result, chunks[i], token);
-        // Rövid levegővétel a chunkok között
         if (i + 1 < chunks.length && token === speakToken) {
           await new Promise(function (r) {
-            setTimeout(r, 320);
+            setTimeout(r, 120);
           });
         }
       }

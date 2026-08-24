@@ -793,6 +793,7 @@
     const id = String(voiceId || "").trim();
     if (!id) return false;
     if (/^(custom|undefined|null|none)$/i.test(id)) return false;
+    // ElevenLabs Voice ID: általában 20 karakter, de 16–64 között elfogadjuk
     return /^[a-zA-Z0-9_-]{16,64}$/.test(id);
   }
 
@@ -811,7 +812,10 @@
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
     const voice = String(voiceId || "").trim() || "7B7mSWflzRSaO1yGeJH6";
-    if (!isValidElevenVoiceId(voice)) {
+    // URL-ből kimásolt ID támogatása
+    const urlMatch = voice.match(/([a-zA-Z0-9_-]{16,64})(?:\?.*)?$/);
+    const resolved = urlMatch && /elevenlabs\.io/i.test(voice) ? urlMatch[1] : voice.replace(/^["']|["']$/g, "");
+    if (!isValidElevenVoiceId(resolved)) {
       const err = new Error(
         "Érvénytelen ElevenLabs Voice ID. Másold be a Voices / Voice Lab → Copy Voice ID értéket."
       );
@@ -824,8 +828,10 @@
     const model = "eleven_multilingual_v2";
     const url =
       "https://api.elevenlabs.io/v1/text-to-speech/" +
-      encodeURIComponent(voice) +
+      encodeURIComponent(resolved) +
       "?optimize_streaming_latency=3&output_format=mp3_22050_32";
+
+    console.info("[Divi] ElevenLabs POST", "voice=" + resolved, "model=" + model);
 
     const res = await fetch(url, {
       method: "POST",

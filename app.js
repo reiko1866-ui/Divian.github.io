@@ -8,6 +8,7 @@
   const bubble = $("speech-bubble");
   const bubbleText = $("bubble-text");
   const statusLine = $("status-line");
+  const apiErrorLine = $("api-error-line");
   const chatLog = $("chat-log");
   const chatForm = $("chat-form");
   const userInput = $("user-input");
@@ -144,11 +145,6 @@
     return /^[a-zA-Z0-9_-]{16,64}$/.test(normalized);
   }
 
-  function explainElevenFallback(reason) {
-    console.warn("[Divi] ElevenLabs helyett böngésző hang:", reason);
-    setStatus(reason);
-  }
-
   function pickHuBrowserVoice() {
     if (!("speechSynthesis" in window)) return null;
     const voices = speechSynthesis.getVoices() || [];
@@ -237,6 +233,65 @@
 
   function setStatus(msg) {
     statusLine.textContent = msg || "";
+  }
+
+  function clearApiError() {
+    if (!apiErrorLine) return;
+    apiErrorLine.hidden = true;
+    apiErrorLine.textContent = "";
+  }
+
+  /** Látható, pontos ElevenLabs / hálózati hiba a képernyő alján */
+  function showApiError(message) {
+    const text = String(message || "Ismeretlen hiba").trim();
+    console.error("[Divi]", text);
+    if (apiErrorLine) {
+      apiErrorLine.hidden = false;
+      apiErrorLine.textContent = text;
+    }
+    setStatus(text);
+  }
+
+  function formatElevenError(err, voiceId) {
+    if (!err) return "ElevenLabs hiba: ismeretlen hiba";
+    const status = err.status;
+    const detail = String(err.detail || err.message || "").trim();
+    const code = err.code || "";
+
+    if (code === "MISSING_ELEVEN_KEY" || /MISSING_ELEVEN_KEY/i.test(detail)) {
+      return "ElevenLabs hiba: hiányzik az API kulcs (⚙️ Beállítások).";
+    }
+    if (code === "NETWORK_CORS" || err.isCors || /Failed to fetch|NetworkError|CORS|Load failed/i.test(detail)) {
+      return (
+        "ElevenLabs hiba: CORS/Hálózati hiba — a böngésző nem érte el az api.elevenlabs.io-t. " +
+        "Nyisd a programot GitHub Pages-en (HTTPS), ne htmlpreview proxy-n."
+      );
+    }
+    if (status === 401 || /invalid api key|unauthorized/i.test(detail)) {
+      return "ElevenLabs hiba: Invalid API key (401) — ellenőrizd a kulcsot a ⚙️ Beállításokban.";
+    }
+    if (status === 403) {
+      return "ElevenLabs hiba: hozzáférés megtagadva (403) — kulcs vagy fiókjogosultság.";
+    }
+    if (status === 400 || code === "INVALID_VOICE_ID") {
+      return (
+        "ElevenLabs hiba: Invalid Voice ID / 400 (ID: " +
+        (voiceId || "?") +
+        "). Használd: 7B7mSWflzRSaO1yGeJH6, és add a hangot a fiókodhoz (Use voice). " +
+        (detail ? "Részlet: " + detail.slice(0, 120) : "")
+      );
+    }
+    if (status === 429 || code === "QUOTA_EXCEEDED") {
+      return "ElevenLabs hiba: kvóta tele (429). Várj egy kicsit, majd próbáld újra.";
+    }
+    if (status) {
+      return "ElevenLabs hiba: HTTP " + status + (detail ? " — " + detail.slice(0, 160) : "");
+    }
+    return "ElevenLabs hiba: " + (detail.slice(0, 180) || "ismeretlen hiba");
+  }
+
+  function explainElevenFallback(reason) {
+    showApiError(reason);
   }
 
   function showBubble(text) {
@@ -393,7 +448,7 @@
       if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
       activeAudioUrl = URL.createObjectURL(blob);
       const audio = new Audio(activeAudioUrl);
-      audio.crossOrigin = "anonymous";
+      // Ne állíts crossOrigin-t blob URL-re — az elronthatja a lejátszást
       currentAudio = audio;
 
       if (analyser && ctx) {
@@ -414,18 +469,20 @@
       audio.onerror = function () {
         reject(new Error("Hang lejátszási hiba"));
       };
+      console.log("ElevenLabs siker, audio lejátszása...");
       audio.play().catch(reject);
     });
   }
 
   /**
-   * ElevenLabs hang — érvénytelen Voice ID / 400 esetén böngésző TTS
+   * ElevenLabs hang — hiba esetén pontos üzenet + böngésző tartalék
    */
   async function speak(text) {
     const token = ++speakToken;
     const clean = String(text || "").trim();
     if (!clean) return;
 
+    clearApiError();
     ensureAudioContext();
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
@@ -433,41 +490,48 @@
     character.startVisemeLipSync(clean, { charsPerSecond: 13 });
 
     const apiKey = getElevenKey();
-    const voiceId = getElevenVoiceId();
+    // Mindig Gábor, ha nincs más érvényes ID
+    let voiceId = getElevenVoiceId() || DEFAULT_ELEVEN_VOICE;
+    if (!isValidVoiceId(voiceId)) voiceId = DEFAULT_ELEVEN_VOICE;
     const voiceOk = isValidVoiceId(voiceId);
 
     console.info(
       "[Divi] Hangpróba → ElevenLabs kulcs:",
       apiKey ? "van (" + apiKey.slice(0, 4) + "…)" : "NINCS",
       "| Voice ID:",
-      voiceId || "(üres)",
-      "| érvényes:",
-      voiceOk
+      voiceId,
+      "| model: eleven_multilingual_v2"
     );
 
-    if (!apiKey || !voiceOk) {
-      if (!apiKey) {
-        explainElevenFallback(
-          "Nincs ElevenLabs API kulcs a ⚙️ Beállításokban — ezért böngésző hang szól."
-        );
-        settingsPanel.classList.remove("hidden");
-        elevenKeyInput.focus();
-      } else {
-        explainElevenFallback(
-          "Hibás/üres Voice ID („" +
-            voiceId +
-            "”) — Gábor ID: 7B7mSWflzRSaO1yGeJH6. Most böngésző hang."
-        );
-        settingsPanel.classList.remove("hidden");
-        if (elevenVoiceCustom) elevenVoiceCustom.focus();
-      }
+    if (!apiKey) {
+      const msg = formatElevenError({ code: "MISSING_ELEVEN_KEY" }, voiceId);
+      showApiError(msg);
+      settingsPanel.classList.remove("hidden");
+      elevenKeyInput.focus();
       await speakBrowserFallback(clean, token);
       if (token === speakToken) {
         characterEl.classList.remove("is-speaking-audio");
         character.stopLipSync();
         character.setState("idle");
         showBubble(clean);
-        setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+      }
+      return;
+    }
+
+    if (!voiceOk) {
+      const msg = formatElevenError(
+        { status: 400, code: "INVALID_VOICE_ID", detail: "üres vagy hibás Voice ID" },
+        voiceId
+      );
+      showApiError(msg);
+      settingsPanel.classList.remove("hidden");
+      if (elevenVoiceCustom) elevenVoiceCustom.focus();
+      await speakBrowserFallback(clean, token);
+      if (token === speakToken) {
+        characterEl.classList.remove("is-speaking-audio");
+        character.stopLipSync();
+        character.setState("idle");
+        showBubble(clean);
       }
       return;
     }
@@ -492,7 +556,9 @@
         const result = await pending;
         if (token !== speakToken) return;
 
-        setStatus("Divi beszél (ElevenLabs)…");
+        console.log("ElevenLabs siker, audio lejátszása...");
+        setStatus("Divi beszél (ElevenLabs · Gábor)…");
+        clearApiError();
         characterEl.classList.add("is-speaking-audio");
         await playResult(result, chunks[i], token);
         if (i + 1 < chunks.length && token === speakToken) {
@@ -503,42 +569,20 @@
       }
     } catch (err) {
       console.error("[Divi] ElevenLabs hanghiba:", err);
-      const msg = String((err && err.message) || "");
-      const invalidVoice =
-        err &&
-        (err.code === "INVALID_VOICE_ID" ||
-          err.status === 400 ||
-          /invalid.?voice|voice_id|does not exist/i.test(msg));
-
       if (token !== speakToken) return;
 
-      if (invalidVoice) {
-        explainElevenFallback(
-          "ElevenLabs 400 / Voice ID nem elérhető (ID: " +
-            voiceId +
-            "). Add hozzá a hangot a fiókodhoz (Use voice), vagy ellenőrizd az ID-t. Böngésző hang."
-        );
-        settingsPanel.classList.remove("hidden");
-        if (elevenVoiceCustom) elevenVoiceCustom.focus();
-        await speakBrowserFallback(clean, token);
-      } else if (err && (err.status === 401 || err.status === 403)) {
-        explainElevenFallback(
-          "ElevenLabs kulcs elutasítva (" +
-            err.status +
-            ") — ellenőrizd a kulcsot. Böngésző hang."
-        );
+      const friendly = formatElevenError(err, voiceId);
+      showApiError(friendly);
+
+      if (err && (err.status === 401 || err.status === 403)) {
         settingsPanel.classList.remove("hidden");
         elevenKeyInput.focus();
-        await speakBrowserFallback(clean, token);
-      } else if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED")) {
-        explainElevenFallback("ElevenLabs kvóta tele (429) — böngésző hang.");
-        await speakBrowserFallback(clean, token);
-      } else {
-        explainElevenFallback(
-          "ElevenLabs hiba — böngésző hang. Részlet: " + msg.slice(0, 140)
-        );
-        await speakBrowserFallback(clean, token);
+      } else if (err && (err.status === 400 || err.code === "INVALID_VOICE_ID")) {
+        settingsPanel.classList.remove("hidden");
+        if (elevenVoiceCustom) elevenVoiceCustom.focus();
       }
+
+      await speakBrowserFallback(clean, token);
       showBubble(clean);
     }
 
@@ -547,7 +591,9 @@
       character.stopLipSync();
       character.setState("idle");
       showBubble(clean);
-      setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+      if (!apiErrorLine || apiErrorLine.hidden) {
+        setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+      }
     }
   }
 

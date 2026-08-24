@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://generativelanguage.googleapis.com" />
   <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+  <link rel="preconnect" href="https://api.elevenlabs.io" />
+  <link rel="dns-prefetch" href="https://api.elevenlabs.io" />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
   <style>
 :root {
@@ -508,21 +510,33 @@ body {
     <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
       <h2>Beállítások</h2>
 
-      <label for="gemini-key">Gemini API kulcs (kötelező — szöveg + hang)</label>
+      <label for="gemini-key">Gemini API kulcs (szöveg)</label>
       <input type="password" id="gemini-key" autocomplete="off" placeholder="Illeszd be ide: AIza…" />
       <p class="hint">
-        Ide írd a Google AI Studio kulcsodat. A böngésző <code>localStorage</code>-ába mentjük
-        (<strong>divi-gemini-key</strong>), nem kerül a forráskódba.
-        Kulcs: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
+        Google AI Studio kulcs a válaszokhoz. Mentés: <code>localStorage</code>
+        (<strong>divi-gemini-key</strong>).
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kulcs kérése</a>
       </p>
 
-      <label for="gemini-voice">Gemini hangszín</label>
-      <select id="gemini-voice">
-        <option value="Aoede" selected>Aoede — lágy, barátságos</option>
-        <option value="Kore">Kore — tiszta, világos</option>
-        <option value="Puck">Puck — játékos</option>
-        <option value="Charon">Charon — mélyebb</option>
+      <label for="eleven-key">ElevenLabs API kulcs (hang)</label>
+      <input type="password" id="eleven-key" autocomplete="off" placeholder="Illeszd be ide: sk_… / xi-…" />
+      <p class="hint">
+        Élethű hang — leváltja a Gemini TTS-t. Mentés: <strong>divi-eleven-key</strong>.
+        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ElevenLabs API kulcs</a>
+      </p>
+
+      <label for="eleven-voice">ElevenLabs hang</label>
+      <select id="eleven-voice">
+        <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — meleg, barátságos</option>
+        <option value="VR6AewLTigWG4xSOukaG">Arnold — mélyebb</option>
+        <option value="TxGEqnHWrfWFTfGW9XjX">Josh — élénk</option>
+        <option value="ErXwobaYiN019PkySvjV">Antoni — lágy</option>
+        <option value="EXAVITQu4vr4xnSDxMaL">Bella — világos</option>
+        <option value="jsCqWAsw7dKgqjhtoyd3">Custom: írd át a Voice ID-t lent</option>
       </select>
+      <label for="eleven-voice-custom">Saját Voice ID (opcionális)</label>
+      <input type="text" id="eleven-voice-custom" autocomplete="off" placeholder="pl. elevenlabs voice id" />
+
 
       <label class="toggle-row" for="echo-mode">
         <input type="checkbox" id="echo-mode" />
@@ -1359,8 +1373,82 @@ body {
     }
   };
 
+  /**
+   * ElevenLabs TTS — gyors flash modell, MP3 blob
+   * @returns {Promise<{ blob: Blob, mime: string }>}
+   */
+  async function synthesizeElevenSpeech(text, apiKey, voiceId) {
+    if (!apiKey) {
+      const err = new Error("MISSING_ELEVEN_KEY");
+      err.code = "MISSING_ELEVEN_KEY";
+      throw err;
+    }
+    const clean = String(text || "").trim();
+    if (!clean) throw new Error("Üres szöveg a hanghoz");
+
+    const spoken = clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean;
+    const voice = voiceId || "pNInz6obpgDQGcFmaJgB";
+    const models = ["eleven_flash_v2_5", "eleven_multilingual_v2"];
+    let lastErr = null;
+
+    for (let i = 0; i < models.length; i += 1) {
+      const model = models[i];
+      try {
+        const res = await fetch(
+          "https://api.elevenlabs.io/v1/text-to-speech/" +
+            encodeURIComponent(voice) +
+            "?optimize_streaming_latency=4&output_format=mp3_22050_32",
+          {
+            method: "POST",
+            headers: {
+              Accept: "audio/mpeg",
+              "Content-Type": "application/json",
+              "xi-api-key": apiKey,
+            },
+            body: JSON.stringify({
+              text: spoken,
+              model_id: model,
+              voice_settings: {
+                stability: 0.42,
+                similarity_boost: 0.78,
+                style: 0.32,
+                use_speaker_boost: true,
+              },
+            }),
+          }
+        );
+        if (!res.ok) {
+          const errText = await res.text().catch(function () {
+            return "";
+          });
+          const err = new Error(
+            "ElevenLabs HTTP " + res.status + " (" + model + ") " + String(errText).slice(0, 160)
+          );
+          err.status = res.status;
+          err.code = res.status === 429 ? "QUOTA_EXCEEDED" : "ELEVEN_HTTP_" + res.status;
+          lastErr = err;
+          if (res.status === 429 || res.status === 401 || res.status === 403) throw err;
+          continue;
+        }
+        const blob = await res.blob();
+        if (!blob || !blob.size) {
+          lastErr = new Error("ElevenLabs üres hang (" + model + ")");
+          continue;
+        }
+        return { blob: blob, mime: "audio/mpeg" };
+      } catch (err) {
+        lastErr = err;
+        if (err && (err.status === 401 || err.status === 403 || err.code === "MISSING_ELEVEN_KEY")) {
+          throw err;
+        }
+      }
+    }
+    throw lastErr || new Error("ElevenLabs TTS nem elérhető");
+  }
+
   Brain.normalizeSpeech = normalizeSpeech;
   Brain.synthesizeGeminiSpeech = synthesizeGeminiSpeech;
+  Brain.synthesizeElevenSpeech = synthesizeElevenSpeech;
   Brain.splitSpeechChunks = splitSpeechChunks;
   Brain.pcmBase64ToWavBlob = pcmBase64ToWavBlob;
   global.DiviBrain = Brain;
@@ -1613,16 +1701,21 @@ body {
   const btnCloseSettings = $("btn-close-settings");
   const settingsPanel = $("settings-panel");
   const geminiKeyInput = $("gemini-key");
-  const geminiVoiceSelect = $("gemini-voice");
+  const elevenKeyInput = $("eleven-key");
+  const elevenVoiceSelect = $("eleven-voice");
+  const elevenVoiceCustom = $("eleven-voice-custom");
   const echoModeInput = $("echo-mode");
   const autoListenInput = $("auto-listen");
 
   const STORAGE = {
     gemini: "divi-gemini-key",
-    voice: "divi-gemini-voice",
+    eleven: "divi-eleven-key",
+    elevenVoice: "divi-eleven-voice",
+    elevenVoiceCustom: "divi-eleven-voice-custom",
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
+  const DEFAULT_ELEVEN_VOICE = "pNInz6obpgDQGcFmaJgB";
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();
@@ -1645,7 +1738,10 @@ body {
   function loadSettings() {
     try {
       geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
-      geminiVoiceSelect.value = localStorage.getItem(STORAGE.voice) || "Aoede";
+      elevenKeyInput.value = localStorage.getItem(STORAGE.eleven) || "";
+      elevenVoiceSelect.value =
+        localStorage.getItem(STORAGE.elevenVoice) || DEFAULT_ELEVEN_VOICE;
+      elevenVoiceCustom.value = localStorage.getItem(STORAGE.elevenVoiceCustom) || "";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
       autoListenInput.checked = al === null ? true : al === "1";
@@ -1657,7 +1753,9 @@ body {
   function saveSettings() {
     try {
       localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
-      localStorage.setItem(STORAGE.voice, geminiVoiceSelect.value || "Aoede");
+      localStorage.setItem(STORAGE.eleven, elevenKeyInput.value.trim());
+      localStorage.setItem(STORAGE.elevenVoice, elevenVoiceSelect.value || DEFAULT_ELEVEN_VOICE);
+      localStorage.setItem(STORAGE.elevenVoiceCustom, elevenVoiceCustom.value.trim());
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
@@ -1666,7 +1764,17 @@ body {
   }
 
   function getGeminiKey() {
-    return (geminiKeyInput && geminiKeyInput.value || "").trim();
+    return ((geminiKeyInput && geminiKeyInput.value) || "").trim();
+  }
+
+  function getElevenKey() {
+    return ((elevenKeyInput && elevenKeyInput.value) || "").trim();
+  }
+
+  function getElevenVoiceId() {
+    const custom = ((elevenVoiceCustom && elevenVoiceCustom.value) || "").trim();
+    if (custom) return custom;
+    return (elevenVoiceSelect && elevenVoiceSelect.value) || DEFAULT_ELEVEN_VOICE;
   }
 
   function requireGeminiKey() {
@@ -1674,15 +1782,29 @@ body {
     if (key) return key;
 
     const msg =
-      "Hiányzik a Gemini API kulcs. Nyisd a ⚙️ Beállításokat, illeszd be a kulcsot a „Gemini API kulcs” mezőbe, majd kattints Kész-re.";
+      "Hiányzik a Gemini API kulcs (szöveg). Nyisd a ⚙️ Beállításokat, illeszd be, majd Kész.";
     console.error("[Divi]", msg);
-    console.error(
-      "[Divi] A kulcs a böngésző localStorage-ába kerül (divi-gemini-key) — ne commitold a forráskódba."
-    );
     setStatus(msg);
-    showBubble("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban, hogy beszélhessek!");
+    showBubble("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban!");
     settingsPanel.classList.remove("hidden");
     geminiKeyInput.focus();
+    return "";
+  }
+
+  function requireElevenKey() {
+    const key = getElevenKey();
+    if (key) return key;
+
+    const msg =
+      "Hiányzik az ElevenLabs API kulcs (hang). Nyisd a ⚙️ Beállításokat, illeszd be, majd Kész.";
+    console.error("[Divi]", msg);
+    console.error(
+      "[Divi] A kulcs localStorage-ba kerül (divi-eleven-key) — ne commitold a forráskódba."
+    );
+    setStatus(msg);
+    showBubble("Állítsd be az ElevenLabs kulcsot a ⚙️ Beállításokban, hogy megszólaljak!");
+    settingsPanel.classList.remove("hidden");
+    elevenKeyInput.focus();
     return "";
   }
 
@@ -1863,40 +1985,39 @@ body {
   }
 
   /**
-   * Gemini TTS — első mondat azonnal, közben a következő chunk töltődik
+   * ElevenLabs hang — első mondat gyorsan, közben a következő chunk töltődik
    */
   async function speak(text) {
     const token = ++speakToken;
     const clean = String(text || "").trim();
     if (!clean) return;
 
-    const apiKey = requireGeminiKey();
+    const apiKey = requireElevenKey();
     if (!apiKey) return;
 
     ensureAudioContext();
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    // Azonnali szájmozgás, amíg az első hang megjön
     character.startVisemeLipSync(clean, { charsPerSecond: 14 });
-    setStatus("Hang készül…");
+    setStatus("Hang készül (ElevenLabs)…");
 
-    const voice = geminiVoiceSelect.value || "Aoede";
+    const voiceId = getElevenVoiceId();
+    // Flash modell gyors; rövid szöveg egyben, hosszúnál chunkolunk
     const chunks =
-      typeof DiviBrain.splitSpeechChunks === "function"
+      clean.length > 220 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
         : [clean];
 
     try {
-      let nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[0], apiKey, voice);
+      let nextFetch = DiviBrain.synthesizeElevenSpeech(chunks[0], apiKey, voiceId);
 
       for (let i = 0; i < chunks.length; i += 1) {
         if (token !== speakToken) return;
 
-        // Következő chunk előtöltése, amíg az aktuálisat várjuk / játsszuk
         const pending = nextFetch;
         if (i + 1 < chunks.length) {
-          nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[i + 1], apiKey, voice);
+          nextFetch = DiviBrain.synthesizeElevenSpeech(chunks[i + 1], apiKey, voiceId);
         }
 
         const result = await pending;
@@ -1907,19 +2028,22 @@ body {
         await playResult(result, chunks[i], token);
       }
     } catch (err) {
-      console.error("[Divi] Gemini hanghiba:", err);
+      console.error("[Divi] ElevenLabs hanghiba:", err);
       if (token === speakToken) {
         let hint = "A hang most nem ment, de a szöveg megvan.";
-        if (err && err.message === "MISSING_GEMINI_KEY") {
-          hint = "Hiányzik a Gemini API kulcs a Beállításokban.";
+        if (err && (err.message === "MISSING_ELEVEN_KEY" || err.code === "MISSING_ELEVEN_KEY")) {
+          hint = "Hiányzik az ElevenLabs API kulcs a Beállításokban.";
+          settingsPanel.classList.remove("hidden");
+          elevenKeyInput.focus();
+        } else if (err && (err.status === 401 || err.status === 403)) {
+          hint = "ElevenLabs kulcs érvénytelen. Ellenőrizd a ⚙️ Beállításokban.";
         } else if (
           err &&
           (err.status === 429 ||
             err.code === "QUOTA_EXCEEDED" ||
-            /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))
+            /429|quota/i.test(String(err.message || "")))
         ) {
-          hint =
-            "Hang-kvóta tele (429). Várj egy percet — a szöveg megvan, a hang majd újra megy.";
+          hint = "ElevenLabs kvóta tele (429). Várj egy kicsit, a szöveg megvan.";
         } else if (err && err.message) {
           hint = "A hang most nem ment (" + err.message.slice(0, 120) + "), de a szöveg megvan.";
         }
@@ -2311,10 +2435,10 @@ body {
     if (greetingDone) return;
     greetingDone = true;
 
-    if (!requireGeminiKey()) {
-      setStatus(
-        "Illeszd be a Gemini API kulcsot a ⚙️ Beállításokban (szöveg + élethű hang)."
-      );
+    if (!getGeminiKey() || !getElevenKey()) {
+      if (!getGeminiKey()) requireGeminiKey();
+      if (!getElevenKey()) requireElevenKey();
+      setStatus("Állítsd be a Gemini (szöveg) és ElevenLabs (hang) kulcsot a ⚙️ Beállításokban.");
       return;
     }
 
@@ -2342,7 +2466,7 @@ body {
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
-      if (!requireGeminiKey()) return;
+      if (!requireGeminiKey() || !requireElevenKey()) return;
       const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);

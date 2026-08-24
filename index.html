@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://generativelanguage.googleapis.com" />
   <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+  <link rel="preconnect" href="https://api.elevenlabs.io" />
+  <link rel="dns-prefetch" href="https://api.elevenlabs.io" />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preload" as="image" href="assets/panda-idle.webp" type="image/webp" />
@@ -31,21 +33,33 @@
     <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
       <h2>Beállítások</h2>
 
-      <label for="gemini-key">Gemini API kulcs (kötelező — szöveg + hang)</label>
+      <label for="gemini-key">Gemini API kulcs (szöveg)</label>
       <input type="password" id="gemini-key" autocomplete="off" placeholder="Illeszd be ide: AIza…" />
       <p class="hint">
-        Ide írd a Google AI Studio kulcsodat. A böngésző <code>localStorage</code>-ába mentjük
-        (<strong>divi-gemini-key</strong>), nem kerül a forráskódba.
-        Kulcs: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>
+        Google AI Studio kulcs a válaszokhoz. Mentés: <code>localStorage</code>
+        (<strong>divi-gemini-key</strong>).
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kulcs kérése</a>
       </p>
 
-      <label for="gemini-voice">Gemini hangszín</label>
-      <select id="gemini-voice">
-        <option value="Aoede" selected>Aoede — lágy, barátságos</option>
-        <option value="Kore">Kore — tiszta, világos</option>
-        <option value="Puck">Puck — játékos</option>
-        <option value="Charon">Charon — mélyebb</option>
+      <label for="eleven-key">ElevenLabs API kulcs (hang)</label>
+      <input type="password" id="eleven-key" autocomplete="off" placeholder="Illeszd be ide: sk_… / xi-…" />
+      <p class="hint">
+        Élethű hang — leváltja a Gemini TTS-t. Mentés: <strong>divi-eleven-key</strong>.
+        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ElevenLabs API kulcs</a>
+      </p>
+
+      <label for="eleven-voice">ElevenLabs hang</label>
+      <select id="eleven-voice">
+        <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — meleg, barátságos</option>
+        <option value="VR6AewLTigWG4xSOukaG">Arnold — mélyebb</option>
+        <option value="TxGEqnHWrfWFTfGW9XjX">Josh — élénk</option>
+        <option value="ErXwobaYiN019PkySvjV">Antoni — lágy</option>
+        <option value="EXAVITQu4vr4xnSDxMaL">Bella — világos</option>
+        <option value="jsCqWAsw7dKgqjhtoyd3">Custom: írd át a Voice ID-t lent</option>
       </select>
+      <label for="eleven-voice-custom">Saját Voice ID (opcionális)</label>
+      <input type="text" id="eleven-voice-custom" autocomplete="off" placeholder="pl. elevenlabs voice id" />
+
 
       <label class="toggle-row" for="echo-mode">
         <input type="checkbox" id="echo-mode" />

@@ -16,16 +16,21 @@
   const btnCloseSettings = $("btn-close-settings");
   const settingsPanel = $("settings-panel");
   const geminiKeyInput = $("gemini-key");
-  const geminiVoiceSelect = $("gemini-voice");
+  const elevenKeyInput = $("eleven-key");
+  const elevenVoiceSelect = $("eleven-voice");
+  const elevenVoiceCustom = $("eleven-voice-custom");
   const echoModeInput = $("echo-mode");
   const autoListenInput = $("auto-listen");
 
   const STORAGE = {
     gemini: "divi-gemini-key",
-    voice: "divi-gemini-voice",
+    eleven: "divi-eleven-key",
+    elevenVoice: "divi-eleven-voice",
+    elevenVoiceCustom: "divi-eleven-voice-custom",
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
+  const DEFAULT_ELEVEN_VOICE = "pNInz6obpgDQGcFmaJgB";
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();
@@ -48,7 +53,10 @@
   function loadSettings() {
     try {
       geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
-      geminiVoiceSelect.value = localStorage.getItem(STORAGE.voice) || "Aoede";
+      elevenKeyInput.value = localStorage.getItem(STORAGE.eleven) || "";
+      elevenVoiceSelect.value =
+        localStorage.getItem(STORAGE.elevenVoice) || DEFAULT_ELEVEN_VOICE;
+      elevenVoiceCustom.value = localStorage.getItem(STORAGE.elevenVoiceCustom) || "";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
       autoListenInput.checked = al === null ? true : al === "1";
@@ -60,7 +68,9 @@
   function saveSettings() {
     try {
       localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
-      localStorage.setItem(STORAGE.voice, geminiVoiceSelect.value || "Aoede");
+      localStorage.setItem(STORAGE.eleven, elevenKeyInput.value.trim());
+      localStorage.setItem(STORAGE.elevenVoice, elevenVoiceSelect.value || DEFAULT_ELEVEN_VOICE);
+      localStorage.setItem(STORAGE.elevenVoiceCustom, elevenVoiceCustom.value.trim());
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
     } catch (_) {
@@ -69,7 +79,17 @@
   }
 
   function getGeminiKey() {
-    return (geminiKeyInput && geminiKeyInput.value || "").trim();
+    return ((geminiKeyInput && geminiKeyInput.value) || "").trim();
+  }
+
+  function getElevenKey() {
+    return ((elevenKeyInput && elevenKeyInput.value) || "").trim();
+  }
+
+  function getElevenVoiceId() {
+    const custom = ((elevenVoiceCustom && elevenVoiceCustom.value) || "").trim();
+    if (custom) return custom;
+    return (elevenVoiceSelect && elevenVoiceSelect.value) || DEFAULT_ELEVEN_VOICE;
   }
 
   function requireGeminiKey() {
@@ -77,15 +97,29 @@
     if (key) return key;
 
     const msg =
-      "Hiányzik a Gemini API kulcs. Nyisd a ⚙️ Beállításokat, illeszd be a kulcsot a „Gemini API kulcs” mezőbe, majd kattints Kész-re.";
+      "Hiányzik a Gemini API kulcs (szöveg). Nyisd a ⚙️ Beállításokat, illeszd be, majd Kész.";
     console.error("[Divi]", msg);
-    console.error(
-      "[Divi] A kulcs a böngésző localStorage-ába kerül (divi-gemini-key) — ne commitold a forráskódba."
-    );
     setStatus(msg);
-    showBubble("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban, hogy beszélhessek!");
+    showBubble("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban!");
     settingsPanel.classList.remove("hidden");
     geminiKeyInput.focus();
+    return "";
+  }
+
+  function requireElevenKey() {
+    const key = getElevenKey();
+    if (key) return key;
+
+    const msg =
+      "Hiányzik az ElevenLabs API kulcs (hang). Nyisd a ⚙️ Beállításokat, illeszd be, majd Kész.";
+    console.error("[Divi]", msg);
+    console.error(
+      "[Divi] A kulcs localStorage-ba kerül (divi-eleven-key) — ne commitold a forráskódba."
+    );
+    setStatus(msg);
+    showBubble("Állítsd be az ElevenLabs kulcsot a ⚙️ Beállításokban, hogy megszólaljak!");
+    settingsPanel.classList.remove("hidden");
+    elevenKeyInput.focus();
     return "";
   }
 
@@ -266,40 +300,39 @@
   }
 
   /**
-   * Gemini TTS — első mondat azonnal, közben a következő chunk töltődik
+   * ElevenLabs hang — első mondat gyorsan, közben a következő chunk töltődik
    */
   async function speak(text) {
     const token = ++speakToken;
     const clean = String(text || "").trim();
     if (!clean) return;
 
-    const apiKey = requireGeminiKey();
+    const apiKey = requireElevenKey();
     if (!apiKey) return;
 
     ensureAudioContext();
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    // Azonnali szájmozgás, amíg az első hang megjön
     character.startVisemeLipSync(clean, { charsPerSecond: 14 });
-    setStatus("Hang készül…");
+    setStatus("Hang készül (ElevenLabs)…");
 
-    const voice = geminiVoiceSelect.value || "Aoede";
+    const voiceId = getElevenVoiceId();
+    // Flash modell gyors; rövid szöveg egyben, hosszúnál chunkolunk
     const chunks =
-      typeof DiviBrain.splitSpeechChunks === "function"
+      clean.length > 220 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
         : [clean];
 
     try {
-      let nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[0], apiKey, voice);
+      let nextFetch = DiviBrain.synthesizeElevenSpeech(chunks[0], apiKey, voiceId);
 
       for (let i = 0; i < chunks.length; i += 1) {
         if (token !== speakToken) return;
 
-        // Következő chunk előtöltése, amíg az aktuálisat várjuk / játsszuk
         const pending = nextFetch;
         if (i + 1 < chunks.length) {
-          nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[i + 1], apiKey, voice);
+          nextFetch = DiviBrain.synthesizeElevenSpeech(chunks[i + 1], apiKey, voiceId);
         }
 
         const result = await pending;
@@ -310,19 +343,22 @@
         await playResult(result, chunks[i], token);
       }
     } catch (err) {
-      console.error("[Divi] Gemini hanghiba:", err);
+      console.error("[Divi] ElevenLabs hanghiba:", err);
       if (token === speakToken) {
         let hint = "A hang most nem ment, de a szöveg megvan.";
-        if (err && err.message === "MISSING_GEMINI_KEY") {
-          hint = "Hiányzik a Gemini API kulcs a Beállításokban.";
+        if (err && (err.message === "MISSING_ELEVEN_KEY" || err.code === "MISSING_ELEVEN_KEY")) {
+          hint = "Hiányzik az ElevenLabs API kulcs a Beállításokban.";
+          settingsPanel.classList.remove("hidden");
+          elevenKeyInput.focus();
+        } else if (err && (err.status === 401 || err.status === 403)) {
+          hint = "ElevenLabs kulcs érvénytelen. Ellenőrizd a ⚙️ Beállításokban.";
         } else if (
           err &&
           (err.status === 429 ||
             err.code === "QUOTA_EXCEEDED" ||
-            /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))
+            /429|quota/i.test(String(err.message || "")))
         ) {
-          hint =
-            "Hang-kvóta tele (429). Várj egy percet — a szöveg megvan, a hang majd újra megy.";
+          hint = "ElevenLabs kvóta tele (429). Várj egy kicsit, a szöveg megvan.";
         } else if (err && err.message) {
           hint = "A hang most nem ment (" + err.message.slice(0, 120) + "), de a szöveg megvan.";
         }
@@ -714,10 +750,10 @@
     if (greetingDone) return;
     greetingDone = true;
 
-    if (!requireGeminiKey()) {
-      setStatus(
-        "Illeszd be a Gemini API kulcsot a ⚙️ Beállításokban (szöveg + élethű hang)."
-      );
+    if (!getGeminiKey() || !getElevenKey()) {
+      if (!getGeminiKey()) requireGeminiKey();
+      if (!getElevenKey()) requireElevenKey();
+      setStatus("Állítsd be a Gemini (szöveg) és ElevenLabs (hang) kulcsot a ⚙️ Beállításokban.");
       return;
     }
 
@@ -745,7 +781,7 @@
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
-      if (!requireGeminiKey()) return;
+      if (!requireGeminiKey() || !requireElevenKey()) return;
       const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);

@@ -54,8 +54,7 @@
     try {
       geminiKeyInput.value = localStorage.getItem(STORAGE.gemini) || "";
       elevenKeyInput.value = localStorage.getItem(STORAGE.eleven) || "";
-      elevenVoiceSelect.value =
-        localStorage.getItem(STORAGE.elevenVoice) || DEFAULT_ELEVEN_VOICE;
+      elevenVoiceSelect.value = localStorage.getItem(STORAGE.elevenVoice) || "";
       elevenVoiceCustom.value = localStorage.getItem(STORAGE.elevenVoiceCustom) || "";
       echoModeInput.checked = localStorage.getItem(STORAGE.echo) === "1";
       const al = localStorage.getItem(STORAGE.autoListen);
@@ -69,7 +68,7 @@
     try {
       localStorage.setItem(STORAGE.gemini, geminiKeyInput.value.trim());
       localStorage.setItem(STORAGE.eleven, elevenKeyInput.value.trim());
-      localStorage.setItem(STORAGE.elevenVoice, elevenVoiceSelect.value || DEFAULT_ELEVEN_VOICE);
+      localStorage.setItem(STORAGE.elevenVoice, elevenVoiceSelect.value || "");
       localStorage.setItem(STORAGE.elevenVoiceCustom, elevenVoiceCustom.value.trim());
       localStorage.setItem(STORAGE.echo, echoModeInput.checked ? "1" : "0");
       localStorage.setItem(STORAGE.autoListen, autoListenInput.checked ? "1" : "0");
@@ -89,7 +88,71 @@
   function getElevenVoiceId() {
     const custom = ((elevenVoiceCustom && elevenVoiceCustom.value) || "").trim();
     if (custom) return custom;
-    return (elevenVoiceSelect && elevenVoiceSelect.value) || DEFAULT_ELEVEN_VOICE;
+    const selected = ((elevenVoiceSelect && elevenVoiceSelect.value) || "").trim();
+    if (selected) return selected;
+    return "";
+  }
+
+  function isValidVoiceId(id) {
+    if (typeof DiviBrain.isValidElevenVoiceId === "function") {
+      return DiviBrain.isValidElevenVoiceId(id);
+    }
+    return /^[a-zA-Z0-9_-]{16,64}$/.test(String(id || "").trim());
+  }
+
+  function pickHuBrowserVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = speechSynthesis.getVoices() || [];
+    const hu = voices.filter(function (v) {
+      return (v.lang || "").toLowerCase().startsWith("hu");
+    });
+    return (
+      hu.find(function (v) {
+        return /male|férfi|ferfi|tamás|tamas|szabolcs/i.test(v.name || "");
+      }) ||
+      hu[0] ||
+      voices.find(function (v) {
+        return /hu/i.test(v.lang || "");
+      }) ||
+      null
+    );
+  }
+
+  function speakBrowserFallback(text, token) {
+    return new Promise(function (resolve) {
+      if (!("speechSynthesis" in window)) {
+        console.warn("[Divi] Nincs speechSynthesis — csak szöveg jelenik meg.");
+        resolve();
+        return;
+      }
+      try {
+        speechSynthesis.cancel();
+      } catch (_) {
+        /* ignore */
+      }
+
+      const utter = new SpeechSynthesisUtterance(String(text || ""));
+      utter.lang = "hu-HU";
+      utter.rate = 0.95;
+      utter.pitch = 1.05;
+      const voice = pickHuBrowserVoice();
+      if (voice) utter.voice = voice;
+
+      character.setState("speaking");
+      characterEl.classList.add("is-speaking-audio");
+      character.startVisemeLipSync(text, { charsPerSecond: 11 });
+      setStatus("Böngésző hang (tartalék)…");
+
+      const finish = function () {
+        if (token === speakToken) {
+          character.stopLipSync();
+        }
+        resolve();
+      };
+      utter.onend = finish;
+      utter.onerror = finish;
+      speechSynthesis.speak(utter);
+    });
   }
 
   function requireGeminiKey() {
@@ -156,6 +219,13 @@
     speakToken += 1;
     characterEl.classList.remove("is-speaking-audio");
     character.stopLipSync();
+    if ("speechSynthesis" in window) {
+      try {
+        speechSynthesis.cancel();
+      } catch (_) {
+        /* ignore */
+      }
+    }
     if (currentSource) {
       try {
         currentSource.onended = null;
@@ -300,25 +370,47 @@
   }
 
   /**
-   * ElevenLabs hang — első mondat gyorsan, közben a következő chunk töltődik
+   * ElevenLabs hang — érvénytelen Voice ID / 400 esetén böngésző TTS
    */
   async function speak(text) {
     const token = ++speakToken;
     const clean = String(text || "").trim();
     if (!clean) return;
 
-    const apiKey = requireElevenKey();
-    if (!apiKey) return;
-
     ensureAudioContext();
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
     character.startVisemeLipSync(clean, { charsPerSecond: 13 });
-    setStatus("Hang készül (ElevenLabs)…");
 
+    const apiKey = getElevenKey();
     const voiceId = getElevenVoiceId();
-    // Rövid szöveg egyben; csak hosszúnál chunk
+    const voiceOk = isValidVoiceId(voiceId);
+
+    if (!apiKey || !voiceOk) {
+      if (!voiceOk) {
+        console.warn(
+          "[Divi] ElevenLabs Voice ID üres vagy hibás. Illeszd be a Voices → Copy Voice ID értéket. Most böngésző hangot használok."
+        );
+        setStatus("Hiányzó/hibás Voice ID — böngésző magyar hang.");
+        settingsPanel.classList.remove("hidden");
+        if (elevenVoiceCustom) elevenVoiceCustom.focus();
+      } else {
+        console.warn("[Divi] Nincs ElevenLabs kulcs — böngésző hang tartalék.");
+        setStatus("Nincs ElevenLabs kulcs — böngésző hang.");
+      }
+      await speakBrowserFallback(clean, token);
+      if (token === speakToken) {
+        characterEl.classList.remove("is-speaking-audio");
+        character.stopLipSync();
+        character.setState("idle");
+        showBubble(clean);
+        setStatus("Nyomd meg a mikrofont, vagy írj Divinek");
+      }
+      return;
+    }
+
+    setStatus("Hang készül (ElevenLabs)…");
     const chunks =
       clean.length > 280 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
@@ -349,31 +441,45 @@
       }
     } catch (err) {
       console.error("[Divi] ElevenLabs hanghiba:", err);
-      if (token === speakToken) {
+      const invalidVoice =
+        err &&
+        (err.code === "INVALID_VOICE_ID" ||
+          err.status === 400 ||
+          /invalid.?voice|voice_id|400/i.test(String(err.message || "")));
+
+      if (token === speakToken && invalidVoice) {
+        console.warn(
+          "[Divi] ElevenLabs HTTP 400 / Invalid Voice ID. Ellenőrizd: Voices → Copy Voice ID. Váltás böngésző hangra."
+        );
+        setStatus("Érvénytelen Voice ID (400) — böngésző magyar hang.");
+        settingsPanel.classList.remove("hidden");
+        if (elevenVoiceCustom) elevenVoiceCustom.focus();
+        await speakBrowserFallback(clean, token);
+      } else if (token === speakToken) {
         let hint = "A hang most nem ment, de a szöveg megvan.";
         if (err && (err.message === "MISSING_ELEVEN_KEY" || err.code === "MISSING_ELEVEN_KEY")) {
-          hint = "Hiányzik az ElevenLabs API kulcs a Beállításokban.";
-          settingsPanel.classList.remove("hidden");
-          elevenKeyInput.focus();
+          hint = "Hiányzik az ElevenLabs API kulcs — böngésző hangra váltok.";
+          await speakBrowserFallback(clean, token);
+          hint = "Böngésző hang (nincs ElevenLabs kulcs).";
         } else if (err && (err.status === 401 || err.status === 403)) {
           hint = "ElevenLabs kulcs érvénytelen. Ellenőrizd a ⚙️ Beállításokban.";
+          await speakBrowserFallback(clean, token);
         } else if (
           err &&
           (err.status === 429 ||
             err.code === "QUOTA_EXCEEDED" ||
             /429|quota/i.test(String(err.message || "")))
         ) {
-          hint = "ElevenLabs kvóta tele (429). Várj egy kicsit, a szöveg megvan.";
+          hint = "ElevenLabs kvóta tele — böngésző hangra váltok.";
+          await speakBrowserFallback(clean, token);
         } else if (err && err.message) {
-          hint = "A hang most nem ment (" + err.message.slice(0, 120) + "), de a szöveg megvan.";
+          hint = "Hanghiba — böngésző tartalék: " + err.message.slice(0, 100);
+          await speakBrowserFallback(clean, token);
+        } else {
+          await speakBrowserFallback(clean, token);
         }
         setStatus(hint);
         showBubble(clean);
-        character.startVisemeLipSync(clean, { charsPerSecond: 12 });
-        await new Promise(function (r) {
-          setTimeout(r, Math.min(2200, 600 + clean.length * 40));
-        });
-        character.stopLipSync();
       }
     }
 
@@ -755,10 +861,9 @@
     if (greetingDone) return;
     greetingDone = true;
 
-    if (!getGeminiKey() || !getElevenKey()) {
-      if (!getGeminiKey()) requireGeminiKey();
-      if (!getElevenKey()) requireElevenKey();
-      setStatus("Állítsd be a Gemini (szöveg) és ElevenLabs (hang) kulcsot a ⚙️ Beállításokban.");
+    if (!getGeminiKey()) {
+      requireGeminiKey();
+      setStatus("Állítsd be a Gemini kulcsot a ⚙️ Beállításokban (szöveg). A hang ElevenLabs vagy böngésző.");
       return;
     }
 
@@ -786,7 +891,7 @@
     if (!greetingDone) {
       greetingDone = true;
       armed = true;
-      if (!requireGeminiKey() || !requireElevenKey()) return;
+      if (!requireGeminiKey()) return;
       const hi = "Szia! Én Divi vagyok, a vörös pandád — hallgatlak!";
       addChat("bot", hi);
       showBubble(hi);
@@ -820,7 +925,7 @@
       character.react("react");
       return;
     }
-    if (!requireElevenKey()) return;
+    // Hang: ElevenLabs, vagy böngésző tartalék (speak intézi)
     busy = true;
     stopListening();
     const line = brain.tapReaction();
@@ -844,21 +949,23 @@
     settingsPanel.classList.add("hidden");
     const hasGemini = !!getGeminiKey();
     const hasEleven = !!getElevenKey();
-    if (hasGemini && hasEleven) {
+    const voiceId = getElevenVoiceId();
+    if (hasGemini) {
       console.info(
-        "[Divi] Kulcsok mentve. Szöveg: Gemini · Hang: ElevenLabs (" +
-          getElevenVoiceId() +
-          ")"
+        "[Divi] Mentve. Szöveg: Gemini · Hang: " +
+          (hasEleven && isValidVoiceId(voiceId)
+            ? "ElevenLabs (" + voiceId + ")"
+            : "böngésző tartalék / hiányzó Voice ID")
       );
       if (!greetingDone) bootGreeting();
     } else {
-      if (!hasGemini) {
-        console.error("[Divi] Gemini API kulcs hiányzik (szöveg).");
-      }
-      if (!hasEleven) {
-        console.error("[Divi] ElevenLabs API kulcs hiányzik (hang).");
-      }
-      setStatus("Hiányzik kulcs — Gemini (szöveg) és/vagy ElevenLabs (hang) a Beállításokban.");
+      console.error("[Divi] Gemini API kulcs hiányzik (szöveg).");
+      setStatus("Hiányzik a Gemini kulcs a Beállításokban.");
+    }
+    if (hasEleven && !isValidVoiceId(voiceId)) {
+      console.warn(
+        "[Divi] ElevenLabs Voice ID hiányzik vagy hibás. Voices → Copy Voice ID → illeszd be."
+      );
     }
   });
 
@@ -875,6 +982,13 @@
 
   loadSettings();
 
+  if ("speechSynthesis" in window) {
+    speechSynthesis.onvoiceschanged = function () {
+      pickHuBrowserVoice();
+    };
+    pickHuBrowserVoice();
+  }
+
   function arm(e) {
     if (armed) return;
     if (e.target && e.target.closest && e.target.closest("#btn-mic")) return;
@@ -884,14 +998,14 @@
   }
   document.addEventListener("pointerdown", arm);
 
-  if (!getGeminiKey() || !getElevenKey()) {
+  if (!getGeminiKey()) {
     console.error(
-      "[Divi] Állítsd be: Gemini (divi-gemini-key) szöveghez + ElevenLabs (divi-eleven-key) hanghoz a ⚙️ Beállításokban."
+      "[Divi] Állítsd be a Gemini kulcsot (divi-gemini-key) a ⚙️ Beállításokban. ElevenLabs Voice ID: Voices → Copy Voice ID."
     );
     settingsPanel.classList.remove("hidden");
-    setStatus("Illeszd be a Gemini és ElevenLabs API kulcsokat a Beállításokban.");
+    setStatus("Illeszd be a Gemini kulcsot (és ElevenLabs Voice ID-t) a Beállításokban.");
     showBubble(
-      "Szia! Állítsd be a Gemini (szöveg) és ElevenLabs (hang) kulcsot a ⚙️ Beállításokban."
+      "Szia! Állítsd be a Gemini kulcsot, és másold be az ElevenLabs Voice ID-t a ⚙️ Beállításokban."
     );
   } else {
     const earlyWarn = micUnsupportedReason();

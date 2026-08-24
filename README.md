@@ -16,10 +16,15 @@ Talking Tom–stílusú interaktív animációs karakter GitHub Pages-hez.
 
 ## Hol add meg a kulcsokat?
 1. Nyisd meg az oldalt → **⚙️**
-2. **Gemini API kulcs** → szöveg (`localStorage`: `divi-gemini-key`)
-3. **ElevenLabs API kulcs** → hang (`localStorage`: `divi-eleven-key`)
-4. Válassz hangot (Adam / Arnold / Josh / Antoni / Bella), vagy saját Voice ID
+2. **Gemini API kulcs** → szöveg (`divi-gemini-key`)
+3. **ElevenLabs API kulcs** → hang (`divi-eleven-key`)
+4. **Voice ID**: ElevenLabs → Voices / Voice Lab → **Copy Voice ID** → illeszd be a mezőbe
 5. **Kész**
+
+Ha a Voice ID üres, hibás, vagy az API **HTTP 400**-at ad, Divi automatikusan a böngésző magyar `speechSynthesis` hangjára vált.
+
+Végpont: `https://api.elevenlabs.io/v1/text-to-speech/{VoiceID}`  
+Modell: `eleven_multilingual_v2`
 
 **Ne commitold** a kulcsokat a forráskódba.
 

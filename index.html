@@ -44,21 +44,35 @@
       <label for="eleven-key">ElevenLabs API kulcs (hang)</label>
       <input type="password" id="eleven-key" autocomplete="off" placeholder="Illeszd be ide: sk_… / xi-…" />
       <p class="hint">
-        Élethű hang — leváltja a Gemini TTS-t. Mentés: <strong>divi-eleven-key</strong>.
-        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ElevenLabs API kulcs</a>
+        Mentés: <strong>divi-eleven-key</strong>.
+        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">API kulcs</a>
       </p>
 
-      <label for="eleven-voice">ElevenLabs hang</label>
+      <label for="eleven-voice-custom">ElevenLabs Voice ID</label>
+      <input
+        type="text"
+        id="eleven-voice-custom"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Illeszd be ide a Copy Voice ID karaktersorát"
+      />
+      <p class="hint">
+        ElevenLabs → <strong>Voices / Voice Lab</strong> → a hang mellett
+        <strong>ID</strong> (vagy ⋮ → <strong>Copy Voice ID</strong>).
+        Pontosan ezt a szöveget illeszd be idézőjelek nélkül.
+        Ha üres / hibás / 400-as hiba: a böngésző magyar felolvasója szólal meg.
+        Végpont: <code>https://api.elevenlabs.io/v1/text-to-speech/{VoiceID}</code>
+      </p>
+
+      <label for="eleven-voice">Vagy gyors választás (előre beállított ID)</label>
       <select id="eleven-voice">
-        <option value="pNInz6obpgDQGcFmaJgB" selected>Adam — meleg, barátságos</option>
+        <option value="">— használd a fenti saját Voice ID-t —</option>
+        <option value="pNInz6obpgDQGcFmaJgB">Adam — meleg, barátságos</option>
         <option value="VR6AewLTigWG4xSOukaG">Arnold — mélyebb</option>
         <option value="TxGEqnHWrfWFTfGW9XjX">Josh — élénk</option>
         <option value="ErXwobaYiN019PkySvjV">Antoni — lágy</option>
         <option value="EXAVITQu4vr4xnSDxMaL">Bella — világos</option>
-        <option value="jsCqWAsw7dKgqjhtoyd3">Custom: írd át a Voice ID-t lent</option>
       </select>
-      <label for="eleven-voice-custom">Saját Voice ID (opcionális)</label>
-      <input type="text" id="eleven-voice-custom" autocomplete="off" placeholder="pl. elevenlabs voice id" />
 
 
       <label class="toggle-row" for="echo-mode">

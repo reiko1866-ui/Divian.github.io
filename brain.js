@@ -787,7 +787,18 @@
   };
 
   /**
-   * ElevenLabs TTS — élénk, de nem hadarós tempó
+   * ElevenLabs Voice ID: tipikusan 16–64 alfanumerikus karakter
+   */
+  function isValidElevenVoiceId(voiceId) {
+    const id = String(voiceId || "").trim();
+    if (!id) return false;
+    if (/^(custom|undefined|null|none)$/i.test(id)) return false;
+    return /^[a-zA-Z0-9_-]{16,64}$/.test(id);
+  }
+
+  /**
+   * ElevenLabs TTS — stabil többnyelvű modell
+   * Végpont: https://api.elevenlabs.io/v1/text-to-speech/{voice_id}
    * @returns {Promise<{ blob: Blob, mime: string }>}
    */
   async function synthesizeElevenSpeech(text, apiKey, voiceId) {
@@ -799,72 +810,75 @@
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    const spoken = clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean;
-    const voice = voiceId || "pNInz6obpgDQGcFmaJgB";
-    // Flash előbb = gyorsabb válasz; multilingual tartalék
-    const models = ["eleven_flash_v2_5", "eleven_multilingual_v2"];
-    let lastErr = null;
-
-    for (let i = 0; i < models.length; i += 1) {
-      const model = models[i];
-      try {
-        const res = await fetch(
-          "https://api.elevenlabs.io/v1/text-to-speech/" +
-            encodeURIComponent(voice) +
-            "?optimize_streaming_latency=3&output_format=mp3_22050_32",
-          {
-            method: "POST",
-            headers: {
-              Accept: "audio/mpeg",
-              "Content-Type": "application/json",
-              "xi-api-key": apiKey,
-            },
-            body: JSON.stringify({
-              text: spoken,
-              model_id: model,
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                style: 0.2,
-                use_speaker_boost: true,
-                // 1.0 = alap; 0.95 = enyhén nyugodtabb, de nem lassú
-                speed: 0.95,
-              },
-            }),
-          }
-        );
-        if (!res.ok) {
-          const errText = await res.text().catch(function () {
-            return "";
-          });
-          const err = new Error(
-            "ElevenLabs HTTP " + res.status + " (" + model + ") " + String(errText).slice(0, 160)
-          );
-          err.status = res.status;
-          err.code = res.status === 429 ? "QUOTA_EXCEEDED" : "ELEVEN_HTTP_" + res.status;
-          lastErr = err;
-          if (res.status === 429 || res.status === 401 || res.status === 403) throw err;
-          continue;
-        }
-        const blob = await res.blob();
-        if (!blob || !blob.size) {
-          lastErr = new Error("ElevenLabs üres hang (" + model + ")");
-          continue;
-        }
-        return { blob: blob, mime: "audio/mpeg" };
-      } catch (err) {
-        lastErr = err;
-        if (err && (err.status === 401 || err.status === 403 || err.code === "MISSING_ELEVEN_KEY")) {
-          throw err;
-        }
-      }
+    const voice = String(voiceId || "").trim();
+    if (!isValidElevenVoiceId(voice)) {
+      const err = new Error(
+        "Érvénytelen ElevenLabs Voice ID. Másold be a Voices / Voice Lab → Copy Voice ID értéket."
+      );
+      err.code = "INVALID_VOICE_ID";
+      err.status = 400;
+      throw err;
     }
-    throw lastErr || new Error("ElevenLabs TTS nem elérhető");
+
+    const spoken = clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean;
+    const model = "eleven_multilingual_v2";
+    const url =
+      "https://api.elevenlabs.io/v1/text-to-speech/" +
+      encodeURIComponent(voice) +
+      "?optimize_streaming_latency=3&output_format=mp3_22050_32";
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        text: spoken,
+        model_id: model,
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.2,
+          use_speaker_boost: true,
+          speed: 0.95,
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(function () {
+        return "";
+      });
+      const err = new Error(
+        "ElevenLabs HTTP " + res.status + " (" + model + ") " + String(errText).slice(0, 180)
+      );
+      err.status = res.status;
+      if (
+        res.status === 400 ||
+        /invalid.?voice|voice_id|does not exist/i.test(errText)
+      ) {
+        err.code = "INVALID_VOICE_ID";
+      } else if (res.status === 429) {
+        err.code = "QUOTA_EXCEEDED";
+      } else {
+        err.code = "ELEVEN_HTTP_" + res.status;
+      }
+      throw err;
+    }
+
+    const blob = await res.blob();
+    if (!blob || !blob.size) {
+      throw new Error("ElevenLabs üres hang");
+    }
+    return { blob: blob, mime: "audio/mpeg" };
   }
 
   Brain.normalizeSpeech = normalizeSpeech;
   Brain.synthesizeGeminiSpeech = synthesizeGeminiSpeech;
   Brain.synthesizeElevenSpeech = synthesizeElevenSpeech;
+  Brain.isValidElevenVoiceId = isValidElevenVoiceId;
   Brain.splitSpeechChunks = splitSpeechChunks;
   Brain.pcmBase64ToWavBlob = pcmBase64ToWavBlob;
   global.DiviBrain = Brain;

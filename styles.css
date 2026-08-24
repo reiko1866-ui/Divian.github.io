@@ -248,6 +248,25 @@ body {
   min-height: 1.3em;
 }
 
+.api-error-line {
+  z-index: 6;
+  margin: 8px 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffe8e4;
+  color: #8a1f12;
+  border: 1px solid #f0b4a8;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-align: left;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.api-error-line[hidden] {
+  display: none !important;
+}
+
 /* Character animation states — egész figura */
 .character.state-idle {
   animation: breathe 3.4s ease-in-out infinite;

@@ -793,6 +793,7 @@
     const id = String(voiceId || "").trim();
     if (!id) return false;
     if (/^(custom|undefined|null|none)$/i.test(id)) return false;
+    // ElevenLabs Voice ID: általában 20 karakter, de 16–64 között elfogadjuk
     return /^[a-zA-Z0-9_-]{16,64}$/.test(id);
   }
 
@@ -811,7 +812,10 @@
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
     const voice = String(voiceId || "").trim() || "7B7mSWflzRSaO1yGeJH6";
-    if (!isValidElevenVoiceId(voice)) {
+    // URL-ből kimásolt ID támogatása
+    const urlMatch = voice.match(/([a-zA-Z0-9_-]{16,64})(?:\?.*)?$/);
+    const resolved = urlMatch && /elevenlabs\.io/i.test(voice) ? urlMatch[1] : voice.replace(/^["']|["']$/g, "");
+    if (!isValidElevenVoiceId(resolved)) {
       const err = new Error(
         "Érvénytelen ElevenLabs Voice ID. Másold be a Voices / Voice Lab → Copy Voice ID értéket."
       );
@@ -824,42 +828,64 @@
     const model = "eleven_multilingual_v2";
     const url =
       "https://api.elevenlabs.io/v1/text-to-speech/" +
-      encodeURIComponent(voice) +
-      "?optimize_streaming_latency=3&output_format=mp3_22050_32";
+      encodeURIComponent(resolved);
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Accept: "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        text: spoken,
-        model_id: model,
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.2,
-          use_speaker_boost: true,
-          speed: 0.95,
+    console.info("[Divi] ElevenLabs POST", url, "model_id=" + model, "voice=" + resolved);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          text: spoken,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.2,
+            use_speaker_boost: true,
+            speed: 0.95,
+          },
+        }),
+      });
+    } catch (networkErr) {
+      const err = new Error(
+        "CORS/Hálózati hiba: " + ((networkErr && networkErr.message) || "Failed to fetch")
+      );
+      err.code = "NETWORK_CORS";
+      err.isCors = true;
+      throw err;
+    }
 
     if (!res.ok) {
       const errText = await res.text().catch(function () {
         return "";
       });
-      const err = new Error(
-        "ElevenLabs HTTP " + res.status + " (" + model + ") " + String(errText).slice(0, 180)
-      );
+      let parsedDetail = errText;
+      try {
+        const j = JSON.parse(errText);
+        parsedDetail =
+          (j.detail && (typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail))) ||
+          j.message ||
+          errText;
+      } catch (_) {
+        /* raw text */
+      }
+      const err = new Error(String(parsedDetail || ("HTTP " + res.status)).slice(0, 220));
       err.status = res.status;
+      err.detail = String(parsedDetail || "").slice(0, 220);
       if (
         res.status === 400 ||
-        /invalid.?voice|voice_id|does not exist/i.test(errText)
+        /invalid.?voice|voice_id|does not exist/i.test(String(parsedDetail))
       ) {
         err.code = "INVALID_VOICE_ID";
+      } else if (res.status === 401 || /invalid api key/i.test(String(parsedDetail))) {
+        err.code = "INVALID_API_KEY";
       } else if (res.status === 429) {
         err.code = "QUOTA_EXCEEDED";
       } else {
@@ -872,6 +898,7 @@
     if (!blob || !blob.size) {
       throw new Error("ElevenLabs üres hang");
     }
+    console.log("ElevenLabs siker, audio lejátszása...");
     return { blob: blob, mime: "audio/mpeg" };
   }
 

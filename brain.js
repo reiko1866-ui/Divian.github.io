@@ -810,7 +810,7 @@
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    const voice = String(voiceId || "").trim();
+    const voice = String(voiceId || "").trim() || "7B7mSWflzRSaO1yGeJH6";
     if (!isValidElevenVoiceId(voice)) {
       const err = new Error(
         "Érvénytelen ElevenLabs Voice ID. Másold be a Voices / Voice Lab → Copy Voice ID értéket."

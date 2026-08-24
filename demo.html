@@ -531,19 +531,21 @@ body {
         id="eleven-voice-custom"
         autocomplete="off"
         spellcheck="false"
-        placeholder="Illeszd be ide a Copy Voice ID karaktersorát"
+        placeholder="7B7mSWflzRSaO1yGeJH6"
+        value=""
       />
       <p class="hint">
-        ElevenLabs → <strong>Voices / Voice Lab</strong> → a hang mellett
-        <strong>ID</strong> (vagy ⋮ → <strong>Copy Voice ID</strong>).
-        Pontosan ezt a szöveget illeszd be idézőjelek nélkül.
-        Ha üres / hibás / 400-as hiba: a böngésző magyar felolvasója szólal meg.
-        Végpont: <code>https://api.elevenlabs.io/v1/text-to-speech/{VoiceID}</code>
+        Alapértelmezett hang: <strong>Gábor</strong> (magyar, meleg, természetes) —
+        Voice ID: <code>7B7mSWflzRSaO1yGeJH6</code>.
+        <a href="https://elevenlabs.io/voices/7B7mSWflzRSaO1yGeJH6" target="_blank" rel="noopener">Hang megnyitása</a>.
+        Másik hanghoz: Voices → <strong>Copy Voice ID</strong>.
+        Ha üres / hibás / 400: böngésző magyar felolvasó.
       </p>
 
-      <label for="eleven-voice">Vagy gyors választás (előre beállított ID)</label>
+      <label for="eleven-voice">Vagy gyors választás</label>
       <select id="eleven-voice">
-        <option value="">— használd a fenti saját Voice ID-t —</option>
+        <option value="7B7mSWflzRSaO1yGeJH6" selected>Gábor — magyar, meleg (ajánlott)</option>
+        <option value="">— saját Voice ID a fenti mezőből —</option>
         <option value="pNInz6obpgDQGcFmaJgB">Adam — meleg, barátságos</option>
         <option value="VR6AewLTigWG4xSOukaG">Arnold — mélyebb</option>
         <option value="TxGEqnHWrfWFTfGW9XjX">Josh — élénk</option>
@@ -1424,7 +1426,7 @@ body {
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    const voice = String(voiceId || "").trim();
+    const voice = String(voiceId || "").trim() || "7B7mSWflzRSaO1yGeJH6";
     if (!isValidElevenVoiceId(voice)) {
       const err = new Error(
         "Érvénytelen ElevenLabs Voice ID. Másold be a Voices / Voice Lab → Copy Voice ID értéket."
@@ -1759,7 +1761,7 @@ body {
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
-  const DEFAULT_ELEVEN_VOICE = "pNInz6obpgDQGcFmaJgB";
+  const DEFAULT_ELEVEN_VOICE = "7B7mSWflzRSaO1yGeJH6"; // Gábor — magyar
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();

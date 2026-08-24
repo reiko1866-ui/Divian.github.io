@@ -30,7 +30,7 @@
     echo: "divi-echo",
     autoListen: "divi-auto-listen",
   };
-  const DEFAULT_ELEVEN_VOICE = "pNInz6obpgDQGcFmaJgB";
+  const DEFAULT_ELEVEN_VOICE = "7B7mSWflzRSaO1yGeJH6"; // Gábor — magyar
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();

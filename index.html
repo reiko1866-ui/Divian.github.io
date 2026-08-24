@@ -1,1 +1,143 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Divi — interaktív beszélő vörös panda. Kérdez, felel, játszik veled." />
+  <title>Divi — Beszélő vörös panda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://generativelanguage.googleapis.com" />
+  <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+  <link rel="preconnect" href="https://api.elevenlabs.io" />
+  <link rel="dns-prefetch" href="https://api.elevenlabs.io" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preload" as="image" href="assets/panda-idle.webp" type="image/webp" />
+  <link rel="preload" as="image" href="assets/panda-talk.webp" type="image/webp" />
+  <link rel="preload" as="image" href="assets/panda-happy.webp" type="image/webp" />
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🐼</span>
+        <div>
+          <h1>Divi</h1>
+          <p class="tagline">Beszélő vörös pandád</p>
+        </div>
+      </div>
+      <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
+    </header>
 
+    <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
+      <h2>Beállítások</h2>
+
+      <label for="gemini-key">Gemini API kulcs (szöveg)</label>
+      <input type="password" id="gemini-key" autocomplete="off" placeholder="Illeszd be ide: AIza…" />
+      <p class="hint">
+        Google AI Studio kulcs a válaszokhoz. Mentés: <code>localStorage</code>
+        (<strong>divi-gemini-key</strong>).
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kulcs kérése</a>
+      </p>
+
+      <label for="eleven-key">ElevenLabs API kulcs (hang)</label>
+      <input type="password" id="eleven-key" autocomplete="off" placeholder="Illeszd be ide: sk_… / xi-…" />
+      <p class="hint">
+        Mentés: <strong>divi-eleven-key</strong>.
+        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">API kulcs</a>
+      </p>
+
+      <label for="eleven-voice-custom">ElevenLabs Voice ID</label>
+      <input
+        type="text"
+        id="eleven-voice-custom"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="7B7mSWflzRSaO1yGeJH6"
+        value=""
+      />
+      <p class="hint">
+        Alapértelmezett hang: <strong>Gábor</strong> (magyar, meleg, természetes) —
+        Voice ID: <code>7B7mSWflzRSaO1yGeJH6</code>.
+        <a href="https://elevenlabs.io/voices/7B7mSWflzRSaO1yGeJH6" target="_blank" rel="noopener">Hang megnyitása</a>.
+        Másik hanghoz: Voices → <strong>Copy Voice ID</strong>.
+        Ha üres / hibás / 400: böngésző magyar felolvasó.
+      </p>
+
+      <label for="eleven-voice">Vagy gyors választás</label>
+      <select id="eleven-voice">
+        <option value="7B7mSWflzRSaO1yGeJH6" selected>Gábor — magyar, meleg (ajánlott)</option>
+        <option value="">— saját Voice ID a fenti mezőből —</option>
+        <option value="pNInz6obpgDQGcFmaJgB">Adam — meleg, barátságos</option>
+        <option value="VR6AewLTigWG4xSOukaG">Arnold — mélyebb</option>
+        <option value="TxGEqnHWrfWFTfGW9XjX">Josh — élénk</option>
+        <option value="ErXwobaYiN019PkySvjV">Antoni — lágy</option>
+        <option value="EXAVITQu4vr4xnSDxMaL">Bella — világos</option>
+      </select>
+
+
+      <label class="toggle-row" for="echo-mode">
+        <input type="checkbox" id="echo-mode" />
+        Vicces visszhang mód (mint Talking Tom)
+      </label>
+
+      <label class="toggle-row" for="auto-listen">
+        <input type="checkbox" id="auto-listen" checked />
+        Válasz után újra hallgat
+      </label>
+
+      <p class="hint" id="mic-help">
+        Mikrofon: Chrome vagy Edge, HTTPS / GitHub Pages.
+        Engedély: címsor 🔒 → Mikrofon → Engedélyezés.
+      </p>
+
+      <button type="button" id="btn-close-settings" class="primary-btn">Kész</button>
+    </aside>
+
+    <main class="stage">
+      <div class="room" aria-hidden="true"></div>
+
+      <div id="speech-bubble" class="speech-bubble hidden" role="status" aria-live="polite">
+        <p id="bubble-text"></p>
+      </div>
+
+      <button type="button" id="character-hitbox" class="character-wrap" aria-label="Koppints Divire">
+        <div id="character" class="character state-idle" data-pose="idle">
+          <picture>
+            <source id="character-source" srcset="assets/panda-idle.webp" type="image/webp" />
+            <img id="character-img" class="character-art" src="assets/panda-idle.jpg" alt="Divi, a vörös panda" width="720" height="1080" draggable="false" />
+          </picture>
+        </div>
+        <span class="tap-hint">Koppints rám!</span>
+      </button>
+
+      <p id="status-line" class="status-line">Nyomd meg a mikrofont, és beszélj Divihez</p>
+    </main>
+
+    <section class="chat-dock">
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <button type="button" id="btn-mic" class="mic-btn" aria-label="Beszélj">
+          <span class="mic-icon">🎤</span>
+          <span class="mic-wave" aria-hidden="true"></span>
+        </button>
+        <input id="user-input" type="text" maxlength="400" placeholder="Írd ide, vagy beszélj…" />
+        <button type="submit" id="btn-send" class="send-btn" aria-label="Küldés">➤</button>
+      </form>
+
+      <div class="quick-actions">
+        <button type="button" class="chip" data-prompt="Mondj egy viccet!">Vicc!</button>
+        <button type="button" class="chip" data-prompt="Ki a kedvenc mesefigurád?">Kedvenced?</button>
+        <button type="button" class="chip" data-prompt="Tegyél fel egy kérdést!">Kérdezz</button>
+        <button type="button" class="chip" data-action="reset">Új beszélgetés</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="brain.js"></script>
+  <script src="character.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

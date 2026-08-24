@@ -474,8 +474,8 @@
    * generateContent hívás 429/5xx újrapróbával (exponenciális várakozás).
    * Ugyanarra a modellre próbál újra; csak tartós hiba után vált.
    */
-  async function generateContentWithRetry(apiKey, model, body, kind) {
-    const maxAttempts = 4;
+  async function generateContentWithRetry(apiKey, model, body, kind, maxAttemptsOpt) {
+    const maxAttempts = maxAttemptsOpt || (kind === "tts" ? 2 : 4);
     let lastErr = null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -597,7 +597,7 @@
     });
   }
 
-  /** PCM L16 base64 → WAV Blob (Gemini TTS) */
+  /** PCM L16 base64 → WAV Blob (Gemini TTS) — gyors másolás */
   function pcmBase64ToWavBlob(base64, sampleRate) {
     sampleRate = sampleRate || 24000;
     const binary = atob(base64);
@@ -620,9 +620,8 @@
     view.setUint16(34, 16, true);
     writeStr(36, "data");
     view.setUint32(40, pcmLen, true);
-    for (let i = 0; i < pcmLen; i += 1) {
-      view.setUint8(44 + i, binary.charCodeAt(i));
-    }
+    const pcm = new Uint8Array(buffer, 44, pcmLen);
+    for (let i = 0; i < pcmLen; i += 1) pcm[i] = binary.charCodeAt(i);
     return new Blob([buffer], { type: "audio/wav" });
   }
 
@@ -631,18 +630,56 @@
     return m ? parseInt(m[1], 10) : 24000;
   }
 
+  /** Első hang gyorsan: rövid első chunk, max 3 darab */
+  function splitSpeechChunks(text) {
+    const clean = String(text || "").trim();
+    if (!clean) return [];
+    if (clean.length <= 130) return [clean];
+
+    const parts = clean.match(/[^.!?…]+(?:[.!?…]+|$)/g) || [clean];
+    const sentences = parts.map(function (p) { return p.trim(); }).filter(Boolean);
+    const chunks = [];
+    let buf = "";
+
+    for (let i = 0; i < sentences.length; i += 1) {
+      const s = sentences[i];
+      if (!buf) {
+        buf = s;
+        continue;
+      }
+      const limit = chunks.length === 0 ? 130 : 200;
+      if ((buf + " " + s).length <= limit) {
+        buf = buf + " " + s;
+      } else {
+        chunks.push(buf);
+        buf = s;
+      }
+    }
+    if (buf) chunks.push(buf);
+
+    if (chunks.length > 3) {
+      return [chunks[0], chunks[1], chunks.slice(2).join(" ")];
+    }
+    return chunks;
+  }
+
+  let preferredTtsModel = "gemini-2.5-flash-preview-tts";
+
   /**
-   * Gemini natív TTS — audio/L16 PCM válasz
-   * @returns {Promise<{ blob: Blob, mime: string }>}
+   * Gemini natív TTS — audio/L16 PCM válasz (gyors első hanghoz chunkolható)
+   * @returns {Promise<{ blob: Blob, mime: string, pcmBase64?: string, sampleRate?: number }>}
    */
   async function synthesizeGeminiSpeech(text, apiKey, voiceName) {
     if (!apiKey) throw new Error("MISSING_GEMINI_KEY");
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    // Rövidítsük a TTS bemenetet — kevesebb karakter = kisebb kvótanyomás
-    const spoken = clean.length > 420 ? clean.slice(0, 417).trim() + "…" : clean;
-    const models = ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"];
+    const spoken = clean.length > 360 ? clean.slice(0, 357).trim() + "…" : clean;
+    const models = [preferredTtsModel, "gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"].filter(
+      function (m, idx, arr) {
+        return arr.indexOf(m) === idx;
+      }
+    );
     let lastErr = null;
     const voice = voiceName || "Aoede";
     const body = {
@@ -661,7 +698,7 @@
       for (let i = 0; i < models.length; i += 1) {
         const model = models[i];
         try {
-          const data = await generateContentWithRetry(apiKey, model, body, "tts");
+          const data = await generateContentWithRetry(apiKey, model, body, "tts", 2);
           const part = ((((data.candidates || [])[0] || {}).content || {}).parts || [])[0] || {};
           const inline = part.inlineData || part.inline_data || {};
           const b64 = inline.data || "";
@@ -670,6 +707,7 @@
             lastErr = new Error("Gemini TTS üres hang (" + model + ")");
             continue;
           }
+          preferredTtsModel = model;
           if (/audio\/mpeg|audio\/mp3|audio\/wav/i.test(mime) && !/L16|pcm/i.test(mime)) {
             const raw = atob(b64);
             const arr = new Uint8Array(raw.length);
@@ -677,11 +715,16 @@
             return { blob: new Blob([arr], { type: mime.split(";")[0] }), mime: mime };
           }
           const rate = parsePcmRate(mime);
-          return { blob: pcmBase64ToWavBlob(b64, rate), mime: "audio/wav" };
+          return {
+            blob: pcmBase64ToWavBlob(b64, rate),
+            mime: "audio/wav",
+            pcmBase64: b64,
+            sampleRate: rate,
+          };
         } catch (err) {
           lastErr = err;
-          if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED")) {
-            await sleep(2000 + Math.floor(Math.random() * 800));
+          if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED") && i < models.length - 1) {
+            await sleep(800 + Math.floor(Math.random() * 400));
           }
         }
       }
@@ -732,6 +775,7 @@
 
   Brain.normalizeSpeech = normalizeSpeech;
   Brain.synthesizeGeminiSpeech = synthesizeGeminiSpeech;
+  Brain.splitSpeechChunks = splitSpeechChunks;
   Brain.pcmBase64ToWavBlob = pcmBase64ToWavBlob;
   global.DiviBrain = Brain;
 })(window);

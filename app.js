@@ -35,6 +35,7 @@
   let busy = false;
   let speakToken = 0;
   let currentAudio = null;
+  let currentSource = null;
   let activeAudioUrl = null;
   let greetingDone = false;
   let micPermission = "unknown";
@@ -42,6 +43,7 @@
   let startingMic = false;
   let audioCtx = null;
   let armed = false;
+  let sharedAnalyser = null;
 
   function loadSettings() {
     try {
@@ -120,6 +122,15 @@
     speakToken += 1;
     characterEl.classList.remove("is-speaking-audio");
     character.stopLipSync();
+    if (currentSource) {
+      try {
+        currentSource.onended = null;
+        currentSource.stop();
+      } catch (_) {
+        /* ignore */
+      }
+      currentSource = null;
+    }
     if (currentAudio) {
       try {
         currentAudio.pause();
@@ -146,25 +157,116 @@
     return audioCtx;
   }
 
-  function ensureAudioGraph(audioEl) {
+  function getAnalyser() {
     const ctx = ensureAudioContext();
     if (!ctx) return null;
-    try {
-      const source = ctx.createMediaElementSource(audioEl);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.65;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      return analyser;
-    } catch (err) {
-      console.warn("[Divi] Audio graph:", err);
-      return null;
+    if (!sharedAnalyser) {
+      sharedAnalyser = ctx.createAnalyser();
+      sharedAnalyser.fftSize = 256;
+      sharedAnalyser.smoothingTimeConstant = 0.65;
+      sharedAnalyser.connect(ctx.destination);
     }
+    return sharedAnalyser;
+  }
+
+  function pcmBase64ToAudioBuffer(ctx, base64, sampleRate) {
+    const binary = atob(base64);
+    const bytes = binary.length;
+    const samples = bytes >> 1;
+    const buffer = ctx.createBuffer(1, samples, sampleRate || 24000);
+    const channel = buffer.getChannelData(0);
+    for (let i = 0, s = 0; s < samples; s += 1, i += 2) {
+      let sample = binary.charCodeAt(i) | (binary.charCodeAt(i + 1) << 8);
+      if (sample >= 0x8000) sample -= 0x10000;
+      channel[s] = sample / 0x8000;
+    }
+    return buffer;
+  }
+
+  function playResult(result, lipText, token) {
+    return new Promise(function (resolve, reject) {
+      if (token !== speakToken) {
+        resolve();
+        return;
+      }
+
+      const ctx = ensureAudioContext();
+      const analyser = getAnalyser();
+
+      // Gyors út: nyers PCM → AudioBuffer (nincs Blob / <audio> decode)
+      if (ctx && result && result.pcmBase64) {
+        try {
+          if (currentSource) {
+            try {
+              currentSource.onended = null;
+              currentSource.stop();
+            } catch (_) {
+              /* ignore */
+            }
+            currentSource = null;
+          }
+          const audioBuffer = pcmBase64ToAudioBuffer(
+            ctx,
+            result.pcmBase64,
+            result.sampleRate || 24000
+          );
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          if (analyser) {
+            source.connect(analyser);
+            character.startAudioLipSync(analyser);
+          } else {
+            source.connect(ctx.destination);
+            character.startVisemeLipSync(lipText, { charsPerSecond: 13 });
+          }
+          currentSource = source;
+          source.onended = function () {
+            if (currentSource === source) currentSource = null;
+            resolve();
+          };
+          source.start(0);
+          return;
+        } catch (err) {
+          console.warn("[Divi] PCM lejátszás fallback Blob-ra:", err);
+        }
+      }
+
+      const blob = result && result.blob;
+      if (!blob) {
+        reject(new Error("Üres Gemini hangválasz"));
+        return;
+      }
+
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(activeAudioUrl);
+      audio.crossOrigin = "anonymous";
+      currentAudio = audio;
+
+      if (analyser && ctx) {
+        try {
+          const src = ctx.createMediaElementSource(audio);
+          src.connect(analyser);
+          character.startAudioLipSync(analyser);
+        } catch (_) {
+          character.startVisemeLipSync(lipText, { charsPerSecond: 13 });
+        }
+      } else {
+        character.startVisemeLipSync(lipText, { charsPerSecond: 13 });
+      }
+
+      audio.onended = function () {
+        resolve();
+      };
+      audio.onerror = function () {
+        reject(new Error("Hang lejátszási hiba"));
+      };
+      audio.play().catch(reject);
+    });
   }
 
   /**
-   * Gemini TTS hang lejátszása — NEM window.speechSynthesis
+   * Gemini TTS — első mondat azonnal, közben a következő chunk töltődik
    */
   async function speak(text) {
     const token = ++speakToken;
@@ -174,39 +276,39 @@
     const apiKey = requireGeminiKey();
     if (!apiKey) return;
 
+    ensureAudioContext();
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    setStatus("Hang készül (Gemini)…");
+    // Azonnali szájmozgás, amíg az első hang megjön
+    character.startVisemeLipSync(clean, { charsPerSecond: 14 });
+    setStatus("Hang készül…");
+
+    const voice = geminiVoiceSelect.value || "Aoede";
+    const chunks =
+      typeof DiviBrain.splitSpeechChunks === "function"
+        ? DiviBrain.splitSpeechChunks(clean)
+        : [clean];
 
     try {
-      const voice = geminiVoiceSelect.value || "Aoede";
-      const result = await DiviBrain.synthesizeGeminiSpeech(clean, apiKey, voice);
-      if (token !== speakToken) return;
+      let nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[0], apiKey, voice);
 
-      const blob = result && result.blob;
-      if (!blob) throw new Error("Üres Gemini hangválasz");
+      for (let i = 0; i < chunks.length; i += 1) {
+        if (token !== speakToken) return;
 
-      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
-      activeAudioUrl = URL.createObjectURL(blob);
+        // Következő chunk előtöltése, amíg az aktuálisat várjuk / játsszuk
+        const pending = nextFetch;
+        if (i + 1 < chunks.length) {
+          nextFetch = DiviBrain.synthesizeGeminiSpeech(chunks[i + 1], apiKey, voice);
+        }
 
-      currentAudio = new Audio(activeAudioUrl);
-      currentAudio.crossOrigin = "anonymous";
+        const result = await pending;
+        if (token !== speakToken) return;
 
-      const analyser = ensureAudioGraph(currentAudio);
-      if (analyser) character.startAudioLipSync(analyser);
-      else character.startVisemeLipSync(clean, { charsPerSecond: 12 });
-
-      setStatus("Divi beszél…");
-      characterEl.classList.add("is-speaking-audio");
-
-      await new Promise(function (resolve, reject) {
-        currentAudio.onended = resolve;
-        currentAudio.onerror = function () {
-          reject(new Error("Hang lejátszási hiba"));
-        };
-        currentAudio.play().catch(reject);
-      });
+        setStatus("Divi beszél…");
+        characterEl.classList.add("is-speaking-audio");
+        await playResult(result, chunks[i], token);
+      }
     } catch (err) {
       console.error("[Divi] Gemini hanghiba:", err);
       if (token === speakToken) {
@@ -226,10 +328,9 @@
         }
         setStatus(hint);
         showBubble(clean);
-        // Viseme „néma beszéd”, hogy ne álljon meg teljesen a karakter
         character.startVisemeLipSync(clean, { charsPerSecond: 12 });
         await new Promise(function (r) {
-          setTimeout(r, Math.min(2800, 700 + clean.length * 45));
+          setTimeout(r, Math.min(2200, 600 + clean.length * 40));
         });
         character.stopLipSync();
       }
@@ -624,7 +725,7 @@
     if (warn) setStatus(warn);
 
     const line =
-      "Szia! Divi vagyok, a kíváncsi vörös panda a bambuszerdőből! Miről meséljek neked ma?";
+      "Szia! Divi vagyok, a kíváncsi vörös panda! Miről meséljek ma?";
     addChat("bot", line);
     await speak(line);
 

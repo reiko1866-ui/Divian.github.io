@@ -275,8 +275,6 @@
       activeAudioUrl = URL.createObjectURL(blob);
       const audio = new Audio(activeAudioUrl);
       audio.crossOrigin = "anonymous";
-      // Biztonsági háló: kicsit lassabb lejátszás, ha a modell mégis sietne
-      audio.playbackRate = 0.92;
       currentAudio = audio;
 
       if (analyser && ctx) {

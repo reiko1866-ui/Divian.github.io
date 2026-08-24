@@ -787,7 +787,7 @@
   };
 
   /**
-   * ElevenLabs TTS — nyugodtabb tempó gyerekeknek (speed < 1)
+   * ElevenLabs TTS — élénk, de nem hadarós tempó
    * @returns {Promise<{ blob: Blob, mime: string }>}
    */
   async function synthesizeElevenSpeech(text, apiKey, voiceId) {
@@ -799,14 +799,10 @@
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    // Kis szünetek a mondatok között — kevésbé hadar
-    const spoken = (clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean)
-      .replace(/([.!?…])\s+/g, "$1 ... ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const spoken = clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean;
     const voice = voiceId || "pNInz6obpgDQGcFmaJgB";
-    // Multilingual előbb: természetesebb tempó; flash csak tartalék
-    const models = ["eleven_multilingual_v2", "eleven_flash_v2_5"];
+    // Flash előbb = gyorsabb válasz; multilingual tartalék
+    const models = ["eleven_flash_v2_5", "eleven_multilingual_v2"];
     let lastErr = null;
 
     for (let i = 0; i < models.length; i += 1) {
@@ -815,7 +811,7 @@
         const res = await fetch(
           "https://api.elevenlabs.io/v1/text-to-speech/" +
             encodeURIComponent(voice) +
-            "?optimize_streaming_latency=2&output_format=mp3_44100_128",
+            "?optimize_streaming_latency=3&output_format=mp3_22050_32",
           {
             method: "POST",
             headers: {
@@ -827,12 +823,12 @@
               text: spoken,
               model_id: model,
               voice_settings: {
-                stability: 0.58,
-                similarity_boost: 0.72,
-                style: 0.12,
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.2,
                 use_speaker_boost: true,
-                // 0.7–1.2; alacsonyabb = lassabb, mesélős tempó
-                speed: 0.82,
+                // 1.0 = alap; 0.95 = enyhén nyugodtabb, de nem lassú
+                speed: 0.95,
               },
             }),
           }

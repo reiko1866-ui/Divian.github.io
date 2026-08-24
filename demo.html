@@ -1374,7 +1374,7 @@ body {
   };
 
   /**
-   * ElevenLabs TTS — gyors flash modell, MP3 blob
+   * ElevenLabs TTS — nyugodtabb tempó gyerekeknek (speed < 1)
    * @returns {Promise<{ blob: Blob, mime: string }>}
    */
   async function synthesizeElevenSpeech(text, apiKey, voiceId) {
@@ -1386,9 +1386,14 @@ body {
     const clean = String(text || "").trim();
     if (!clean) throw new Error("Üres szöveg a hanghoz");
 
-    const spoken = clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean;
+    // Kis szünetek a mondatok között — kevésbé hadar
+    const spoken = (clean.length > 900 ? clean.slice(0, 897).trim() + "…" : clean)
+      .replace(/([.!?…])\s+/g, "$1 ... ")
+      .replace(/\s+/g, " ")
+      .trim();
     const voice = voiceId || "pNInz6obpgDQGcFmaJgB";
-    const models = ["eleven_flash_v2_5", "eleven_multilingual_v2"];
+    // Multilingual előbb: természetesebb tempó; flash csak tartalék
+    const models = ["eleven_multilingual_v2", "eleven_flash_v2_5"];
     let lastErr = null;
 
     for (let i = 0; i < models.length; i += 1) {
@@ -1397,7 +1402,7 @@ body {
         const res = await fetch(
           "https://api.elevenlabs.io/v1/text-to-speech/" +
             encodeURIComponent(voice) +
-            "?optimize_streaming_latency=4&output_format=mp3_22050_32",
+            "?optimize_streaming_latency=2&output_format=mp3_44100_128",
           {
             method: "POST",
             headers: {
@@ -1409,10 +1414,12 @@ body {
               text: spoken,
               model_id: model,
               voice_settings: {
-                stability: 0.42,
-                similarity_boost: 0.78,
-                style: 0.32,
+                stability: 0.58,
+                similarity_boost: 0.72,
+                style: 0.12,
                 use_speaker_boost: true,
+                // 0.7–1.2; alacsonyabb = lassabb, mesélős tempó
+                speed: 0.82,
               },
             }),
           }
@@ -1960,6 +1967,8 @@ body {
       activeAudioUrl = URL.createObjectURL(blob);
       const audio = new Audio(activeAudioUrl);
       audio.crossOrigin = "anonymous";
+      // Biztonsági háló: kicsit lassabb lejátszás, ha a modell mégis sietne
+      audio.playbackRate = 0.92;
       currentAudio = audio;
 
       if (analyser && ctx) {
@@ -1999,13 +2008,13 @@ body {
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    character.startVisemeLipSync(clean, { charsPerSecond: 14 });
+    character.startVisemeLipSync(clean, { charsPerSecond: 11 });
     setStatus("Hang készül (ElevenLabs)…");
 
     const voiceId = getElevenVoiceId();
-    // Flash modell gyors; rövid szöveg egyben, hosszúnál chunkolunk
+    // Egyben beszélünk, ha nem túl hosszú — természetesebb ritmus
     const chunks =
-      clean.length > 220 && typeof DiviBrain.splitSpeechChunks === "function"
+      clean.length > 320 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
         : [clean];
 
@@ -2026,6 +2035,12 @@ body {
         setStatus("Divi beszél…");
         characterEl.classList.add("is-speaking-audio");
         await playResult(result, chunks[i], token);
+        // Rövid levegővétel a chunkok között
+        if (i + 1 < chunks.length && token === speakToken) {
+          await new Promise(function (r) {
+            setTimeout(r, 320);
+          });
+        }
       }
     } catch (err) {
       console.error("[Divi] ElevenLabs hanghiba:", err);

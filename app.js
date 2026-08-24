@@ -275,6 +275,8 @@
       activeAudioUrl = URL.createObjectURL(blob);
       const audio = new Audio(activeAudioUrl);
       audio.crossOrigin = "anonymous";
+      // Biztonsági háló: kicsit lassabb lejátszás, ha a modell mégis sietne
+      audio.playbackRate = 0.92;
       currentAudio = audio;
 
       if (analyser && ctx) {
@@ -314,13 +316,13 @@
     character.setState("speaking");
     characterEl.classList.add("is-speaking-audio");
     showBubble(clean);
-    character.startVisemeLipSync(clean, { charsPerSecond: 14 });
+    character.startVisemeLipSync(clean, { charsPerSecond: 11 });
     setStatus("Hang készül (ElevenLabs)…");
 
     const voiceId = getElevenVoiceId();
-    // Flash modell gyors; rövid szöveg egyben, hosszúnál chunkolunk
+    // Egyben beszélünk, ha nem túl hosszú — természetesebb ritmus
     const chunks =
-      clean.length > 220 && typeof DiviBrain.splitSpeechChunks === "function"
+      clean.length > 320 && typeof DiviBrain.splitSpeechChunks === "function"
         ? DiviBrain.splitSpeechChunks(clean)
         : [clean];
 
@@ -341,6 +343,12 @@
         setStatus("Divi beszél…");
         characterEl.classList.add("is-speaking-audio");
         await playResult(result, chunks[i], token);
+        // Rövid levegővétel a chunkok között
+        if (i + 1 < chunks.length && token === speakToken) {
+          await new Promise(function (r) {
+            setTimeout(r, 320);
+          });
+        }
       }
     } catch (err) {
       console.error("[Divi] ElevenLabs hanghiba:", err);
@@ -815,7 +823,7 @@
       character.react("react");
       return;
     }
-    if (!requireGeminiKey()) return;
+    if (!requireElevenKey()) return;
     busy = true;
     stopListening();
     const line = brain.tapReaction();
@@ -837,21 +845,34 @@
   btnCloseSettings.addEventListener("click", function () {
     saveSettings();
     settingsPanel.classList.add("hidden");
-    if (getGeminiKey()) {
+    const hasGemini = !!getGeminiKey();
+    const hasEleven = !!getElevenKey();
+    if (hasGemini && hasEleven) {
       console.info(
-        "[Divi] Gemini kulcs mentve. Szöveg + hang: Gemini API. Hangszín:",
-        geminiVoiceSelect.value || "Aoede"
+        "[Divi] Kulcsok mentve. Szöveg: Gemini · Hang: ElevenLabs (" +
+          getElevenVoiceId() +
+          ")"
       );
       if (!greetingDone) bootGreeting();
     } else {
-      console.error(
-        "[Divi] Gemini API kulcs még mindig hiányzik. Illeszd be a „Gemini API kulcs” mezőbe."
-      );
-      setStatus("Hiányzik a Gemini API kulcs — illeszd be a Beállításokban.");
+      if (!hasGemini) {
+        console.error("[Divi] Gemini API kulcs hiányzik (szöveg).");
+      }
+      if (!hasEleven) {
+        console.error("[Divi] ElevenLabs API kulcs hiányzik (hang).");
+      }
+      setStatus("Hiányzik kulcs — Gemini (szöveg) és/vagy ElevenLabs (hang) a Beállításokban.");
     }
   });
 
-  [geminiKeyInput, geminiVoiceSelect, echoModeInput, autoListenInput].forEach(function (el) {
+  [
+    geminiKeyInput,
+    elevenKeyInput,
+    elevenVoiceSelect,
+    elevenVoiceCustom,
+    echoModeInput,
+    autoListenInput,
+  ].forEach(function (el) {
     el.addEventListener("change", saveSettings);
   });
 
@@ -866,13 +887,15 @@
   }
   document.addEventListener("pointerdown", arm);
 
-  if (!getGeminiKey()) {
+  if (!getGeminiKey() || !getElevenKey()) {
     console.error(
-      "[Divi] Gemini API kulcs hiányzik. Nyisd a ⚙️ Beállításokat, és illeszd be a kulcsot a „Gemini API kulcs” mezőbe (localStorage: divi-gemini-key)."
+      "[Divi] Állítsd be: Gemini (divi-gemini-key) szöveghez + ElevenLabs (divi-eleven-key) hanghoz a ⚙️ Beállításokban."
     );
     settingsPanel.classList.remove("hidden");
-    setStatus("Illeszd be a Gemini API kulcsot a Beállításokban (szöveg + hang).");
-    showBubble("Szia! Állítsd be a Gemini kulcsot a ⚙️ Beállításokban, és máris beszélgethetünk.");
+    setStatus("Illeszd be a Gemini és ElevenLabs API kulcsokat a Beállításokban.");
+    showBubble(
+      "Szia! Állítsd be a Gemini (szöveg) és ElevenLabs (hang) kulcsot a ⚙️ Beállításokban."
+    );
   } else {
     const earlyWarn = micUnsupportedReason();
     if (earlyWarn) setStatus(earlyWarn);

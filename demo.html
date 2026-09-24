@@ -633,6 +633,13 @@ body {
     linear-gradient(180deg, #d8f3dc 0%, #95d5b2 58%, #74c69d 100%);
 }
 
+.map-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
 .map-svg {
   position: absolute;
   inset: 0;
@@ -710,7 +717,7 @@ body {
   z-index: 3;
   font-size: 1.35rem;
   line-height: 1;
-  transform: translate(-130%, -150%);
+  transform: translate(-50%, -50%);
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.15));
   pointer-events: none;
 }
@@ -956,9 +963,11 @@ body[data-place="bridge"] {
         </header>
 
         <div id="map-canvas" class="map-canvas">
-          <svg id="map-svg" class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-          <div id="map-walker" class="map-walker" aria-hidden="true">🐼</div>
-          <div id="map-pins" class="map-pins"></div>
+          <div id="map-world" class="map-world">
+            <svg id="map-svg" class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div id="map-pins" class="map-pins"></div>
+            <div id="map-walker" class="map-walker" aria-hidden="true">🐼</div>
+          </div>
         </div>
 
         <div class="map-detail">
@@ -971,7 +980,7 @@ body[data-place="bridge"] {
           <div id="map-steps" class="map-steps" role="group" aria-label="Egy lépés a szomszédba"></div>
           <button type="button" id="btn-travel" class="primary-btn map-go">Indulás</button>
         </div>
-        <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Húzd az ujjad a térképen.</p>
+        <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Útközben az ösvényen maradunk, a kanyart előre látod.</p>
       </div>
     </div>
 
@@ -2188,6 +2197,8 @@ body[data-place="bridge"] {
 /**
  * Divi mesebeli térképe — helyek, útvonal, irányok, hangparancsok.
  * A gyerek csak a szomszédos ösvényeken léphet; távolabbi helyre a legrövidebb úton sétálunk.
+ * Haladás Waze-szerűen: útra tapasztás, jobb sáv, lerp, előretekintő kamera.
+ * A térkép 100×100 egysége 100×100 méter. 1 egység = 1 méter.
  */
 (function (global) {
   "use strict";
@@ -2280,6 +2291,12 @@ body[data-place="bridge"] {
 
   const STORAGE_KEY = "divi-map";
   const DIR_MIN = 0.42;
+  /** Jobb oldali sáv közepe a középvonaltól, méterben (jobbra tarts). */
+  const LANE_OFFSET_M = 1.8;
+  /** Ennyivel a figura előtt néz a kamera, hogy a kanyar időben látszódjon. */
+  const LOOKAHEAD_M = 14;
+  const DRIVE_SPEED_MPS = 30;
+  const FOLLOW_ZOOM = 1.72;
 
   const PLACE_BY_ID = {};
   PLACES.forEach(function (place) {
@@ -2445,6 +2462,146 @@ body[data-place="bridge"] {
     return joinNames(PLACES.map(function (item) { return item.name; }));
   }
 
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function damp(current, target, lambda, dt) {
+    const t = 1 - Math.exp(-lambda * Math.max(0, dt));
+    return lerp(current, target, t);
+  }
+
+  function lerpAngle(a, b, t) {
+    let diff = b - a;
+    const turn = Math.PI * 2;
+    while (diff > Math.PI) diff -= turn;
+    while (diff < -Math.PI) diff += turn;
+    return a + diff * t;
+  }
+
+  function dampAngle(current, target, lambda, dt) {
+    return lerpAngle(current, target, 1 - Math.exp(-lambda * Math.max(0, dt)));
+  }
+
+  /**
+   * Jobb oldal a haladási irányhoz képest.
+   * A térkép y tengelye lefelé nő, ezért a jobb normál: (-ty, tx).
+   */
+  function offsetRight(point, tangent, meters) {
+    return {
+      x: point.x + -tangent.y * meters,
+      y: point.y + tangent.x * meters,
+    };
+  }
+
+  function projectToSegment(point, seg) {
+    const dx = seg.b.x - seg.a.x;
+    const dy = seg.b.y - seg.a.y;
+    const len2 = dx * dx + dy * dy || 1e-8;
+    let t = ((point.x - seg.a.x) * dx + (point.y - seg.a.y) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const x = seg.a.x + dx * t;
+    const y = seg.a.y + dy * t;
+    return {
+      point: { x: x, y: y },
+      t: t,
+      distance: Math.hypot(point.x - x, point.y - y),
+    };
+  }
+
+  function buildPolyline(points) {
+    const segments = [];
+    const vertexDistances = [0];
+    let length = 0;
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const a = points[i];
+      const b = points[i + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 0.0001;
+      const tangent = { x: dx / len, y: dy / len };
+      segments.push({
+        a: a,
+        b: b,
+        length: len,
+        tangent: tangent,
+        heading: Math.atan2(tangent.y, tangent.x),
+        start: length,
+      });
+      length += len;
+      vertexDistances.push(length);
+    }
+    return { points: points, segments: segments, length: length, vertexDistances: vertexDistances };
+  }
+
+  function pointAtDistance(poly, distance) {
+    const segs = poly.segments;
+    const d = Math.max(0, Math.min(poly.length, distance));
+    let seg = segs[segs.length - 1];
+    let index = segs.length - 1;
+    for (let i = 0; i < segs.length; i += 1) {
+      if (d <= segs[i].start + segs[i].length || i === segs.length - 1) {
+        seg = segs[i];
+        index = i;
+        break;
+      }
+    }
+    const t = Math.max(0, Math.min(1, (d - seg.start) / seg.length));
+    return {
+      point: {
+        x: seg.a.x + (seg.b.x - seg.a.x) * t,
+        y: seg.a.y + (seg.b.y - seg.a.y) * t,
+      },
+      tangent: seg.tangent,
+      heading: seg.heading,
+      index: index,
+      distance: d,
+    };
+  }
+
+  function snapToRoad(point, poly, preferredIndex) {
+    let best = null;
+    const hits = poly.segments.map(function (seg, i) {
+      const proj = projectToSegment(point, seg);
+      return {
+        point: proj.point,
+        distance: proj.distance,
+        index: i,
+        tangent: seg.tangent,
+        heading: seg.heading,
+      };
+    });
+    hits.forEach(function (hit) {
+      if (!best || hit.distance < best.distance) best = hit;
+    });
+    if (!best) return null;
+    if (preferredIndex != null && hits[preferredIndex] && hits[preferredIndex].distance <= best.distance + 0.35) {
+      return hits[preferredIndex];
+    }
+    return best;
+  }
+
+  /**
+   * A figura mindig a legközelebbi útszegmensen áll, attól jobbra 1.8 méterrel.
+   */
+  function poseOnRoute(poly, distanceMeters) {
+    const along = pointAtDistance(poly, distanceMeters);
+    const snapped = snapToRoad(along.point, poly, along.index);
+    const lane = offsetRight(snapped.point, snapped.tangent, LANE_OFFSET_M);
+    return {
+      x: lane.x,
+      y: lane.y,
+      center: snapped.point,
+      heading: snapped.heading,
+      tangent: snapped.tangent,
+      index: snapped.index,
+    };
+  }
+
+  function lookAheadPoint(poly, distanceMeters, aheadMeters) {
+    return pointAtDistance(poly, distanceMeters + aheadMeters);
+  }
+
   function motionOk() {
     if (!global.matchMedia) return true;
     return !global.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2591,26 +2748,124 @@ body[data-place="bridge"] {
     this._status(steps ? steps + " lépés: " + path.map(function (pid) { return place(pid).name; }).join(" → ") : "");
   };
 
-  MapApp.prototype._moveWalker = function (fromId, toId) {
+  MapApp.prototype._applyFollower = function (vehicle, cam) {
+    const world = document.getElementById("map-world");
+    const canvas = document.getElementById("map-canvas");
     const walker = document.getElementById("map-walker");
-    const from = place(fromId);
-    const to = place(toId);
-    if (!walker || !from || !to) return Promise.resolve();
-    const reduce = !motionOk() || !this._open;
+    if (!world || !canvas || !walker || !vehicle || !cam) return;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || 1;
+    const height = rect.height || 1;
+    const lookX = (cam.x / 100) * width;
+    const lookY = (cam.y / 100) * height;
+    const rot = -90 - (cam.heading * 180) / Math.PI;
+    const anchorX = width * 0.5;
+    const anchorY = height * (cam.anchor == null ? 0.62 : cam.anchor);
+    world.style.transformOrigin = "0 0";
+    world.style.transform =
+      "translate(" + anchorX + "px," + anchorY + "px) " +
+      "scale(" + cam.zoom + ") " +
+      "rotate(" + rot + "deg) " +
+      "translate(" + -lookX + "px," + -lookY + "px)";
     walker.style.transition = "none";
-    walker.style.left = from.x + "%";
-    walker.style.top = from.y + "%";
-    if (reduce) {
-      walker.style.left = to.x + "%";
-      walker.style.top = to.y + "%";
-      return Promise.resolve();
-    }
-    void walker.offsetWidth;
-    walker.style.transition = "left 420ms ease-in-out, top 420ms ease-in-out";
-    walker.style.left = to.x + "%";
-    walker.style.top = to.y + "%";
+    walker.style.left = vehicle.x + "%";
+    walker.style.top = vehicle.y + "%";
+    walker.style.transform = "translate(-50%, -50%) rotate(" + -rot + "deg)";
+    document.querySelectorAll(".map-pin").forEach(function (pin) {
+      pin.style.transform = "translate(-50%, -72%) rotate(" + -rot + "deg)";
+    });
+  };
+
+  MapApp.prototype._clearFollower = function () {
+    const world = document.getElementById("map-world");
+    const walker = document.getElementById("map-walker");
+    if (world) world.style.transform = "";
+    if (walker) walker.style.transform = "";
+    document.querySelectorAll(".map-pin").forEach(function (pin) {
+      pin.style.transform = "";
+    });
+  };
+
+  /**
+   * Végigmegy az útvonalon: a pozíció a sávra van tapasztva,
+   * a távolság és a kamera lerp-pel simul, a kamera előre néz.
+   */
+  MapApp.prototype._driveRoute = function (path) {
+    const self = this;
+    const poly = buildPolyline(path.map(function (id) { return place(id); }));
+    const reduce = !motionOk() || !this._open || poly.length < 0.5;
+    if (reduce) return Promise.resolve();
+
     return new Promise(function (resolve) {
-      setTimeout(resolve, 460);
+      const start = poseOnRoute(poly, 0);
+      let targetDist = 0;
+      let displayDist = 0;
+      let passed = 0;
+      const cam = {
+        x: start.center.x,
+        y: start.center.y,
+        heading: start.heading,
+        zoom: 1.08,
+        anchor: 0.62,
+      };
+      let last = (global.performance && performance.now()) || Date.now();
+
+      function finishOverview() {
+        const started = (global.performance && performance.now()) || Date.now();
+        const from = { x: cam.x, y: cam.y, heading: cam.heading, zoom: cam.zoom, anchor: cam.anchor };
+        function back(now) {
+          const t = Math.min(1, ((now || Date.now()) - started) / 480);
+          const eased = lerp(0, 1, t);
+          cam.x = lerp(from.x, 50, eased);
+          cam.y = lerp(from.y, 50, eased);
+          cam.heading = lerpAngle(from.heading, -Math.PI / 2, eased);
+          cam.zoom = lerp(from.zoom, 1, eased);
+          cam.anchor = lerp(from.anchor, 0.5, eased);
+          const parked = poseOnRoute(poly, poly.length);
+          self._applyFollower(parked, cam);
+          if (t < 1) {
+            self._driveFrame = requestAnimationFrame(back);
+            return;
+          }
+          self._clearFollower();
+          resolve();
+        }
+        self._driveFrame = requestAnimationFrame(back);
+      }
+
+      function frame(now) {
+        const dt = Math.min(0.05, ((now || Date.now()) - last) / 1000);
+        last = now || Date.now();
+        targetDist = Math.min(poly.length, targetDist + DRIVE_SPEED_MPS * dt);
+        displayDist = damp(displayDist, targetDist, 8, dt);
+
+        const vehicle = poseOnRoute(poly, displayDist);
+        const ahead = lookAheadPoint(poly, displayDist, LOOKAHEAD_M);
+        cam.x = damp(cam.x, ahead.point.x, 4.5, dt);
+        cam.y = damp(cam.y, ahead.point.y, 4.5, dt);
+        cam.heading = dampAngle(cam.heading, ahead.heading, 5, dt);
+        cam.zoom = damp(cam.zoom, FOLLOW_ZOOM, 3.2, dt);
+        self._applyFollower(vehicle, cam);
+
+        while (passed < path.length - 1 && displayDist >= poly.vertexDistances[passed + 1] - 0.35) {
+          passed += 1;
+          self.currentId = path[passed];
+          self.visited[path[passed]] = true;
+          self.selectedId = path[passed];
+          self.render();
+          self._emit();
+          self._applyFollower(vehicle, cam);
+        }
+
+        const arrived = targetDist >= poly.length - 0.05 && Math.abs(displayDist - poly.length) < 0.2;
+        if (!arrived) {
+          self._driveFrame = requestAnimationFrame(frame);
+          return;
+        }
+        finishOverview();
+      }
+
+      self._driveFrame = requestAnimationFrame(frame);
     });
   };
 
@@ -2634,14 +2889,16 @@ body[data-place="bridge"] {
       this._status("Sétálunk: " + path.map(function (pid) { return place(pid).name; }).join(" → "));
     }
 
+    const animate = opts.animate !== false && motionOk() && this._open;
+    if (animate) {
+      await this._driveRoute(path);
+    }
     for (let i = 1; i < path.length; i += 1) {
-      if (opts.animate !== false) await this._moveWalker(path[i - 1], path[i]);
       this.currentId = path[i];
       this.visited[path[i]] = true;
       this.selectedId = path[i];
-      this.render();
-      this._emit();
     }
+    this._emit();
 
     if (opts.recordTrail !== false) {
       this.trail.push(target.id);
@@ -2736,6 +2993,9 @@ body[data-place="bridge"] {
         walker.style.transition = "none";
         walker.style.left = current.x + "%";
         walker.style.top = current.y + "%";
+        walker.style.transform = "";
+        const world = document.getElementById("map-world");
+        if (world) world.style.transform = "";
       }
     }
 
@@ -2918,6 +3178,18 @@ body[data-place="bridge"] {
     knownPlaceList: knownPlaceList,
     joinNames: joinNames,
     mount: mount,
+    lerp: lerp,
+    damp: damp,
+    lerpAngle: lerpAngle,
+    offsetRight: offsetRight,
+    buildPolyline: buildPolyline,
+    pointAtDistance: pointAtDistance,
+    snapToRoad: snapToRoad,
+    poseOnRoute: poseOnRoute,
+    lookAheadPoint: lookAheadPoint,
+    projectToSegment: projectToSegment,
+    LANE_OFFSET_M: LANE_OFFSET_M,
+    LOOKAHEAD_M: LOOKAHEAD_M,
   };
 })(typeof window !== "undefined" ? window : globalThis);
 

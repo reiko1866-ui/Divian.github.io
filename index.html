@@ -112,9 +112,11 @@
         </header>
 
         <div id="map-canvas" class="map-canvas">
-          <svg id="map-svg" class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-          <div id="map-walker" class="map-walker" aria-hidden="true">🐼</div>
-          <div id="map-pins" class="map-pins"></div>
+          <div id="map-world" class="map-world">
+            <svg id="map-svg" class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div id="map-pins" class="map-pins"></div>
+            <div id="map-walker" class="map-walker" aria-hidden="true">🐼</div>
+          </div>
         </div>
 
         <div class="map-detail">
@@ -127,7 +129,7 @@
           <div id="map-steps" class="map-steps" role="group" aria-label="Egy lépés a szomszédba"></div>
           <button type="button" id="btn-travel" class="primary-btn map-go">Indulás</button>
         </div>
-        <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Húzd az ujjad a térképen.</p>
+        <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Útközben az ösvényen maradunk, a kanyart előre látod.</p>
       </div>
     </div>
 

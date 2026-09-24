@@ -618,6 +618,13 @@ body {
     linear-gradient(180deg, #d8f3dc 0%, #95d5b2 58%, #74c69d 100%);
 }
 
+.map-world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
 .map-svg {
   position: absolute;
   inset: 0;
@@ -695,7 +702,7 @@ body {
   z-index: 3;
   font-size: 1.35rem;
   line-height: 1;
-  transform: translate(-130%, -150%);
+  transform: translate(-50%, -50%);
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.15));
   pointer-events: none;
 }

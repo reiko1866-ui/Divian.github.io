@@ -85,10 +85,10 @@
   ];
 
   const DIRS = {
-    n: { x: 0, y: -1, label: "Észak" },
-    s: { x: 0, y: 1, label: "Dél" },
-    e: { x: 1, y: 0, label: "Kelet" },
-    w: { x: -1, y: 0, label: "Nyugat" },
+    n: { x: 0, y: -1, label: "Észak", arrow: "▲" },
+    s: { x: 0, y: 1, label: "Dél", arrow: "▼" },
+    e: { x: 1, y: 0, label: "Kelet", arrow: "▶" },
+    w: { x: -1, y: 0, label: "Nyugat", arrow: "◀" },
   };
 
   const STORAGE_KEY = "divi-map";
@@ -577,14 +577,24 @@
 
     if (backBtn) backBtn.disabled = this._busy || this.trail.length < 2;
 
+    const steps = document.getElementById("map-steps");
+    if (steps) {
+      steps.innerHTML = ["n", "e", "w", "s"].map(function (dir) {
+        const next = neighborInDirection(this.currentId, dir);
+        const text = DIRS[dir].arrow + " " + DIRS[dir].label + (next ? " · " + next.name : " · nincs ösvény");
+        return (
+          '<button type="button" class="map-step" data-dir="' + dir + '" aria-label="' + text + '"' +
+          (this._busy || !next ? " disabled" : "") +
+          ">" + text + "</button>"
+        );
+      }, this).join("");
+    }
+
     ["n", "s", "e", "w"].forEach(function (dir) {
-      const button = document.querySelector('.map-dir[data-dir="' + dir + '"]');
+      const button = document.querySelector('.map-step[data-dir="' + dir + '"]');
       if (!button) return;
       const next = neighborInDirection(this.currentId, dir);
       button.disabled = this._busy || !next;
-      const label = DIRS[dir].label + (next ? ": " + next.name : ": nincs ösvény");
-      button.setAttribute("aria-label", label);
-      button.title = label;
     }, this);
 
     if (whereIcon) whereIcon.textContent = this.currentPlace().icon;
@@ -642,11 +652,14 @@
         self.select(button.getAttribute("data-place"));
       });
     }
-    document.querySelectorAll(".map-dir").forEach(function (button) {
-      button.addEventListener("click", function () {
+    const steps = document.getElementById("map-steps");
+    if (steps) {
+      steps.addEventListener("click", function (event) {
+        const button = event.target.closest(".map-step");
+        if (!button || button.disabled) return;
         self.step(button.getAttribute("data-dir"));
       });
-    });
+    }
 
     document.addEventListener("keydown", function (event) {
       if (!self._open) return;

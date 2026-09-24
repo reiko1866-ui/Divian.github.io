@@ -94,7 +94,7 @@ body {
 }
 
 .icon-btn:disabled,
-.map-dir:disabled,
+.map-step:disabled,
 .map-go:disabled,
 .text-btn:disabled {
   opacity: 0.45;
@@ -723,39 +723,43 @@ body {
 }
 
 .map-footer {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 4px;
 }
 
-.map-pad {
+.map-steps {
   display: grid;
-  grid-template-columns: 36px 36px 36px;
-  grid-template-areas:
-    ". n ."
-    "w . e"
-    ". s .";
-  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
-.map-dir {
-  height: 36px;
+.map-step {
   border: none;
   background: #fff;
   color: var(--ink);
-  border-radius: 12px;
-  font-size: 0.95rem;
+  font: inherit;
   font-weight: 800;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 8px 10px;
   cursor: pointer;
   box-shadow: 0 3px 8px var(--shadow);
+  text-align: left;
 }
 
-.map-dir-n { grid-area: n; }
-.map-dir-s { grid-area: s; }
-.map-dir-e { grid-area: e; }
-.map-dir-w { grid-area: w; }
+.map-step[data-dir="n"],
+.map-step[data-dir="s"] {
+  grid-column: 1 / -1;
+}
+
+.map-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .map-go {
   margin-top: 0;

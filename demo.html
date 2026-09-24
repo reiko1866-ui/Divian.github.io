@@ -109,7 +109,7 @@ body {
 }
 
 .icon-btn:disabled,
-.map-dir:disabled,
+.map-step:disabled,
 .map-go:disabled,
 .text-btn:disabled {
   opacity: 0.45;
@@ -738,39 +738,43 @@ body {
 }
 
 .map-footer {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 4px;
 }
 
-.map-pad {
+.map-steps {
   display: grid;
-  grid-template-columns: 36px 36px 36px;
-  grid-template-areas:
-    ". n ."
-    "w . e"
-    ". s .";
-  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
-.map-dir {
-  height: 36px;
+.map-step {
   border: none;
   background: #fff;
   color: var(--ink);
-  border-radius: 12px;
-  font-size: 0.95rem;
+  font: inherit;
   font-weight: 800;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 8px 10px;
   cursor: pointer;
   box-shadow: 0 3px 8px var(--shadow);
+  text-align: left;
 }
 
-.map-dir-n { grid-area: n; }
-.map-dir-s { grid-area: s; }
-.map-dir-e { grid-area: e; }
-.map-dir-w { grid-area: w; }
+.map-step[data-dir="n"],
+.map-step[data-dir="s"] {
+  grid-column: 1 / -1;
+}
+
+.map-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .map-go {
   margin-top: 0;
@@ -964,12 +968,7 @@ body[data-place="bridge"] {
         </div>
 
         <div class="map-footer">
-          <div class="map-pad" role="group" aria-label="Egy lépés a szomszédba">
-            <button type="button" class="map-dir map-dir-n" data-dir="n" aria-label="Észak">▲</button>
-            <button type="button" class="map-dir map-dir-w" data-dir="w" aria-label="Nyugat">◀</button>
-            <button type="button" class="map-dir map-dir-e" data-dir="e" aria-label="Kelet">▶</button>
-            <button type="button" class="map-dir map-dir-s" data-dir="s" aria-label="Dél">▼</button>
-          </div>
+          <div id="map-steps" class="map-steps" role="group" aria-label="Egy lépés a szomszédba"></div>
           <button type="button" id="btn-travel" class="primary-btn map-go">Indulás</button>
         </div>
         <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Húzd az ujjad a térképen.</p>
@@ -2273,10 +2272,10 @@ body[data-place="bridge"] {
   ];
 
   const DIRS = {
-    n: { x: 0, y: -1, label: "Észak" },
-    s: { x: 0, y: 1, label: "Dél" },
-    e: { x: 1, y: 0, label: "Kelet" },
-    w: { x: -1, y: 0, label: "Nyugat" },
+    n: { x: 0, y: -1, label: "Észak", arrow: "▲" },
+    s: { x: 0, y: 1, label: "Dél", arrow: "▼" },
+    e: { x: 1, y: 0, label: "Kelet", arrow: "▶" },
+    w: { x: -1, y: 0, label: "Nyugat", arrow: "◀" },
   };
 
   const STORAGE_KEY = "divi-map";
@@ -2765,14 +2764,24 @@ body[data-place="bridge"] {
 
     if (backBtn) backBtn.disabled = this._busy || this.trail.length < 2;
 
+    const steps = document.getElementById("map-steps");
+    if (steps) {
+      steps.innerHTML = ["n", "e", "w", "s"].map(function (dir) {
+        const next = neighborInDirection(this.currentId, dir);
+        const text = DIRS[dir].arrow + " " + DIRS[dir].label + (next ? " · " + next.name : " · nincs ösvény");
+        return (
+          '<button type="button" class="map-step" data-dir="' + dir + '" aria-label="' + text + '"' +
+          (this._busy || !next ? " disabled" : "") +
+          ">" + text + "</button>"
+        );
+      }, this).join("");
+    }
+
     ["n", "s", "e", "w"].forEach(function (dir) {
-      const button = document.querySelector('.map-dir[data-dir="' + dir + '"]');
+      const button = document.querySelector('.map-step[data-dir="' + dir + '"]');
       if (!button) return;
       const next = neighborInDirection(this.currentId, dir);
       button.disabled = this._busy || !next;
-      const label = DIRS[dir].label + (next ? ": " + next.name : ": nincs ösvény");
-      button.setAttribute("aria-label", label);
-      button.title = label;
     }, this);
 
     if (whereIcon) whereIcon.textContent = this.currentPlace().icon;
@@ -2830,11 +2839,14 @@ body[data-place="bridge"] {
         self.select(button.getAttribute("data-place"));
       });
     }
-    document.querySelectorAll(".map-dir").forEach(function (button) {
-      button.addEventListener("click", function () {
+    const steps = document.getElementById("map-steps");
+    if (steps) {
+      steps.addEventListener("click", function (event) {
+        const button = event.target.closest(".map-step");
+        if (!button || button.disabled) return;
         self.step(button.getAttribute("data-dir"));
       });
-    });
+    }
 
     document.addEventListener("keydown", function (event) {
       if (!self._open) return;

@@ -5,12 +5,12 @@
   var LIST_KEY = "nav2_audio_selected";
   var DIR_KEY = "nav2_audio_dirs";
   var MUTE_KEY = "nav2_voice_mute";
-  var FILES_URL = "./voice/files.json?v=152";
-  var PACK_URL = "./voice/pack.json?v=152";
-  var CATALOG_URL = "./voice/catalog.json?v=152";
+  var FILES_URL = "./voice/files.json?v=159";
+  var PACK_URL = "./voice/pack.json?v=159";
+  var CATALOG_URL = "./voice/catalog.json?v=159";
   var CAT_ALIAS = {
-    start: "straight",
-    gps: "straight",
+    start: "start",
+    gps: "gps",
     speed: "speed-warning",
     recompute: "recalculating",
     arrive: "arrived"
@@ -29,7 +29,11 @@
     { id: "motorway-off", label: "Lehajtó", pan: 0 },
     { id: "recalculating", label: "Újratervezés", pan: 0 },
     { id: "speed-warning", label: "Gyorshajtás", pan: 0 },
-    { id: "arrived", label: "Megérkeztél", pan: 0 }
+    { id: "arrived", label: "Megérkeztél", pan: 0 },
+    { id: "start", label: "Indulás", pan: 0 },
+    { id: "gps", label: "GPS", pan: 0 },
+    { id: "ferry-on", label: "Kompra", pan: 0 },
+    { id: "ferry-off", label: "Kompról", pan: 0 }
   ];
   var EVENT_BY_ID = {};
   EVENTS.forEach(function (ev) {
@@ -47,17 +51,21 @@
     roundabout: "roundabout",
     motorwayOn: "motorway-on",
     motorwayOff: "motorway-off",
+    ferryOn: "ferry-on",
+    ferryOff: "ferry-off",
     arrive: "arrived"
   };
   var EVENT_FALLBACK = {
-    "keep-left": "turn-left",
-    "turn-left-sharp": "turn-left",
+    "turn-left": "keep-left",
+    "turn-left-sharp": "keep-left",
     "keep-right": "turn-right",
-    "turn-right-sharp": "turn-right"
+    "turn-right-sharp": "turn-right",
+    "ferry-off": "ferry-on"
   };
 
   var files = [];
   var autoDirs = {};
+  var autoPhase = {};
   var lastCatalog = null;
   var ready = null;
   var audio = null;
@@ -143,6 +151,7 @@
   function guessEvent(path) {
     var n = fileStem(path);
     if (!n) return "";
+    if (n.indexOf("and_then_exit_") === 0) return "";
     if (hasToken(n, ["u_turn", "uturn", "u_turn_left", "u_turn_right"])) return "uturn";
     if (hasToken(n, ["roundabout", "round_about", "rotary"])) return "roundabout";
     if (hasToken(n, ["recalculating", "recalculate", "reroute", "recompute", "new_route"])) return "recalculating";
@@ -166,6 +175,7 @@
 
   function rebuildAuto() {
     autoDirs = {};
+    autoPhase = {};
     files.forEach(function (url) {
       var ev = guessEvent(url);
       if (ev) autoDirs[url] = ev;
@@ -179,17 +189,23 @@
     return autoDirs;
   }
 
-  function applyCatalog(cat) {
-    if (cat) lastCatalog = cat;
-    var groups = (lastCatalog && lastCatalog.files) ? lastCatalog.files : {};
-    Object.keys(groups).forEach(function (catName) {
+  function assignCatalogGroup(groups, phase) {
+    Object.keys(groups || {}).forEach(function (catName) {
       var ev = CAT_EVENT[catName] || CAT_ALIAS[catName] || "";
       if (!isEventId(ev)) return;
       (groups[catName] || []).forEach(function (name) {
         var u = clipUrl(name);
-        if (u) autoDirs[u] = ev;
+        if (!u) return;
+        autoDirs[u] = ev;
+        autoPhase[u] = phase;
       });
     });
+  }
+
+  function applyCatalog(cat) {
+    if (cat) lastCatalog = cat;
+    assignCatalogGroup(lastCatalog && lastCatalog.files, "now");
+    assignCatalogGroup(lastCatalog && lastCatalog.ahead, "ahead");
     return autoDirs;
   }
 
@@ -239,18 +255,24 @@
     return out;
   }
 
-  function filesForEvent(id, seen) {
+  function filesForEvent(id, phase, depth) {
     if (!isEventId(id)) return [];
-    seen = seen || {};
-    if (seen[id]) return [];
-    seen[id] = true;
+    if ((depth || 0) > 4) return [];
     var dirs = resolvedDirs();
-    var out = [];
+    var now = [];
+    var ahead = [];
     Object.keys(dirs).forEach(function (url) {
-      if (dirs[url] === id) out.push(url);
+      if (dirs[url] !== id) return;
+      if (autoPhase[url] === "ahead") ahead.push(url);
+      else now.push(url);
     });
-    if (!out.length && EVENT_FALLBACK[id]) {
-      return filesForEvent(EVENT_FALLBACK[id], seen);
+    if (phase === "ahead" && !ahead.length && EVENT_FALLBACK[id] && EVENT_FALLBACK[id] !== id) {
+      var fb = filesForEvent(EVENT_FALLBACK[id], "ahead", (depth || 0) + 1);
+      if (fb.length) return fb;
+    }
+    var out = phase === "ahead" ? (ahead.length ? ahead : now) : (now.length ? now : ahead);
+    if (!out.length && EVENT_FALLBACK[id] && EVENT_FALLBACK[id] !== id) {
+      return filesForEvent(EVENT_FALLBACK[id], phase, (depth || 0) + 1);
     }
     out.sort(function (a, b) {
       return fileLabel(a).localeCompare(fileLabel(b), "hu");
@@ -435,6 +457,24 @@
     return pick;
   }
 
+  function durationOf(url) {
+    var durs = (lastCatalog && lastCatalog.dur) || {};
+    var label = fileLabel(url);
+    var ogg = label.replace(/\.mp3$/i, ".ogg");
+    var n = durs[label];
+    if (n == null) n = durs[ogg];
+    return Number(n) || 0;
+  }
+
+  function pickCue(list) {
+    var brief = [];
+    for (var i = 0; i < list.length; i++) {
+      var d = durationOf(list[i]);
+      if (d >= 0.45 && d <= 4.2) brief.push(list[i]);
+    }
+    return pickRandom(brief.length ? brief : list);
+  }
+
   function startElement(el, url, eventId) {
     applyPan(eventId || resolvedDirs()[url] || "");
     el.src = url;
@@ -469,21 +509,20 @@
     return true;
   }
 
-  function playEvent(id, force) {
+  function playEvent(id, force, phase) {
     if (isMuted()) return false;
     if (!isEventId(id)) return false;
     if (!files.length) {
       loadFiles().then(function () {
         if (isMuted()) return;
-        if (force || !isBusy()) playEvent(id, force);
+        if (force || !isBusy()) playEvent(id, force, phase);
       });
       return true;
     }
-    var list = filesForEvent(id);
-    if (!list.length && EVENT_FALLBACK[id]) list = filesForEvent(EVENT_FALLBACK[id]);
-    if (!list.length && id === "straight") list = filesForEvent("turn-left");
+    var list = filesForEvent(id, phase);
+    if (!list.length && id === "start") list = filesForEvent("straight", "now");
     if (!list.length) return false;
-    return playFile(pickRandom(list), id, !!force);
+    return playFile(pickCue(list), id, !!force);
   }
 
   function playCat(cat, force) {
@@ -579,7 +618,7 @@
     });
     el.textContent = n
       ? n + " hang automatikusan besorolva · " + bits.join(" · ")
-      : "Még nincs irány — a fájlnevek alapján automatikusan soroljuk be.";
+      : "Még nincs irány — a hang alapján soroljuk be.";
   }
 
   function renderPanel() {

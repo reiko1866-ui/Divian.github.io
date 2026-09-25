@@ -887,12 +887,21 @@
     return (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " km";
   }
 
+  function cueSpeed(kind) {
+    const highway = !!(kind && (kind.highway || Number(state.speed || 0) > 22));
+    return Math.max(Number(state.speed) || 0, highway ? 22 : 8);
+  }
+
+  function cueMeters(kind, phase) {
+    const v = cueSpeed(kind);
+    if (phase === "now") return Math.max(22, Math.min(55, v * 2.8));
+    if (phase === "gap") return Math.max(24, Math.min(70, v * 2.4));
+    if (kind && kind.cat === "arrive") return Math.max(40, Math.min(110, v * 6));
+    return Math.max(100, Math.min(360, v * 12));
+  }
+
   function warnMeters(kind) {
-    if (!kind) return 180;
-    if (kind.cat === "arrive") return 80;
-    const highway = kind.highway || Number(state.speed || 0) > 22;
-    const v = Math.max(Number(state.speed) || 0, highway ? 25 : 11);
-    return Math.max(160, Math.min(450, v * 11));
+    return cueMeters(kind, "ahead");
   }
 
   function makeEl(cls) {
@@ -969,13 +978,13 @@
     }
   }
 
-  function playNavCue(eventId, key) {
+  function playNavCue(eventId, key, force, phase) {
     if (!eventId || !window.NavVoice || typeof window.NavVoice.playEvent !== "function") return;
     if (window.NavVoice.isMuted && window.NavVoice.isMuted()) return;
     if (key && state.audioCue[key] === eventId) return;
     unlockNavVoice();
-    const urgent = eventId === "recalculating" || eventId === "arrived";
-    const ok = window.NavVoice.playEvent(eventId, urgent);
+    const urgent = !!force || eventId === "recalculating" || eventId === "arrived";
+    const ok = window.NavVoice.playEvent(eventId, urgent, phase || "");
     if (ok && key) state.audioCue[key] = eventId;
   }
 
@@ -3197,9 +3206,19 @@
     } else {
       thenRow.hidden = true;
     }
-    if (kind.cat !== "arrive" && cur.until <= warn && isSnappedToRoute()) {
+    if (isSnappedToRoute()) {
       const ev = window.NavVoice && window.NavVoice.eventFromCat ? window.NavVoice.eventFromCat(kind.cat) : "";
-      if (ev) playNavCue(ev, "step:" + cur.index);
+      if (ev && kind.cat === "arrive" && cur.until <= cueMeters(kind, "ahead")) {
+        playNavCue(ev, "arrived", false, "ahead");
+      } else if (ev && kind.cat !== "arrive") {
+        const nowD = cueMeters(kind, "now");
+        const aheadD = cueMeters(kind, "ahead");
+        const gap = cueMeters(kind, "gap");
+        if (cur.until <= nowD) playNavCue(ev, "step:" + cur.index + ":now", true, "now");
+        else if (cur.until <= aheadD && cur.until >= nowD + gap) {
+          playNavCue(ev, "step:" + cur.index + ":ahead", false, "ahead");
+        }
+      }
     }
     paintArHud();
     syncFloatMarks();
@@ -3737,7 +3756,7 @@
     }
     startTrafficPoll();
     unlockNavVoice();
-    playNavCue("straight", "nav-start");
+    playNavCue("start", "nav-start");
     setStatus(state.kaland ? "Kaland mód" : "Navigáció");
     showPinAdjust();
     if (window.NavVoice && window.NavVoice.close) window.NavVoice.close();

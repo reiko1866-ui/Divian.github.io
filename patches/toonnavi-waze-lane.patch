@@ -1,0 +1,345 @@
+diff --git a/navigacio/app.js b/navigacio/app.js
+index f19adbd..e05f487 100644
+--- a/navigacio/app.js
++++ b/navigacio/app.js
+@@ -2279,14 +2279,23 @@
+     return { lng: ll.lng + dLng, lat: ll.lat + dLat };
+   }
+ 
++  function routeCameraLive() {
++    return !!(state.coords && state.coords.length >= 2 && (state.navigating || state.simulating || (state.traveled || 0) > 1));
++  }
++
+   function lookAheadMeters() {
+     const kmh = (state.speed || 0) * 3.6;
++    if (routeCameraLive()) return Math.max(8, Math.min(16, 8 + kmh * 0.05));
+     if (state.navigating) return Math.max(1.4, Math.min(3.2, 1.8 + kmh * 0.01));
+     return Math.max(2.2, Math.min(4.2, 2.6 + kmh * 0.01));
+   }
+ 
+   function lookAhead(from, heading) {
+     if (!from) return from;
++    if (routeCameraLive()) {
++      const at = alongLine(state.coords, (state.traveled || 0) + lookAheadMeters());
++      if (at) return { lng: at.lng, lat: at.lat };
++    }
+     return offsetLngLat(from, heading, lookAheadMeters());
+   }
+ 
+@@ -2480,7 +2489,13 @@
+           tgt.lat = glued.lat;
+           tgt.lng = glued.lng;
+         }
+-        cur.bearing = routeTangent(state.coords, state.traveled || 0);
++        const pathBr = routeTangent(state.coords, state.traveled || 0);
++        if (!cur._headLive || !Number.isFinite(cur.bearing)) {
++          cur.bearing = pathBr;
++          cur._headLive = true;
++        } else {
++          cur.bearing = mixHeading(cur.bearing, pathBr, followK(dt, 0.14));
++        }
+         if (state.simulating || (AppState.speed || 0) * 3.6 < PATH_HEADING_KMH) {
+           tgt.bearing = cur.bearing;
+         }
+@@ -2511,12 +2526,17 @@
+     if (!state.follow && !state.arcadePreview) return;
+     const pose = { lng: cur.lng, lat: cur.lat };
+     const heading = state.heading || cur.bearing || 0;
+-    if (!state.view) state.view = copyPose(pose, heading);
++    let camHeading = heading;
++    if (routeCameraLive()) {
++      const aheadBr = routeTangent(state.coords, (state.traveled || 0) + Math.min(14, lookAheadMeters()));
++      if (Number.isFinite(aheadBr)) camHeading = aheadBr;
++    }
++    if (!state.view) state.view = copyPose(pose, camHeading);
+     const v = state.view;
+     const ck = followK(dt, CAM_LERP);
+     v.lat = lerp(v.lat, pose.lat, ck);
+     v.lng = lerp(v.lng, pose.lng, ck);
+-    v.heading = mixHeading(v.heading || 0, heading, ck);
++    v.heading = mixHeading(v.heading || 0, camHeading, ck);
+     state.camHeading = v.heading;
+     const kmh = (state.speed || AppState.speed || 0) * 3.6;
+     const wantZoom = state.navigating
+diff --git a/navigacio/car-layer.js b/navigacio/car-layer.js
+index 869190e..8021af9 100644
+--- a/navigacio/car-layer.js
++++ b/navigacio/car-layer.js
+@@ -18,8 +18,10 @@
+   var ROAD_CHUNK = 80;
+   var ORIGIN_REBASE_M = 900;
+   var POSE_SNAP_M = 8;
+-  var CAM_POS_TAU = 0.05;
+-  var CAM_LOOK_TAU = 0.06;
++  var CAM_POS_TAU = 0.08;
++  var CAM_LOOK_TAU = 0.1;
++  var CAM_POS_TAU_TURN = 0.16;
++  var CAM_LOOK_TAU_TURN = 0.18;
+   var BUILD_ZOOM_MIN = 15;
+   var FOG_COLOR = 0xf3c4b0;
+   var FOG_DENSITY = 0.0026;
+@@ -30,13 +32,15 @@
+   var CLAY_ROAD = 0x5c616a;
+   var CLAY_ROUTE = 0xf2b84b;
+   var DEADBAND_KMH = 3;
+-  var SMOOTH_LERP = 0.45;
+   var TURN_TAU = 0.1;
+   var CAM_TAU = 0.14;
+   var CAM_BACK = 13.5;
+   var CAM_HEIGHT = 5.2;
+   var CAM_LOOK = 18;
+   var CAM_BLEND_TAU = 0.28;
++  var CAR_POSE_TAU = 0.11;
++  var CAR_LANE_TAU = 0.12;
++  var LANE_SNAP_MAX = 42;
+   var CAM_DASH_FWD = 0.78;
+   var CAM_DASH_HEIGHT = 1.18;
+   var CAM_DASH_LOOK = 28;
+@@ -186,16 +190,17 @@
+ 
+   function lerpPose(now) {
+     var jump = metersBetween(shown, pose);
+-    if (!shown.seeded || jump > POSE_SNAP_M || movingEnough()) {
++    var dt = lastPoseT ? Math.min(0.05, Math.max(0.001, (now - lastPoseT) / 1000)) : 0.016;
++    lastPoseT = now;
++    if (!shown.seeded || jump > POSE_SNAP_M) {
+       snapShownToPose();
+-      lastPoseT = now;
+       return shown;
+     }
+-    lastPoseT = now;
+-    shown.lng = lerpNum(shown.lng, pose.lng, SMOOTH_LERP);
+-    shown.lat = lerpNum(shown.lat, pose.lat, SMOOTH_LERP);
+-    shown.heading = (shown.heading + angDeltaDeg(shown.heading, pose.heading) * SMOOTH_LERP + 360) % 360;
+-    shown.lean = lerpNum(shown.lean, pose.lean, SMOOTH_LERP);
++    var k = expK(dt, movingEnough() ? CAR_POSE_TAU : 0.18);
++    shown.lng = lerpNum(shown.lng, pose.lng, k);
++    shown.lat = lerpNum(shown.lat, pose.lat, k);
++    shown.heading = (shown.heading + angDeltaDeg(shown.heading, pose.heading) * k + 360) % 360;
++    shown.lean = lerpNum(shown.lean, pose.lean, k);
+     shown.headingLocked = true;
+     return shown;
+   }
+@@ -947,44 +952,86 @@
+     };
+   }
+ 
+-  function applyEgoLane(carRoot, carSlot, origin, vis) {
++  function laneSnap(origin, vis) {
+     vis = vis && Number.isFinite(vis.lng) ? vis : shown.seeded ? shown : pose;
++    origin = origin || lastWorld.origin || defaultOrigin();
+     var face = headingEnu(vis.heading);
+     var hx = face.x;
+     var hz = face.z;
+-    var pts = lastWorld.roadPts;
++    var carEnu = enuOffset(origin, vis.lng, vis.lat);
++    var pts = ensureRoadPts(origin);
++    var sx = carEnu.x;
++    var sz = carEnu.z;
++    var traveled = 0;
++    var onRoad = false;
+     if (pts && pts.length >= 2) {
+-      var here = enuOffset(origin || lastWorld.origin, vis.lng, vis.lat);
+-      var hit = nearestOnPathPts(pts, here.x, here.z);
+-      if (hit && Math.hypot(hit.hx, hit.hz) > 1e-4) {
++      var hit = nearestOnPathPts(pts, carEnu.x, carEnu.z);
++      if (hit && hit.dist <= LANE_SNAP_MAX && Math.hypot(hit.hx, hit.hz) > 1e-4) {
+         hx = hit.hx;
+         hz = hit.hz;
++        sx = hit.x;
++        sz = hit.z;
++        traveled = traveledOnPts(pts, hit.x, hit.z);
++        onRoad = true;
+       }
+     }
+-    var r = pathRight(hx, hz);
+-    if (carRoot) {
+-      carRoot.position.x = r.x * LANE_SAME;
+-      carRoot.position.z = r.z * LANE_SAME;
+-    }
++    var right = pathRight(hx, hz);
++    return {
++      x: sx + right.x * LANE_SAME - carEnu.x,
++      z: sz + right.z * LANE_SAME - carEnu.z,
++      hx: hx,
++      hz: hz,
++      yaw: Math.atan2(hx, hz),
++      traveled: traveled,
++      pts: onRoad ? pts : null,
++      carEnu: carEnu,
++      onRoad: onRoad
++    };
++  }
++
++  function roadAheadScene(snap, meters) {
++    if (!snap || !snap.onRoad || !snap.pts || snap.pts.length < 2) return null;
++    var ahead = Math.max(4, Number(meters) || CAM_LOOK);
++    var at = poseOnPts(snap.pts, snap.traveled + ahead);
++    var right = pathRight(at.hx, at.hz);
++    return {
++      x: at.x + right.x * LANE_SAME - snap.carEnu.x,
++      y: 0.7,
++      z: at.z + right.z * LANE_SAME - snap.carEnu.z
++    };
++  }
++
++  function applyEgoLane(carRoot, carSlot, origin, vis, dt) {
++    var snap = laneSnap(origin, vis);
+     if (carSlot) {
+       carSlot.position.x = 0;
+       carSlot.position.z = 0;
+     }
++    if (!carRoot) return snap;
++    var snapNow = !carRoot.userData.laneLive || carRoot.userData.justSnapped;
++    var k = expK(dt || 0.016, CAR_LANE_TAU);
++    if (snapNow) {
++      carRoot.position.x = snap.x;
++      carRoot.position.z = snap.z;
++      carRoot.userData.laneLive = true;
++    } else {
++      carRoot.position.x = lerpNum(carRoot.position.x, snap.x, k);
++      carRoot.position.z = lerpNum(carRoot.position.z, snap.z, k);
++    }
++    var hk = expK(dt || 0.016, movingEnough() ? CAR_POSE_TAU : TURN_TAU);
++    if (snapNow) carRoot.rotation.y = snap.yaw;
++    else carRoot.rotation.y = lerpRad(carRoot.rotation.y, snap.yaw, hk);
++    return snap;
+   }
+ 
+-  function smoothCarPose(root, worldRoot, origin, vis, headingRad, dt) {
++  function smoothCarPose(root, worldRoot, origin, vis) {
+     if (!root) return;
+-    var k = expK(dt || 0.016, movingEnough() ? 0.07 : TURN_TAU);
+-    if (!root.userData.poseLive || movingEnough()) {
+-      root.rotation.y = headingRad;
+-      if (!root.userData.poseLive) {
+-        root.userData.poseLive = true;
+-        root.userData.justSnapped = true;
+-      }
+-    } else {
+-      root.rotation.y = lerpRad(root.rotation.y, headingRad, k);
++    if (!root.userData.poseLive) {
++      root.userData.poseLive = true;
++      root.userData.justSnapped = true;
++      root.userData.laneLive = false;
+     }
+-    if (worldRoot && origin) {
++    if (worldRoot && origin && vis && Number.isFinite(vis.lng)) {
+       var carEnu = enuOffset(origin, vis.lng, vis.lat);
+       worldRoot.position.set(-carEnu.x, 0, -carEnu.z);
+       worldRoot.userData.poseLive = true;
+@@ -2376,8 +2423,8 @@
+     };
+   }
+ 
+-  function lockEgoToLane(carRoot, origin, carSlot, vis) {
+-    applyEgoLane(carRoot, carSlot || (carRoot && carRoot.children && carRoot.children[0]), origin, vis);
++  function lockEgoToLane(carRoot, origin, carSlot, vis, dt) {
++    return applyEgoLane(carRoot, carSlot || (carRoot && carRoot.children && carRoot.children[0]), origin, vis, dt);
+   }
+ 
+   function npcCruise(traveled, dir) {
+@@ -2950,7 +2997,7 @@
+         var headingRad = ((180 - (Number(vis.heading) || 0)) * Math.PI) / 180;
+         var leanRad = ((Number(vis.lean) || 0) * Math.PI) / 180;
+         smoothCarPose(this.carRoot, this.worldRoot, this.worldOrigin, vis, headingRad, dt);
+-        lockEgoToLane(this.carRoot, this.worldOrigin || lastWorld.origin, this.carSlot, vis);
++        lockEgoToLane(this.carRoot, this.worldOrigin || lastWorld.origin, this.carSlot, vis, dt);
+         if (this.carSlot) this.carSlot.rotation.z = lerpNum(this.carSlot.rotation.z, leanRad, expK(dt, TURN_TAU));
+         stepRoadTextures(this.asphaltMats, dt);
+         faceMarkers(this.markRoot);
+@@ -3620,7 +3667,7 @@
+     var headingRad = ((180 - (Number(vis.heading) || 0)) * Math.PI) / 180;
+     var leanRad = ((Number(vis.lean) || 0) * Math.PI) / 180;
+     smoothCarPose(overlay.carRoot, overlay.worldRoot, overlay.worldOrigin, vis, headingRad, dt);
+-    lockEgoToLane(overlay.carRoot, overlay.worldOrigin || lastWorld.origin, overlay.carSlot, vis);
++    var lane = lockEgoToLane(overlay.carRoot, overlay.worldOrigin || lastWorld.origin, overlay.carSlot, vis, dt);
+     if (overlay.carRoot && overlay.carRoot.userData.justSnapped) {
+       overlay.camYaw = headingRad;
+       overlay.camSoft.live = false;
+@@ -3696,26 +3743,35 @@
+     } else if (lift > 0.5) {
+       overlay.carRoot.getWorldPosition(tmp.carPos);
+       camPos.set(tmp.carPos.x, lerpNum(CAM_HEIGHT, CAM_OVERVIEW_Y, lift), tmp.carPos.z);
+-      camLook.set(tmp.carPos.x + face.x * lerpNum(18, 70, lift), 0.2, tmp.carPos.z + face.z * lerpNum(18, 70, lift));
++      var farLook = roadAheadScene(lane, lerpNum(18, 70, lift));
++      if (farLook) camLook.set(farLook.x, 0.2, farLook.z);
++      else camLook.set(tmp.carPos.x + face.x * lerpNum(18, 70, lift), 0.2, tmp.carPos.z + face.z * lerpNum(18, 70, lift));
+       overlay.camSoft.live = false;
+     } else {
++      var lookChase = roadAheadScene(lane, CAM_LOOK);
++      var lookDash = roadAheadScene(lane, CAM_DASH_LOOK);
+       overlay.carRoot.localToWorld(tmp.chasePos.set(0, CAM_HEIGHT, -CAM_BACK));
+-      overlay.carRoot.localToWorld(tmp.chaseLook.set(0, 0.7, CAM_LOOK));
++      if (lookChase) tmp.chaseLook.set(lookChase.x, 0.7, lookChase.z);
++      else overlay.carRoot.localToWorld(tmp.chaseLook.set(0, 0.7, CAM_LOOK));
+       overlay.carRoot.localToWorld(tmp.dashPos.set(0, CAM_DASH_HEIGHT, CAM_DASH_FWD));
+-      overlay.carRoot.localToWorld(tmp.dashLook.set(0, 0.62, CAM_DASH_LOOK));
++      if (lookDash) tmp.dashLook.set(lookDash.x, 0.62, lookDash.z);
++      else overlay.carRoot.localToWorld(tmp.dashLook.set(0, 0.62, CAM_DASH_LOOK));
+       tmp.chasePos.lerp(tmp.dashPos, overlay.camBlend);
+       tmp.chaseLook.lerp(tmp.dashLook, overlay.camBlend);
+       if (!overlay.camSoft.pos) {
+         overlay.camSoft.pos = tmp.camPos.clone();
+         overlay.camSoft.look = tmp.camLook.clone();
+       }
+-      if (!overlay.camSoft.live || kmh >= DEADBAND_KMH) {
++      var turning = Math.abs(Number(vis.lean) || 0) > 1.2;
++      var posTau = turning ? CAM_POS_TAU_TURN : CAM_POS_TAU;
++      var lookTau = turning ? CAM_LOOK_TAU_TURN : CAM_LOOK_TAU;
++      if (!overlay.camSoft.live) {
+         overlay.camSoft.pos.copy(tmp.chasePos);
+         overlay.camSoft.look.copy(tmp.chaseLook);
+         overlay.camSoft.live = true;
+       } else {
+-        overlay.camSoft.pos.lerp(tmp.chasePos, expK(dt, CAM_POS_TAU));
+-        overlay.camSoft.look.lerp(tmp.chaseLook, expK(dt, CAM_LOOK_TAU));
++        overlay.camSoft.pos.lerp(tmp.chasePos, expK(dt, posTau));
++        overlay.camSoft.look.lerp(tmp.chaseLook, expK(dt, lookTau));
+       }
+       camPos.copy(overlay.camSoft.pos);
+       camLook.copy(overlay.camSoft.look);
+diff --git a/navigacio/index.html b/navigacio/index.html
+index e3d6d6f..89f0492 100644
+--- a/navigacio/index.html
++++ b/navigacio/index.html
+@@ -25,7 +25,7 @@
+   <link rel="icon" href="./icons/icon-192.png" type="image/png">
+   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+   <link rel="stylesheet" href="./vendor/maplibre-gl.css">
+-  <link rel="stylesheet" href="./style.css?v=155">
++  <link rel="stylesheet" href="./style.css?v=156">
+ </head>
+ <body>
+   <div id="app">
+@@ -248,9 +248,9 @@
+   <script src="./vendor/pmtiles.js"></script>
+   <script src="./vendor/three.min.js"></script>
+   <script src="./vendor/GLTFLoader.js"></script>
+-  <script src="./sw-register.js?v=155"></script>
+-  <script src="./car-layer.js?v=155"></script>
+-  <script src="./voice/audio-manager.js?v=155"></script>
+-  <script src="./app.js?v=155"></script>
++  <script src="./sw-register.js?v=156"></script>
++  <script src="./car-layer.js?v=156"></script>
++  <script src="./voice/audio-manager.js?v=156"></script>
++  <script src="./app.js?v=156"></script>
+ </body>
+ </html>
+diff --git a/navigacio/sw.js b/navigacio/sw.js
+index 62138bf..ffe8b7e 100644
+--- a/navigacio/sw.js
++++ b/navigacio/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE = "nav-v155";
++const CACHE = "nav-v156";
+ const CORE = [
+   "./",
+   "./index.html",
+diff --git a/navigacio/version.json b/navigacio/version.json
+index 71e9568..e026391 100644
+--- a/navigacio/version.json
++++ b/navigacio/version.json
+@@ -1 +1 @@
+-{ "build": "nav-v155" }
++{ "build": "nav-v156" }

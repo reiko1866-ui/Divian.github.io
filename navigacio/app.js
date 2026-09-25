@@ -978,6 +978,21 @@
     }
   }
 
+  function cueFollowing(cur, then) {
+    if (!then || !then.kind || then.kind.cat === "arrive" || then.kind.skip) return;
+    const between = then.until - cur.until;
+    if (!(between > 35)) return;
+    const nowD = cueMeters(then.kind, "now");
+    const speakGap = cueMeters(then.kind, "gap");
+    const aheadD = cueMeters(then.kind, "ahead");
+    const arriveAt = between - 45;
+    if (arriveAt >= aheadD) return;
+    if (arriveAt - nowD >= speakGap + 20) return;
+    const ev = window.NavVoice && window.NavVoice.eventFromCat ? window.NavVoice.eventFromCat(then.kind.cat) : "";
+    if (!ev) return;
+    playNavCue(ev, "step:" + then.index + ":ahead", false, "ahead");
+  }
+
   function playNavCue(eventId, key, force, phase) {
     if (!eventId || !window.NavVoice || typeof window.NavVoice.playEvent !== "function") return;
     if (window.NavVoice.isMuted && window.NavVoice.isMuted()) return;
@@ -3214,8 +3229,12 @@
         const nowD = cueMeters(kind, "now");
         const aheadD = cueMeters(kind, "ahead");
         const gap = cueMeters(kind, "gap");
-        if (cur.until <= nowD) playNavCue(ev, "step:" + cur.index + ":now", true, "now");
-        else if (cur.until <= aheadD && cur.until >= nowD + gap) {
+        if (cur.until <= nowD) {
+          const nowKey = "step:" + cur.index + ":now";
+          const saidNow = state.audioCue[nowKey] === ev;
+          playNavCue(ev, nowKey, true, "now");
+          if (saidNow) cueFollowing(cur, then);
+        } else if (cur.until <= aheadD && cur.until >= nowD + gap) {
           playNavCue(ev, "step:" + cur.index + ":ahead", false, "ahead");
         }
       }
@@ -3756,7 +3775,9 @@
     }
     startTrafficPoll();
     unlockNavVoice();
-    playNavCue("start", "nav-start");
+    const first = nextActionable();
+    const imminent = first && first.kind && first.kind.cat !== "arrive" && first.until <= cueMeters(first.kind, "now");
+    if (!imminent) playNavCue("start", "nav-start");
     setStatus(state.kaland ? "Kaland mód" : "Navigáció");
     showPinAdjust();
     if (window.NavVoice && window.NavVoice.close) window.NavVoice.close();

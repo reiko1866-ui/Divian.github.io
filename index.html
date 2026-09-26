@@ -27,7 +27,10 @@
           <p class="tagline">Beszélő vörös pandád</p>
         </div>
       </div>
-      <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
+        <div class="top-actions">
+          <button type="button" id="btn-map" class="icon-btn" aria-label="Térkép" aria-expanded="false" title="Térkép">🗺️</button>
+          <button type="button" id="btn-settings" class="icon-btn" aria-label="Beállítások" title="Beállítások">⚙️</button>
+        </div>
     </header>
 
     <aside id="settings-panel" class="settings-drawer hidden" aria-label="Beállítások">
@@ -95,8 +98,50 @@
       <button type="button" id="btn-close-settings" class="primary-btn">Kész</button>
     </aside>
 
+    <div id="map-overlay" class="map-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="map-title">
+      <div class="map-sheet">
+        <header class="map-head">
+          <div>
+            <h2 id="map-title">Divi térképe</h2>
+            <p class="map-kicker">Bambuszerdő</p>
+          </div>
+          <div class="map-head-actions">
+            <button type="button" id="btn-map-back" class="text-btn">Vissza</button>
+            <button type="button" id="btn-close-map" class="icon-btn" aria-label="Térkép bezárása">✕</button>
+          </div>
+        </header>
+
+        <div id="map-canvas" class="map-canvas">
+          <div id="map-world" class="map-world">
+            <svg id="map-svg" class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <div id="map-pins" class="map-pins"></div>
+            <div id="map-walker" class="map-walker" aria-hidden="true">🐼</div>
+          </div>
+        </div>
+
+        <div class="map-detail">
+          <p id="map-detail-title" class="map-detail-title"></p>
+          <p id="map-detail-blurb" class="map-detail-blurb"></p>
+          <p id="map-route" class="map-route"></p>
+        </div>
+
+        <div class="map-footer">
+          <div id="map-steps" class="map-steps" role="group" aria-label="Egy lépés a szomszédba"></div>
+          <button type="button" id="btn-travel" class="primary-btn map-go">Indulás</button>
+        </div>
+        <p id="map-hint" class="map-hint">Koppints egy helyre, vagy lépj a nyilakkal. Útközben az ösvényen maradunk, a kanyart előre látod.</p>
+      </div>
+    </div>
+
     <main class="stage">
       <div class="room" aria-hidden="true"></div>
+      <button type="button" id="where-chip" class="where-chip" aria-label="Hol vagyunk? Térkép megnyitása">
+        <span id="where-icon" aria-hidden="true">🏠</span>
+        <span class="where-text">
+          <span class="where-kicker">Itt vagyunk</span>
+          <span id="where-name">Bambuszodú</span>
+        </span>
+      </button>
 
       <div id="speech-bubble" class="speech-bubble hidden" role="status" aria-live="polite">
         <p id="bubble-text"></p>
@@ -132,6 +177,7 @@
         <button type="button" class="chip" data-prompt="Mondj egy viccet!">Vicc!</button>
         <button type="button" class="chip" data-prompt="Ki a kedvenc mesefigurád?">Kedvenced?</button>
         <button type="button" class="chip" data-prompt="Tegyél fel egy kérdést!">Kérdezz</button>
+        <button type="button" class="chip" data-action="map">Térkép</button>
         <button type="button" class="chip" data-action="reset">Új beszélgetés</button>
       </div>
     </section>
@@ -139,6 +185,7 @@
 
   <script src="brain.js"></script>
   <script src="character.js"></script>
+  <script src="map.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

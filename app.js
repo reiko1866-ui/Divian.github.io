@@ -35,6 +35,36 @@
 
   const character = new DiviCharacter(characterEl);
   const brain = new DiviBrain();
+  let navEpoch = 0;
+
+  function narrateMap(line) {
+    const clean = String(line || "").trim();
+    if (!clean) return;
+    navEpoch += 1;
+    stopListening();
+    stopSpeech();
+    addChat("bot", clean);
+    speak(clean, { quiet: true });
+  }
+
+  const map = window.DiviMap
+    ? DiviMap.mount({
+        onChange: function (_place, summary) {
+          navEpoch += 1;
+          brain.setPlace(summary);
+        },
+        onSpeak: narrateMap,
+        onStatus: function (line) {
+          setStatus(line);
+        },
+        onOpen: function () {
+          settingsPanel.classList.add("hidden");
+          stopListening();
+        },
+      })
+    : null;
+
+  if (map && typeof brain.setPlace === "function") brain.setPlace(map.summary());
 
   let recognition = null;
   let listening = false;
@@ -477,7 +507,8 @@
   /**
    * ElevenLabs hang — hiba esetén pontos üzenet + böngésző tartalék
    */
-  async function speak(text) {
+  async function speak(text, opts) {
+    opts = opts || {};
     const token = ++speakToken;
     const clean = String(text || "").trim();
     if (!clean) return;
@@ -504,10 +535,12 @@
     );
 
     if (!apiKey) {
-      const msg = formatElevenError({ code: "MISSING_ELEVEN_KEY" }, voiceId);
-      showApiError(msg);
-      settingsPanel.classList.remove("hidden");
-      elevenKeyInput.focus();
+      if (!opts.quiet) {
+        const msg = formatElevenError({ code: "MISSING_ELEVEN_KEY" }, voiceId);
+        showApiError(msg);
+        settingsPanel.classList.remove("hidden");
+        elevenKeyInput.focus();
+      }
       await speakBrowserFallback(clean, token);
       if (token === speakToken) {
         characterEl.classList.remove("is-speaking-audio");
@@ -696,6 +729,44 @@
     return recognition;
   }
 
+  async function handleNavCommand(nav) {
+    if (!map) return;
+    if (map.isBusy()) {
+      setStatus("Még sétálunk… egy pillanat.");
+      return;
+    }
+    stopListening();
+
+    if (nav.type === "open") {
+      map.open();
+      narrateMap("Ez a térképem! Koppints oda, ahová mennénk.");
+      return;
+    }
+    if (nav.type === "where" || nav.type === "neighbors") {
+      narrateMap(map.whereLine());
+      return;
+    }
+    if (nav.type === "back") {
+      const result = await map.back();
+      if (!result.ok && result.reason === "start") {
+        narrateMap(map.currentPlace().here + " Innen indultunk.");
+      }
+      return;
+    }
+    if (nav.type === "go") {
+      if (!nav.placeId) {
+        map.open();
+        narrateMap("Hová menjünk? Koppints egy helyre a térképen.");
+        return;
+      }
+      const result = await map.travel(nav.placeId);
+      if (result.already && result.place) narrateMap(result.place.here);
+      if (!result.ok && result.reason === "missing") {
+        narrateMap("Ezt a helyet nem találom a térképen.");
+      }
+    }
+  }
+
   async function handleUserText(raw) {
     const text = (
       typeof DiviBrain.normalizeSpeech === "function"
@@ -703,10 +774,23 @@
         : String(raw || "")
     ).trim();
     if (!text || busy) return;
+    if (map && map.isBusy()) {
+      setStatus("Még sétálunk… egy pillanat.");
+      return;
+    }
+
+    const nav = window.DiviMap ? DiviMap.interpret(text) : null;
+    if (nav && map) {
+      userInput.value = "";
+      addChat("user", text);
+      await handleNavCommand(nav);
+      return;
+    }
 
     if (!requireGeminiKey()) return;
 
     busy = true;
+    const epoch = navEpoch;
     stopListening();
     stopSpeech();
     userInput.value = "";
@@ -719,32 +803,37 @@
         echoMode: echoModeInput.checked,
         geminiKey: getGeminiKey(),
       });
-      addChat("bot", reply.text);
-      if (reply.quotaFallback) {
-        setStatus("Gemini kvóta tele (429) — ideiglenes válasz. Várj 1–2 percet, majd próbáld újra.");
-        console.warn("[Divi] QUOTA_EXCEEDED — helyi fallback válasz.");
+      if (epoch === navEpoch) {
+        addChat("bot", reply.text);
+        if (reply.quotaFallback) {
+          setStatus("Gemini kvóta tele (429) — ideiglenes válasz. Várj 1–2 percet, majd próbáld újra.");
+          console.warn("[Divi] QUOTA_EXCEEDED — helyi fallback válasz.");
+        }
+        if (reply.emotion === "laugh") character.react("laugh");
+        await speak(reply.text);
       }
-      if (reply.emotion === "laugh") character.react("laugh");
-      await speak(reply.text);
     } catch (err) {
-      console.error("[Divi]", err);
-      let msg = "Hoppá, valami elakadt a Gemini API-nál. Próbáld újra!";
-      if (err && err.message === "MISSING_GEMINI_KEY") {
-        msg = "Hiányzik a Gemini API kulcs. Illeszd be a ⚙️ Beállításokban.";
-        settingsPanel.classList.remove("hidden");
-        geminiKeyInput.focus();
-      } else if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED" || /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))) {
-        msg =
-          "A Gemini kvóta ideiglenesen betelt (HTTP 429). Várj 1–2 percet, majd kérdezz újra — Divi addig is itt van!";
-      } else if (err && err.message) {
-        msg = err.message.slice(0, 220);
+      if (epoch === navEpoch) {
+        console.error("[Divi]", err);
+        let msg = "Hoppá, valami elakadt a Gemini API-nál. Próbáld újra!";
+        if (err && err.message === "MISSING_GEMINI_KEY") {
+          msg = "Hiányzik a Gemini API kulcs. Illeszd be a ⚙️ Beállításokban.";
+          settingsPanel.classList.remove("hidden");
+          geminiKeyInput.focus();
+        } else if (err && (err.status === 429 || err.code === "QUOTA_EXCEEDED" || /429|RESOURCE_EXHAUSTED|quota/i.test(String(err.message || "")))) {
+          msg =
+            "A Gemini kvóta ideiglenesen betelt (HTTP 429). Várj 1–2 percet, majd kérdezz újra — Divi addig is itt van!";
+        } else if (err && err.message) {
+          msg = err.message.slice(0, 220);
+        }
+        addChat("bot", msg);
+        showBubble(msg);
+        setStatus(msg);
       }
-      addChat("bot", msg);
-      showBubble(msg);
-      setStatus(msg);
     }
 
     busy = false;
+    if (epoch !== navEpoch) return;
     if (autoListenInput.checked && micPermission !== "denied" && !micUnsupportedReason()) {
       setTimeout(function () {
         startListening();
@@ -975,8 +1064,11 @@
     const warn = micUnsupportedReason();
     if (warn) setStatus(warn);
 
+    const placeNow = map ? map.currentPlace() : null;
     const line =
-      "Szia! Divi vagyok, a kíváncsi vörös panda! Miről meséljek ma?";
+      placeNow && placeNow.id !== "home"
+        ? "Szia! " + placeNow.here + " Miről meséljek?"
+        : "Szia! Divi vagyok, a kíváncsi vörös panda! Miről meséljek ma?";
     addChat("bot", line);
     await speak(line);
 
@@ -1012,6 +1104,10 @@
 
   document.querySelectorAll(".chip").forEach(function (chip) {
     chip.addEventListener("click", function () {
+      if (chip.dataset.action === "map") {
+        if (map) map.open();
+        return;
+      }
       if (chip.dataset.action === "reset") {
         stopListening();
         stopSpeech();

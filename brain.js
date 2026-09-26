@@ -213,7 +213,12 @@
       favoriteCharacter: "",
     };
     this.history = [];
+    this.place = null;
   }
+
+  Brain.prototype.setPlace = function (summary) {
+    this.place = summary && summary.name ? summary : null;
+  };
 
   Brain.prototype.reset = function () {
     this.memory = { name: "", age: "", likes: [], asked: [], turns: 0, favoriteCharacter: "" };
@@ -401,8 +406,20 @@
   };
 
   Brain.prototype.buildSystemPrompt = function () {
+    let placeLine = "";
+    if (this.place && this.place.name) {
+      const next = (this.place.neighbors || []).filter(Boolean).join(", ");
+      placeLine =
+        "Most itt vagytok a mesebeli térképen: " + this.place.name + ". " +
+        (this.place.blurb ? this.place.blurb + " " : "") +
+        (next ? "Innen gyalog ezekre a helyekre lehet ellépni: " + next + ". " : "") +
+        "Ha a gyerek máshová szeretne menni, mondd, hogy nyissa meg a térképet, vagy mondja: menjünk a …-hoz. " +
+        "Csak ezek a helyek vannak a térképen: Bambuszodú, Kuncogó-patak, Mézes pékség, Csillagdomb, Fénybogár-liget, Szivárványhíd. " +
+        "Ne találj ki új helyszínt. ";
+    }
     return (
       "A neved Divi, egy varázslatos vörös panda vagy egy mesebeli bambuszerdőből. " +
+      placeLine +
       "Gyerekekkel beszélgetsz: légy végtelenül kedves, mesés, játékos, meleg és pajkos! " +
       "\n\n" +
       "HOGYAN BESZÉLJ (ez a legfontosabb — a szövegedet hangosan olvassák fel): " +

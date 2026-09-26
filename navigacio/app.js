@@ -990,17 +990,47 @@
     if (arriveAt - nowD >= speakGap + 20) return;
     const ev = window.NavVoice && window.NavVoice.eventFromCat ? window.NavVoice.eventFromCat(then.kind.cat) : "";
     if (!ev) return;
-    playNavCue(ev, "step:" + then.index + ":ahead", false, "ahead");
+    const v = Math.max(Number(state.speed) || 0, 8);
+    playNavCue(ev, "step:" + then.index + ":ahead", false, "ahead", Math.max(1.2, between / v - 1.4));
   }
 
-  function playNavCue(eventId, key, force, phase) {
+  function playNavCue(eventId, key, force, phase, maxSec) {
     if (!eventId || !window.NavVoice || typeof window.NavVoice.playEvent !== "function") return;
     if (window.NavVoice.isMuted && window.NavVoice.isMuted()) return;
     if (key && state.audioCue[key] === eventId) return;
     unlockNavVoice();
     const urgent = !!force || eventId === "recalculating" || eventId === "arrived";
-    const ok = window.NavVoice.playEvent(eventId, urgent, phase || "");
+    const ok = window.NavVoice.playEvent(eventId, urgent, phase || "", maxSec);
     if (ok && key) state.audioCue[key] = eventId;
+  }
+
+  function voiceRoom(cur) {
+    if (!cur || !cur.kind || cur.kind.cat === "arrive") return 0;
+    const v = Math.max(Number(state.speed) || 0, 1);
+    const aheadD = cueMeters(cur.kind, "ahead");
+    const nowD = cueMeters(cur.kind, "now");
+    if (cur.until <= nowD + 8) return 0;
+    const saidAhead = !!state.audioCue["step:" + cur.index + ":ahead"];
+    if (!saidAhead && cur.until <= aheadD) return 0;
+    const freeM = saidAhead ? cur.until - nowD : cur.until - aheadD;
+    return freeM / v - 0.7;
+  }
+
+  function cruiseVoice(cur) {
+    if (!cur || !window.NavVoice || typeof window.NavVoice.playColor !== "function") return;
+    if (window.NavVoice.busy && window.NavVoice.busy()) return;
+    const room = voiceRoom(cur);
+    if (!(room >= 0.9)) return;
+    const ev = window.NavVoice.eventFromCat ? window.NavVoice.eventFromCat(cur.kind.cat) : "";
+    const storyKey = "step:" + cur.index + ":story";
+    const saidAhead = !!state.audioCue["step:" + cur.index + ":ahead"];
+    if (!saidAhead && ev && !state.audioCue[storyKey] && typeof window.NavVoice.playSpare === "function") {
+      if (window.NavVoice.playSpare(ev, room)) {
+        state.audioCue[storyKey] = ev;
+        return;
+      }
+    }
+    window.NavVoice.playColor(room);
   }
 
   function plausibleJump(prev, next, acc) {
@@ -2739,7 +2769,7 @@
     if (speedEl) speedEl.classList.toggle("is-over", !!(limit && kmh > limit + 3));
     if (state.navigating && limit && kmh > limit + 3 && Date.now() - (state.lastSpeedWarn || 0) > 25000) {
       state.lastSpeedWarn = Date.now();
-      playNavCue("speed-warning");
+      playNavCue("speed-warning", "", false, "now", 8);
     }
     const chip = $("placeChip");
     const chipText = $("placeText");
@@ -3229,15 +3259,17 @@
         const nowD = cueMeters(kind, "now");
         const aheadD = cueMeters(kind, "ahead");
         const gap = cueMeters(kind, "gap");
+        const v = Math.max(Number(state.speed) || 0, 1);
         if (cur.until <= nowD) {
           const nowKey = "step:" + cur.index + ":now";
           const saidNow = state.audioCue[nowKey] === ev;
-          playNavCue(ev, nowKey, true, "now");
+          playNavCue(ev, nowKey, true, "now", cur.until / v + 1.1);
           if (saidNow) cueFollowing(cur, then);
         } else if (cur.until <= aheadD && cur.until >= nowD + gap) {
-          playNavCue(ev, "step:" + cur.index + ":ahead", false, "ahead");
+          playNavCue(ev, "step:" + cur.index + ":ahead", false, "ahead", Math.max(1.2, (cur.until - nowD) / v - 0.4));
         }
       }
+      cruiseVoice(cur);
     }
     paintArHud();
     syncFloatMarks();
@@ -3777,7 +3809,18 @@
     unlockNavVoice();
     const first = nextActionable();
     const imminent = first && first.kind && first.kind.cat !== "arrive" && first.until <= cueMeters(first.kind, "now");
-    if (!imminent) playNavCue("start", "nav-start");
+    if (!imminent) {
+      let maxSec = 8;
+      if (first && first.kind && first.kind.cat !== "arrive") {
+        const v0 = Math.max(Number(state.speed) || 0, 8);
+        const aheadD0 = cueMeters(first.kind, "ahead");
+        const nowD0 = cueMeters(first.kind, "now");
+        maxSec = first.until > aheadD0
+          ? Math.max(1.5, (first.until - aheadD0) / v0 - 0.5)
+          : Math.max(1.5, (first.until - nowD0) / v0 - 0.4);
+      }
+      playNavCue("start", "nav-start", false, "now", maxSec);
+    }
     setStatus(state.kaland ? "Kaland mód" : "Navigáció");
     showPinAdjust();
     if (window.NavVoice && window.NavVoice.close) window.NavVoice.close();
@@ -3896,7 +3939,7 @@
     if (Date.now() - state.lastOff < 6000) return;
     state.lastOff = Date.now();
     state.offHits = 0;
-    playNavCue("recalculating");
+    playNavCue("recalculating", "", false, "now", 8);
     fetchRoute(true);
   }
 

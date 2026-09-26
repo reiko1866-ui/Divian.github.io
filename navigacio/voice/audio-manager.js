@@ -5,9 +5,10 @@
   var LIST_KEY = "nav2_audio_selected";
   var DIR_KEY = "nav2_audio_dirs";
   var MUTE_KEY = "nav2_voice_mute";
-  var FILES_URL = "./voice/files.json?v=160";
-  var PACK_URL = "./voice/pack.json?v=160";
-  var CATALOG_URL = "./voice/catalog.json?v=160";
+  var HEARD_KEY = "nav2_voice_heard";
+  var FILES_URL = "./voice/files.json?v=161";
+  var PACK_URL = "./voice/pack.json?v=161";
+  var CATALOG_URL = "./voice/catalog.json?v=161";
   var CAT_ALIAS = {
     start: "start",
     gps: "gps",
@@ -266,6 +267,16 @@
       if (autoPhase[url] === "ahead") ahead.push(url);
       else now.push(url);
     });
+    if (phase === "all") {
+      var both = now.concat(ahead);
+      if (!both.length && EVENT_FALLBACK[id] && EVENT_FALLBACK[id] !== id) {
+        return filesForEvent(EVENT_FALLBACK[id], "all", (depth || 0) + 1);
+      }
+      both.sort(function (a, b) {
+        return fileLabel(a).localeCompare(fileLabel(b), "hu");
+      });
+      return both;
+    }
     if (phase === "ahead" && !ahead.length && EVENT_FALLBACK[id] && EVENT_FALLBACK[id] !== id) {
       var fb = filesForEvent(EVENT_FALLBACK[id], "ahead", (depth || 0) + 1);
       if (fb.length) return fb;
@@ -466,13 +477,49 @@
     return Number(n) || 0;
   }
 
-  function pickCue(list) {
-    var brief = [];
+  function readHeard() {
+    try {
+      var val = JSON.parse(localStorage.getItem(HEARD_KEY) || "{}");
+      if (val && typeof val === "object") return val;
+    } catch (_e) {}
+    return {};
+  }
+
+  function remember(url) {
+    var label = fileLabel(url);
+    if (!label) return;
+    var map = readHeard();
+    map[label] = (map[label] || 0) + 1;
+    try { localStorage.setItem(HEARD_KEY, JSON.stringify(map)); } catch (_e) {}
+  }
+
+  function pickFit(list, maxSec, allowShortest) {
+    if (!list || !list.length) return "";
+    var heard = readHeard();
+    var cap = Number(maxSec);
+    var limited = cap > 0.4;
+    var best = [];
+    var bestCount = Infinity;
+    var shortest = "";
+    var shortestD = Infinity;
     for (var i = 0; i < list.length; i++) {
-      var d = durationOf(list[i]);
-      if (d >= 0.45 && d <= 4.2) brief.push(list[i]);
+      var url = list[i];
+      var d = durationOf(url);
+      if (!(d > 0)) d = limited ? cap : 1;
+      if (d < shortestD) {
+        shortestD = d;
+        shortest = url;
+      }
+      if (d < 0.3) continue;
+      if (limited && d > cap) continue;
+      var count = heard[fileLabel(url)] || 0;
+      if (count < bestCount) {
+        bestCount = count;
+        best = [url];
+      } else if (count === bestCount) best.push(url);
     }
-    return pickRandom(brief.length ? brief : list);
+    if (best.length) return pickRandom(best);
+    return allowShortest ? shortest : "";
   }
 
   function startElement(el, url, eventId) {
@@ -480,6 +527,7 @@
     el.src = url;
     lastUrl = url;
     playing = true;
+    remember(url);
     try { el.currentTime = 0; } catch (_e2) {}
     var p = el.play();
     if (p && p.catch) {
@@ -509,20 +557,40 @@
     return true;
   }
 
-  function playEvent(id, force, phase) {
+  function playEvent(id, force, phase, maxSec) {
     if (isMuted()) return false;
     if (!isEventId(id)) return false;
     if (!files.length) {
       loadFiles().then(function () {
         if (isMuted()) return;
-        if (force || !isBusy()) playEvent(id, force, phase);
+        if (force || !isBusy()) playEvent(id, force, phase, maxSec);
       });
       return true;
     }
     var list = filesForEvent(id, phase);
     if (!list.length && id === "start") list = filesForEvent("straight", "now");
     if (!list.length) return false;
-    return playFile(pickCue(list), id, !!force);
+    var pick = pickFit(list, maxSec, true);
+    if (!pick) return false;
+    return playFile(pick, id, !!force);
+  }
+
+  function playSpare(id, maxSec) {
+    if (isMuted() || isBusy() || !files.length || !isEventId(id)) return false;
+    var list = filesForEvent(id, "all").filter(function (url) {
+      return durationOf(url) > 4.5;
+    });
+    var pick = pickFit(list, maxSec, false);
+    if (!pick) return false;
+    return playFile(pick, id, false);
+  }
+
+  function playColor(maxSec) {
+    if (isMuted() || isBusy() || !files.length) return false;
+    var list = filesForEvent("start", "now");
+    var pick = pickFit(list, maxSec, false);
+    if (!pick) return false;
+    return playFile(pick, "start", false);
   }
 
   function playCat(cat, force) {
@@ -744,6 +812,8 @@
     playCat: playCat,
     playFile: playFile,
     playEvent: playEvent,
+    playSpare: playSpare,
+    playColor: playColor,
     playFromCat: playCat,
     eventFromCat: function (cat) {
       return CAT_EVENT[cat] || "";

@@ -1962,7 +1962,7 @@
     if (state.kaland) {
       return { outline: "#3b1d04", glow: "#FBBF24", line: "#F59E0B" };
     }
-    return { outline: "#04140c", glow: "#00ff66", line: "#00ff66" };
+    return { outline: "#083044", glow: "#2ec8ff", line: "#7ee7ff" };
   }
 
   function applyRouteStyle() {

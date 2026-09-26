@@ -1688,15 +1688,16 @@
 
   function tomtomManeuver(type) {
     const t = String(type || "").toUpperCase();
-    if (/ARRIVE/.test(t)) return { type: "arrive", modifier: "" };
+    if (/ARRIV/.test(t)) return { type: "arrive", modifier: "" };
     if (/DEPART|START/.test(t)) return { type: "depart", modifier: "" };
     if (/ROUNDABOUT.*EXIT|EXIT.ROUND/.test(t)) return { type: "exit roundabout", modifier: "" };
     if (/ROUNDABOUT/.test(t)) return { type: "roundabout", modifier: "" };
     if (/UTURN|U_TURN/.test(t)) return { type: "turn", modifier: "uturn" };
     if (/SHARP.*LEFT/.test(t)) return { type: "turn", modifier: "sharp left" };
     if (/SHARP.*RIGHT/.test(t)) return { type: "turn", modifier: "sharp right" };
-    if (/SLIGHT.*LEFT|KEEP.LEFT/.test(t)) return { type: "turn", modifier: "slight left" };
-    if (/SLIGHT.*RIGHT|KEEP.RIGHT/.test(t)) return { type: "turn", modifier: "slight right" };
+    if (/STRAIGHT/.test(t)) return { type: "continue", modifier: "straight" };
+    if (/SLIGHT.*LEFT|KEEP.LEFT|KEEP_LEFT/.test(t)) return { type: "turn", modifier: "slight left" };
+    if (/SLIGHT.*RIGHT|KEEP.RIGHT|KEEP_RIGHT/.test(t)) return { type: "turn", modifier: "slight right" };
     if (/LEFT/.test(t)) return { type: "turn", modifier: "left" };
     if (/RIGHT/.test(t)) return { type: "turn", modifier: "right" };
     if (/MERGE/.test(t)) return { type: "merge", modifier: "" };
@@ -1785,18 +1786,21 @@
       ((route.legs || []).reduce(function (all, leg) {
         return all.concat(leg.instructions || []);
       }, []));
-    let prevOff = 0;
-    instructions.forEach(function (ins) {
-      const man = tomtomManeuver(ins.instructionType || ins.maneuver || ins.type);
+    const routeMeters = Number((route.summary || {}).lengthInMeters) || 0;
+    instructions.forEach(function (ins, idx) {
+      const man = tomtomManeuver(ins.maneuver || ins.instructionType || ins.type);
       const pt = ins.point || {};
       const off = Number(ins.routeOffsetInMeters);
+      const next = instructions[idx + 1];
+      const nextOff = next ? Number(next.routeOffsetInMeters) : NaN;
       const raw = Number(ins.distance);
-      const dist = Number.isFinite(off)
-        ? Math.max(0, off - prevOff)
-        : Number.isFinite(raw)
-          ? Math.max(0, raw)
-          : 0;
-      if (Number.isFinite(off)) prevOff = off;
+      const dist = Number.isFinite(off) && Number.isFinite(nextOff)
+        ? Math.max(0, nextOff - off)
+        : Number.isFinite(off) && routeMeters > off
+          ? Math.max(0, routeMeters - off)
+          : Number.isFinite(raw)
+            ? Math.max(0, raw)
+            : 0;
       steps.push({
         maneuver: { type: man.type, modifier: man.modifier },
         name: ins.street || ins.roadNumbers || "",

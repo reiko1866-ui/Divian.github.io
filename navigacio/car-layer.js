@@ -23,20 +23,20 @@
   var CAM_POS_TAU_TURN = 0.16;
   var CAM_LOOK_TAU_TURN = 0.18;
   var BUILD_ZOOM_MIN = 15;
-  var FOG_COLOR = 0xf3c4b0;
-  var FOG_DENSITY = 0.0026;
-  var CLAY_GROUND = 0x5fbf62;
-  var CANOPY_COLORS = [0xff8fb3, 0xa8e86a, 0xd8e85a, 0xff6eb4, 0xf7b3d0, 0x9be37a];
-  var CAM_FOV_CHASE = 78;
+  var FOG_COLOR = 0x8eafd4;
+  var FOG_DENSITY = 0.0032;
+  var CLAY_GROUND = 0x1a3040;
+  var CANOPY_COLORS = [0x2f6b45, 0x3d7a52, 0x245c3c, 0x4a8a58, 0x1f6a4a, 0x356b48];
+  var CAM_FOV_CHASE = 48;
   var CAM_FOV_DASH = 70;
-  var CLAY_ROAD = 0x5c616a;
-  var CLAY_ROUTE = 0xf2b84b;
+  var CLAY_ROAD = 0x4a5568;
+  var CLAY_ROUTE = 0x2ec8ff;
   var DEADBAND_KMH = 3;
   var TURN_TAU = 0.1;
   var CAM_TAU = 0.14;
-  var CAM_BACK = 13.5;
-  var CAM_HEIGHT = 5.2;
-  var CAM_LOOK = 18;
+  var CAM_BACK = 18;
+  var CAM_HEIGHT = 46;
+  var CAM_LOOK = 16;
   var CAM_BLEND_TAU = 0.28;
   var CAR_POSE_TAU = 0.11;
   var CAR_LANE_TAU = 0.12;
@@ -50,7 +50,7 @@
   var ROAD_TEX_GAIN = 0.1;
   var ROAD_WIDTH = 7.2;
   var ROAD_HALF = ROAD_WIDTH * 0.5;
-  var ROUTE_WIDTH = Math.min(1.4, ROAD_WIDTH * 0.3);
+  var ROUTE_WIDTH = 2.6;
   var DECOR_CLEAR = ROAD_HALF + 2.5;
   var LAMP_FROM_EDGE = 0.75;
   var TREE_FROM_EDGE_MIN = 3;
@@ -1107,11 +1107,9 @@
       grd.addColorStop(0.7, "#ffd08a");
       grd.addColorStop(1, "#c5e6a8");
     } else {
-      grd.addColorStop(0, "#6b8fd4");
-      grd.addColorStop(0.28, "#f4a3c4");
-      grd.addColorStop(0.55, "#ffb06a");
-      grd.addColorStop(0.78, "#ffe2b0");
-      grd.addColorStop(1, "#b8e4a8");
+      grd.addColorStop(0, "#6f92c9");
+      grd.addColorStop(0.42, "#9eb6d8");
+      grd.addColorStop(1, "#d5e2ef");
     }
     g.fillStyle = grd;
     g.fillRect(0, 0, 8, 256);
@@ -1309,7 +1307,7 @@
     if (level >= 0.9) return 0x8b1020;
     if (level >= 0.65) return 0xe23b4a;
     if (level >= 0.38) return 0xf2b84b;
-    return 0x3dce6a;
+    return CLAY_ROUTE;
   }
 
   function trafficAt(traveled) {
@@ -1501,7 +1499,9 @@
       var roadMat = clayRoadMat(THREE);
       rememberRoadMat(host, roadMat);
       addRibbonMesh(THREE, g, slice, ROAD_WIDTH, ROAD_Y, 0, roadMat);
-      addRibbonMesh(THREE, g, slice, ROUTE_WIDTH, ROUTE_Y, 0, clayRouteMat(THREE, trafficTone(trafficAt(i * ROAD_CHUNK + 40))));
+      var tone = trafficTone(trafficAt(i * ROAD_CHUNK + 40));
+      addRibbonMesh(THREE, g, slice, ROUTE_WIDTH * 2.4, ROUTE_Y - 0.02, 0, routeGlowMat(THREE, tone));
+      addRibbonMesh(THREE, g, slice, ROUTE_WIDTH, ROUTE_Y, 0, clayRouteMat(THREE, tone));
       addRibbonMesh(THREE, g, slice, LANE_MARK, LANE_MARK_Y, LANE_MARK_LATERAL, laneMarkMat(THREE));
       host.routeRoot.add(g);
       live[key] = g;
@@ -1648,7 +1648,7 @@
     c.width = 256;
     c.height = 512;
     var g = c.getContext("2d");
-    g.fillStyle = "#4f545c";
+    g.fillStyle = "#3c4658";
     g.fillRect(0, 0, 256, 512);
     var i;
     for (i = 0; i < 900; i++) {
@@ -1693,8 +1693,12 @@
   }
 
   function clayRouteMat(THREE, color) {
+    var c = color == null ? CLAY_ROUTE : color;
     var mat = toonMaterial(THREE, {
-      color: color == null ? CLAY_ROUTE : color,
+      color: c,
+      emissive: c,
+      emissiveIntensity: 0.72,
+      roughness: 0.32,
       fog: true,
       side: THREE.DoubleSide
     });
@@ -1703,6 +1707,17 @@
     mat.polygonOffsetUnits = -2;
     mat.depthWrite = false;
     return mat;
+  }
+
+  function routeGlowMat(THREE, color) {
+    return new THREE.MeshBasicMaterial({
+      color: color == null ? CLAY_ROUTE : color,
+      transparent: true,
+      opacity: 0.4,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: true
+    });
   }
 
   function laneMarkMat(THREE) {
@@ -1738,6 +1753,39 @@
       return new THREE.DodecahedronGeometry(radius, 0);
     }
     return new THREE.IcosahedronGeometry(radius, 0);
+  }
+
+  function makeCityBlock(THREE, seed) {
+    var g = new THREE.Group();
+    var w = 7 + hash01(seed) * 9;
+    var d = 6 + hash01(seed + 1) * 7;
+    var h = 6 + hash01(seed + 2) * 20;
+    var palette = [0x2e466c, 0x3a5580, 0x243654, 0x415e88, 0x334e74];
+    var color = palette[Math.floor(hash01(seed + 4) * palette.length) % palette.length];
+    var mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      toonMaterial(THREE, { color: color, fog: true, roughness: 0.9 })
+    );
+    mesh.position.y = h * 0.5;
+    g.add(mesh);
+    var winMat = new THREE.MeshBasicMaterial({ color: 0xffe7a3, fog: true });
+    var cols = 2 + Math.floor(hash01(seed + 6) * 2);
+    var rows = 2 + Math.floor(hash01(seed + 8) * 3);
+    var r;
+    var c;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+        if (hash01(seed + r * 7 + c * 3) < 0.28) continue;
+        var win = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.1), winMat);
+        win.position.set(
+          (c + 0.5) * (w * 0.7 / cols) - w * 0.35,
+          h * 0.28 + r * (h * 0.5 / rows),
+          d * 0.5 + 0.06
+        );
+        g.add(win);
+      }
+    }
+    return g;
   }
 
   function makeClayTree(THREE, seed) {
@@ -2263,6 +2311,7 @@
     lastWorld.roadPts = pts;
     var acc = 0;
     var trees = 0;
+    var blocks = 0;
     var lamps = 0;
     var flowers = 0;
     var bushes = 0;
@@ -2292,6 +2341,27 @@
           putEnv(root, live, key, lamp, lampAt.x, 0, lampAt.z, "lamp", Math.atan2(-lampAt.nx, -lampAt.nz));
         }
         lamps += 1;
+      }
+      if (acc > blocks * 34 + 14) {
+        key = "k:" + blocks;
+        if (near && !live[key]) {
+          var kSide = blocks % 2 ? 1 : -1;
+          var kOff = ROAD_HALF + 14 + hash01(blocks * 3) * 10;
+          var blockAt = placeOffRoad(pts, midX, midZ, kSide, kOff);
+          blockAt = keepOffRoad(pts, blockAt.x, blockAt.z, ROAD_HALF + 12);
+          putEnv(
+            root,
+            live,
+            key,
+            makeCityBlock(THREE, blocks * 13 + 4),
+            blockAt.x,
+            0,
+            blockAt.z,
+            "block",
+            Math.atan2(-blockAt.nx, -blockAt.nz)
+          );
+        }
+        blocks += 1;
       }
       if (acc > trees * 10 + 4) {
         key = "t:" + trees;
@@ -2638,6 +2708,23 @@
     host.scene.add(host.sky);
   }
 
+  function addRouteRibbon(THREE, parent, pts, tone) {
+    if (!parent || !pts || pts.length < 2) return;
+    var glowGeo = ribbonFromPts(THREE, pts, ROUTE_WIDTH * 2.4, ROUTE_Y - 0.02, 0);
+    if (glowGeo) {
+      var glow = new THREE.Mesh(glowGeo, routeGlowMat(THREE, tone));
+      glow.frustumCulled = false;
+      glow.renderOrder = 2;
+      parent.add(glow);
+    }
+    var geo = ribbonFromPts(THREE, pts, ROUTE_WIDTH, ROUTE_Y, 0);
+    if (!geo) return;
+    var mesh = new THREE.Mesh(geo, clayRouteMat(THREE, tone));
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 3;
+    parent.add(mesh);
+  }
+
   function addClayRouteMeshes(THREE, root, coords, origin, host) {
     if (!root || !coords || coords.length < 2 || !origin) return;
     var road = ribbonGeometry(THREE, coords, origin, ROAD_WIDTH, ROAD_Y);
@@ -2653,13 +2740,7 @@
     lastWorld.roadOrigin = origin ? { lng: origin.lng, lat: origin.lat } : lastWorld.roadOrigin;
     var traffic = lastWorld.traffic || [];
     if (!traffic.length) {
-      var paint = ribbonFromPts(THREE, pts, ROUTE_WIDTH, ROUTE_Y, 0);
-      if (paint) {
-        var paintMesh = new THREE.Mesh(paint, clayRouteMat(THREE));
-        paintMesh.frustumCulled = false;
-        paintMesh.renderOrder = 3;
-        root.add(paintMesh);
-      }
+      addRouteRibbon(THREE, root, pts, CLAY_ROUTE);
     } else {
       var acc = 0;
       var i;
@@ -2670,10 +2751,7 @@
         var nextTone = i < pts.length ? trafficTone(trafficAt(acc)) : -1;
         if (nextTone !== tone || i === pts.length) {
           var slice = pts.slice(Math.max(0, start - 1), i);
-          var geo = ribbonFromPts(THREE, slice, ROUTE_WIDTH, ROUTE_Y, 0);
-          if (geo) {
-            root.add(new THREE.Mesh(geo, clayRouteMat(THREE, tone)));
-          }
+          addRouteRibbon(THREE, root, slice, tone);
           start = i - 1;
           tone = nextTone;
         }
@@ -2757,14 +2835,14 @@
     }
     geo.rotateX(-Math.PI / 2);
     if (building.minH) geo.translate(0, Number(building.minH) || 0, 0);
-    var wall = toonMaterial(THREE, { color: 0xc4b49a, fog: true });
+    var wall = toonMaterial(THREE, { color: 0x3a5278, fog: true, roughness: 0.88 });
     var mesh = new THREE.Mesh(geo, wall);
     mesh.renderOrder = 1;
     addBlackOutline(THREE, mesh);
     var edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(geo, 18),
       new THREE.LineBasicMaterial({
-        color: 0x111111,
+        color: 0x152033,
         fog: true
       })
     );

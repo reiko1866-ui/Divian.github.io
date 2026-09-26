@@ -6,9 +6,9 @@
   var DIR_KEY = "nav2_audio_dirs";
   var MUTE_KEY = "nav2_voice_mute";
   var HEARD_KEY = "nav2_voice_heard";
-  var FILES_URL = "./voice/files.json?v=161";
-  var PACK_URL = "./voice/pack.json?v=161";
-  var CATALOG_URL = "./voice/catalog.json?v=161";
+  var FILES_URL = "./voice/files.json?v=163";
+  var PACK_URL = "./voice/pack.json?v=163";
+  var CATALOG_URL = "./voice/catalog.json?v=163";
   var CAT_ALIAS = {
     start: "start",
     gps: "gps",

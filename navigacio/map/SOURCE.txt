@@ -1,0 +1,10 @@
+Magyarország vektoros térkép — Protomaps / OpenStreetMap
+Forrás: https://build.protomaps.com/20260924.pmtiles
+Kivágás: 16.05,45.68 – 22.98,48.65 (az ország, kis ráhagyással a határnál)
+Max zoom: 11. A ToonNavi clay stílus (style.json) offline: zöld talaj, pasztell víz, aszfalt/sárga út, helyi Noto Sans felirat.
+Az egész fájl a repóban van, a szolgáltatás induláskor betölti, utána hálózat nélkül is megy.
+
+Újra letöltés:
+pmtiles extract https://build.protomaps.com/YYYYMMDD.pmtiles hungary.pmtiles --bbox=16.05,45.68,22.98,48.65 --maxzoom=11
+
+Betűk: map/fonts/Noto Sans Regular (Protomaps basemaps-assets, Latin + Latin Extended).
